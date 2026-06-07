@@ -1,0 +1,16 @@
+services:
+  api:
+    image: "${IMAGE_NAME}"
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      - TESTING=${TESTING:-0}  # Set to "true" to enable tests
+    ports:
+      - "${HOST_PORT}:${CONTAINER_PORT}"
+    volumes:
+      - .:/app
+      - ./files:/app/files
+    command: python /app/prestart.py

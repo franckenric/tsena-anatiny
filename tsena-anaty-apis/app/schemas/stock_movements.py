@@ -1,0 +1,63 @@
+# begin #
+# ---write your code here--- #
+# end #
+
+from datetime import datetime, time, date
+from typing import Any, List, Optional
+from pydantic import BaseModel, ConfigDict, field_validator
+from uuid import UUID
+from app.enum.type import TypeEnum
+from .products import Products
+from .users import Users
+
+
+class StockMovementsBase(BaseModel):
+    product_id: Optional[int] = None
+    user_id: Optional[int] = None
+    type: Optional[TypeEnum] = None
+    quantity: Optional[int] = None
+    stock_before: Optional[int] = None
+    stock_after: Optional[int] = None
+    reference: Optional[str] = None
+
+
+class StockMovementsCreate(StockMovementsBase):
+    product_id: int
+    user_id: int
+    type: TypeEnum
+    quantity: int
+
+
+class StockMovementsUpdate(StockMovementsBase):
+    pass
+
+
+class StockMovementsInDBBase(StockMovementsBase):
+    id: Optional[UUID]
+    product_id: Optional[int] = None
+    user_id: Optional[int] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class StockMovements(StockMovementsInDBBase):
+    pass
+
+
+class StockMovementsWithRelation(StockMovementsInDBBase):
+    product: Optional[Products] = None
+    user: Optional[Users] = None
+
+
+class StockMovementsInDB(StockMovementsInDBBase):
+    pass
+
+
+class ResponseStockMovements(BaseModel):
+    count: int
+    data: Optional[List[StockMovementsWithRelation]]
+
+
+# begin #
+# ---write your code here--- #
+# end #

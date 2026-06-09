@@ -1,0 +1,68 @@
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Space+Grotesk:wght@600;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+    --bg: 42 33% 98%;
+    --panel: 0 0% 100%;
+    --ink: 225 35% 13%;
+    --muted: 222 13% 37%;
+    --border: 28 16% 85%;
+    --brand: 14 83% 54%;
+    --brand-soft: 16 100% 86%;
+    --success: 157 65% 38%;
+    --warning: 43 100% 52%;
+  }
+
+  .dark {
+    color-scheme: dark;
+    --bg: 221 39% 10%;
+    --panel: 222 30% 14%;
+    --ink: 210 40% 96%;
+    --muted: 220 18% 71%;
+    --border: 221 22% 28%;
+    --brand: 19 91% 60%;
+    --brand-soft: 18 70% 36%;
+    --success: 158 65% 43%;
+    --warning: 39 95% 56%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply m-0 bg-bg bg-mesh text-ink font-sans antialiased;
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply font-display;
+  }
+
+  #root {
+    @apply min-h-screen;
+  }
+}
+
+@layer utilities {
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fade-up {
+    animation: fade-up 0.45s ease-out both;
+  }
+}

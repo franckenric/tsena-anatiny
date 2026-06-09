@@ -5,7 +5,6 @@
 from datetime import datetime, time, date
 from typing import Any, List, Optional
 from pydantic import BaseModel, ConfigDict, field_validator
-from uuid import UUID
 from app.enum.status import StatusEnum
 
 
@@ -24,7 +23,7 @@ class CategoriesUpdate(CategoriesBase):
 
 
 class CategoriesInDBBase(CategoriesBase):
-    id: Optional[UUID]
+    id: Optional[int]
 
     model_config = ConfigDict(from_attributes=True)
 

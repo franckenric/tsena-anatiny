@@ -1,5 +1,6 @@
 from .categories import Categories
 from .commercial_assignments import CommercialAssignments
+from .lots import Lots
 from .orders import Orders
 from .products import Products
 from .roles import Roles

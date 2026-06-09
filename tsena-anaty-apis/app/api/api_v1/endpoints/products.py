@@ -1,6 +1,7 @@
 from typing import Any
-from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException
+from pathlib import Path
+from uuid import uuid4
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
 from app.api import deps
@@ -9,6 +10,46 @@ import ast
 
 router = APIRouter()
 from app.api import deps
+
+
+@router.post('/upload-image')
+async def upload_product_image(
+      *,
+      request: Request,
+      image: UploadFile = File(...),
+      current_user: models.Users = Depends(deps.get_current_active_user),
+) -> Any:
+   """Upload a product image and return a public URL."""
+   allowed_types = {"image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"}
+   if image.content_type not in allowed_types:
+      raise HTTPException(status_code=400, detail='Format image non supporte')
+
+   uploads_dir = Path('files/products')
+   uploads_dir.mkdir(parents=True, exist_ok=True)
+
+   ext = Path(image.filename or '').suffix.lower() or '.jpg'
+   if ext not in {'.jpg', '.jpeg', '.png', '.webp', '.gif'}:
+      ext = '.jpg'
+
+   filename = f"{uuid4().hex}{ext}"
+   file_path = uploads_dir / filename
+
+   content = await image.read()
+   if len(content) > 5 * 1024 * 1024:
+      raise HTTPException(status_code=400, detail='Image trop volumineuse (max 5MB)')
+
+   file_path.write_bytes(content)
+
+   public_path = f"/files/products/{filename}"
+   public_url = f"{str(request.base_url).rstrip('/')}{public_path}"
+
+   return {
+      'image_path': public_path,
+      'image_url': public_url,
+      'filename': filename
+   }
+
+
 @router.get('/', response_model=schemas.ResponseProducts)
 def read_products(
         *,
@@ -65,7 +106,7 @@ def create_products(
 def update_products(
         *,
         db: Session = Depends(deps.get_db),
-        products_id: UUID,
+   products_id: int,
         products_in: schemas.ProductsUpdate,
         current_user: models.Users = Depends(deps.get_current_active_user),
 ) -> Any:
@@ -87,7 +128,7 @@ def read_products(
         where_relation: str = "[]",
         base_columns: str = "[]",
         db: Session = Depends(deps.get_db),
-        products_id: UUID,
+      products_id: int,
         current_user: models.Users = Depends(deps.get_current_active_user),
 ) -> Any:
     """
@@ -120,7 +161,7 @@ def read_products(
 def delete_products(
         *,
         db: Session = Depends(deps.get_db),
-        products_id: UUID,
+   products_id: int,
         current_user: models.Users = Depends(deps.get_current_active_user),
 ) -> Any:
     """

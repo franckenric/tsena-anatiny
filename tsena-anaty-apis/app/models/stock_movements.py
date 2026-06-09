@@ -12,9 +12,10 @@ from app.enum.type import TypeEnum
 
 class StockMovements(Base):
     __tablename__ = 'stock_movements'
-    id = Column(Integer, primary_key=True, autoincrement=False, nullable=False, default=uuid4, unique=True)
+    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False,  unique=True)
     product_id = Column(Integer, ForeignKey('products.id'))
     user_id = Column(Integer, ForeignKey('users.id'))
+    lot_id = Column(Integer, ForeignKey('lots.id'), nullable=True)
     type = Column(Enum(TypeEnum), nullable=False)
     quantity = Column(Integer, nullable=False)
     stock_before = Column(Integer)
@@ -29,6 +30,7 @@ class StockMovements(Base):
     # Relations
     product = relationship('Products', foreign_keys=[product_id])
     user = relationship('Users', foreign_keys=[user_id])
+    lot = relationship('Lots', foreign_keys=[lot_id])
 
 
 # begin #

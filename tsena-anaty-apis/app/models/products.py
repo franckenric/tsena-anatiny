@@ -12,7 +12,7 @@ from app.enum.status import StatusEnum
 
 class Products(Base):
     __tablename__ = 'products'
-    id = Column(Integer, primary_key=True, autoincrement=False, nullable=False, default=uuid4, unique=True)
+    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False,  unique=True)
     category_id = Column(Integer, ForeignKey('categories.id'))
     sku = Column(String(255), nullable=False, unique=True)
     name = Column(String(255), nullable=False)
@@ -31,6 +31,13 @@ class Products(Base):
 
     # Relations
     categorie = relationship('Categories', foreign_keys=[category_id])
+    stock = relationship('Stock', foreign_keys='Stock.product_id', back_populates='product')
+    commercial_assignment = relationship(
+        'CommercialAssignments',
+        foreign_keys='CommercialAssignments.product_id',
+        uselist=False,
+        back_populates='product',
+    )
 
 
 # begin #

@@ -12,7 +12,7 @@ from app.enum.status import StatusEnum
 
 class Categories(Base):
     __tablename__ = 'categories'
-    id = Column(Integer, primary_key=True, autoincrement=False, nullable=False, default=uuid4, unique=True)
+    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False,  unique=True)
     name = Column(String(255), unique=True)
     description = Column(Text)
     status = Column(Enum(StatusEnum))

@@ -1,5 +1,6 @@
 from .crud_categories import categories
 from .crud_commercial_assignments import commercial_assignments
+from .crud_lots import lots
 from .crud_orders import orders
 from .crud_products import products
 from .crud_roles import roles

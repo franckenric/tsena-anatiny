@@ -4,7 +4,6 @@
 
 from datetime import timedelta, datetime
 from typing import Any
-from uuid import UUID
 
 
 from fastapi import APIRouter, Body, Depends, HTTPException
@@ -44,11 +43,12 @@ def login_access_token(
     token_data = deps.get_user(token)
 
     lookup_id = token_data.id
-    if lookup_id is not None:
-        try:
-            lookup_id = UUID(str(lookup_id))
-        except (TypeError, ValueError):
-            raise HTTPException(status_code=400, detail="Invalid token subject id")
+    if lookup_id is None:
+        raise HTTPException(status_code=400, detail="Missing token subject id")
+    try:
+        lookup_id = int(str(lookup_id))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Invalid token subject id")
     user = crud.users.get(db=db, id=lookup_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -64,11 +64,12 @@ def test_token(token: str, db: Session = Depends(deps.get_db)) -> Any:
     token_data = deps.get_user(token)
 
     lookup_id = token_data.id
-    if lookup_id is not None:
-        try:
-            lookup_id = UUID(str(lookup_id))
-        except (TypeError, ValueError):
-            raise HTTPException(status_code=400, detail="Invalid token subject id")
+    if lookup_id is None:
+        raise HTTPException(status_code=400, detail="Missing token subject id")
+    try:
+        lookup_id = int(str(lookup_id))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Invalid token subject id")
     user = crud.users.get(db=db, id=lookup_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")

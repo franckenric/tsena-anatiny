@@ -5,15 +5,16 @@
 from datetime import datetime, time, date
 from typing import Any, List, Optional
 from pydantic import BaseModel, ConfigDict, field_validator
-from uuid import UUID
 from app.enum.type import TypeEnum
 from .products import Products
 from .users import Users
+from .lots import Lot
 
 
 class StockMovementsBase(BaseModel):
     product_id: Optional[int] = None
     user_id: Optional[int] = None
+    lot_id: Optional[int] = None
     type: Optional[TypeEnum] = None
     quantity: Optional[int] = None
     stock_before: Optional[int] = None
@@ -33,7 +34,7 @@ class StockMovementsUpdate(StockMovementsBase):
 
 
 class StockMovementsInDBBase(StockMovementsBase):
-    id: Optional[UUID]
+    id: Optional[int]
     product_id: Optional[int] = None
     user_id: Optional[int] = None
 
@@ -47,6 +48,7 @@ class StockMovements(StockMovementsInDBBase):
 class StockMovementsWithRelation(StockMovementsInDBBase):
     product: Optional[Products] = None
     user: Optional[Users] = None
+    lot: Optional[Lot] = None
 
 
 class StockMovementsInDB(StockMovementsInDBBase):

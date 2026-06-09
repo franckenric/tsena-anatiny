@@ -11,7 +11,7 @@ from sqlalchemy import Integer
 
 class CommercialAssignments(Base):
     __tablename__ = 'commercial_assignments'
-    id = Column(Integer, primary_key=True, autoincrement=False, nullable=False, default=uuid4, unique=True)
+    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False,  unique=True)
     user_id = Column(Integer, ForeignKey('users.id'))
     product_id = Column(Integer, ForeignKey('products.id'))
     quantity = Column(Integer, nullable=False)
@@ -23,7 +23,7 @@ class CommercialAssignments(Base):
 
     # Relations
     user = relationship('Users', foreign_keys=[user_id])
-    product = relationship('Products', foreign_keys=[product_id])
+    product = relationship('Products', foreign_keys=[product_id], back_populates='commercial_assignment')
 
 
 # begin #

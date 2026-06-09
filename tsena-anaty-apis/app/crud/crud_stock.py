@@ -14,6 +14,9 @@ class CRUDStock(CRUDBase[Stock, StockCreate, StockUpdate]):
     def get_by_field(self, db: Session, *, field: str, value: Any) -> Optional[Stock]:
         return db.query(Stock).filter(getattr(Stock, field) == value).first()
 
+    def get_by_product_id(self, db: Session, *, product_id: int) -> Optional[Stock]:
+        return db.query(Stock).filter(Stock.product_id == product_id).first()
+
 stock = CRUDStock(Stock)
 
 

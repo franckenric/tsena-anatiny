@@ -5,7 +5,6 @@
 from datetime import datetime, time, date
 from typing import Any, List, Optional
 from pydantic import BaseModel, ConfigDict, field_validator
-from uuid import UUID
 from .products import Products
 
 
@@ -20,12 +19,19 @@ class StockCreate(StockBase):
     quantity: int
 
 
+class StockArrival(BaseModel):
+    product_id: int
+    quantity: int
+    lot_id: int
+    reference: Optional[str] = None
+
+
 class StockUpdate(StockBase):
     pass
 
 
 class StockInDBBase(StockBase):
-    id: Optional[UUID]
+    id: Optional[int]
     product_id: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)

@@ -11,7 +11,8 @@ from sqlalchemy import Boolean, String, Integer, Text
 
 class Users(Base):
     __tablename__ = 'users'
-    id = Column(Integer, primary_key=True, autoincrement=False, nullable=False, default=uuid4, unique=True, index=True)
+    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False,  unique=True, index=True)
+    full_name = Column(String(255))
     email = Column(String(255), nullable=False, unique=True, index=True)
     hashed_password = Column(String(255), nullable=False)
     is_active = Column(Boolean, nullable=False)

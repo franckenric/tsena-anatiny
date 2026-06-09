@@ -5,7 +5,6 @@
 from datetime import datetime, time, date
 from typing import Any, List, Optional
 from pydantic import BaseModel, ConfigDict, field_validator
-from uuid import UUID
 from .products import Products
 from .users import Users
 
@@ -27,7 +26,7 @@ class CommercialAssignmentsUpdate(CommercialAssignmentsBase):
 
 
 class CommercialAssignmentsInDBBase(CommercialAssignmentsBase):
-    id: Optional[UUID]
+    id: Optional[int]
     user_id: Optional[int] = None
     product_id: Optional[int] = None
 

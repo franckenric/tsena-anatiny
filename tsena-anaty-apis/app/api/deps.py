@@ -3,7 +3,6 @@
 # end #
 
 from typing import Generator
-from uuid import UUID
 
 
 from fastapi import Depends, HTTPException, status
@@ -48,11 +47,12 @@ def get_current_user(
 
 
     lookup_id = token_data.id
-    if lookup_id is not None:
-        try:
-            lookup_id = UUID(str(lookup_id))
-        except (TypeError, ValueError):
-            raise HTTPException(status_code=403, detail="Invalid token subject id")
+    if lookup_id is None:
+        raise HTTPException(status_code=403, detail="Missing token subject id")
+    try:
+        lookup_id = int(str(lookup_id))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=403, detail="Invalid token subject id")
     user = crud.users.get(db, id=lookup_id)
     if not user:
         raise HTTPException(status_code=403, detail="User not found")

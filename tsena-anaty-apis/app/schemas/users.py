@@ -5,11 +5,11 @@
 from datetime import datetime, time, date
 from typing import Any, List, Optional
 from pydantic import BaseModel, ConfigDict, field_validator
-from uuid import UUID
 from .roles import Roles
 
 
 class UsersBase(BaseModel):
+    full_name: Optional[str] = None
     email: Optional[str] = None
     password: Optional[str] = None
     is_active: Optional[bool] = None
@@ -31,7 +31,7 @@ class UsersUpdate(UsersBase):
 
 
 class UsersInDBBase(UsersBase):
-    id: Optional[UUID]
+    id: Optional[int]
     role_id: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)

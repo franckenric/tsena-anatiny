@@ -11,8 +11,8 @@ from sqlalchemy import Boolean, Integer
 
 class Stock(Base):
     __tablename__ = 'stock'
-    id = Column(Integer, primary_key=True, autoincrement=False, nullable=False, default=uuid4, unique=True)
-    product_id = Column(Integer, ForeignKey('products.id'))
+    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False,  unique=True)
+    product_id = Column(Integer, ForeignKey('products.id'), unique=True)
     quantity = Column(Integer, nullable=False)
     reserved = Column(Boolean)
 
@@ -22,7 +22,7 @@ class Stock(Base):
     deleted_at = Column(DateTime)
 
     # Relations
-    product = relationship('Products', foreign_keys=[product_id])
+    product = relationship('Products', foreign_keys=[product_id], back_populates='stock')
 
 
 # begin #

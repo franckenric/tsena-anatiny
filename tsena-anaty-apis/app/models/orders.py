@@ -12,7 +12,7 @@ from app.enum.product_status import ProductStatusEnum
 
 class Orders(Base):
     __tablename__ = 'orders'
-    id = Column(Integer, primary_key=True, autoincrement=False, nullable=False, default=uuid4, unique=True)
+    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False,  unique=True)
     order_number = Column(String(255))
     user_id = Column(Integer, ForeignKey('users.id'))
     customer_name = Column(String(255), nullable=False)

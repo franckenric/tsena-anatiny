@@ -1,5 +1,4 @@
 from typing import Any
-from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
@@ -65,7 +64,7 @@ def create_stock_movements(
 def update_stock_movements(
         *,
         db: Session = Depends(deps.get_db),
-        stock_movements_id: UUID,
+   stock_movements_id: int,
         stock_movements_in: schemas.StockMovementsUpdate,
         current_user: models.Users = Depends(deps.get_current_active_user),
 ) -> Any:
@@ -87,7 +86,7 @@ def read_stock_movements(
         where_relation: str = "[]",
         base_columns: str = "[]",
         db: Session = Depends(deps.get_db),
-        stock_movements_id: UUID,
+      stock_movements_id: int,
         current_user: models.Users = Depends(deps.get_current_active_user),
 ) -> Any:
     """
@@ -120,7 +119,7 @@ def read_stock_movements(
 def delete_stock_movements(
         *,
         db: Session = Depends(deps.get_db),
-        stock_movements_id: UUID,
+   stock_movements_id: int,
         current_user: models.Users = Depends(deps.get_current_active_user),
 ) -> Any:
     """

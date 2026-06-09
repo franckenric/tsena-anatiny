@@ -10,6 +10,12 @@ from .commercial_assignments import (
   CommercialAssignmentsUpdate,  
   ResponseCommercialAssignments
 )
+from .lots import (
+  Lot,
+  LotCreate,
+  LotUpdate,
+  ResponseLots
+)
 from .msg import Msg
 from .orders import ( 
   Orders,  
@@ -32,6 +38,7 @@ from .roles import (
 from .stock import ( 
   Stock,  
   StockCreate,  
+  StockArrival,
   StockUpdate,  
   ResponseStock
 )

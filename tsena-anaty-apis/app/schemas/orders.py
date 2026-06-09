@@ -5,7 +5,6 @@
 from datetime import datetime, time, date
 from typing import Any, List, Optional
 from pydantic import BaseModel, ConfigDict, field_validator
-from uuid import UUID
 from app.enum.product_status import ProductStatusEnum
 from .products import Products
 from .users import Users
@@ -34,7 +33,7 @@ class OrdersUpdate(OrdersBase):
 
 
 class OrdersInDBBase(OrdersBase):
-    id: Optional[UUID]
+    id: Optional[int]
     user_id: Optional[int] = None
     product_id: Optional[int] = None
 

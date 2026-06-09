@@ -323,9 +323,9 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         return cond
 
     def get_condition_deep_multiple(self, condition):
-        key = condition.get("key", None)
+        key = condition.get("key", condition.get("column", None))
         value = condition.get("value", None)
-        operator = condition.get("operator", None)
+        operator = condition.get("operator", "==")
         # key, value, operator must be an array and with same length
         # If `key` is a list, combine the per-key conditions using the
         # requested `match` (defaults to AND). Previously this branch
@@ -361,13 +361,23 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             match = condition.get("match", "and")
             return or_(*cond_arr_sql) if match == "or" else and_(*cond_arr_sql)
 
+        normalized_condition = {
+            **condition,
+            "key": key,
+            "operator": operator,
+        }
         return self.sub_get_condition_deep_multiple(
-            condition=condition
+            condition=normalized_condition
         )
 
     def sub_get_condition_deep_multiple(self, condition):
-        keys = self.get_key_parts(condition["key"])
-        operators = condition["operator"].split(",")
+        key = condition.get("key", condition.get("column", None))
+        if key is None:
+            return None
+
+        operator = condition.get("operator", "==")
+        keys = self.get_key_parts(key)
+        operators = str(operator).split(",")
         values = [condition.get("value", None)]
         match = condition.get("match", "and")
         if len(operators) > 1 and values[0]:
@@ -562,7 +572,6 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             .offset(skip)
             .limit(limit)
         )
-        print(len(base_columns), base_columns)
         if base_columns is not None and len(base_columns) > 0:
             cols_to_load = list(base_columns)
             pk_cols = [key.name for key in inspect(self.model).primary_key]

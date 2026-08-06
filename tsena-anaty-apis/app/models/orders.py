@@ -6,7 +6,7 @@ from app.db.base_class import Base
 from uuid import uuid4
 from sqlalchemy import Column, ForeignKey, DateTime, func, select, case, or_, and_, Uuid
 from sqlalchemy.orm import relationship, column_property, aliased
-from sqlalchemy import Enum, String, Integer, Text
+from sqlalchemy import Enum, String, Integer, Text, Float
 from app.enum.product_status import ProductStatusEnum
 
 
@@ -15,11 +15,9 @@ class Orders(Base):
     id = Column(Integer, primary_key=True, autoincrement=True, nullable=False,  unique=True)
     order_number = Column(String(255))
     user_id = Column(Integer, ForeignKey('users.id'))
-    customer_name = Column(String(255), nullable=False)
-    customer_phone = Column(String(255))
-    delivery_address = Column(Text)
-    product_id = Column(Integer, ForeignKey('products.id'))
-    quantity = Column(Integer)
+    customer_id = Column(Integer, ForeignKey('customers.id'), nullable=False)
+    another_price = Column(Float, default=0)
+    other_price_reason = Column(Text)
     status = Column(Enum(ProductStatusEnum))
     note = Column(Text)
 
@@ -30,7 +28,8 @@ class Orders(Base):
 
     # Relations
     user = relationship('Users', foreign_keys=[user_id])
-    product = relationship('Products', foreign_keys=[product_id])
+    customer = relationship('Customers', foreign_keys=[customer_id])
+    stock_movements = relationship('StockMovements', back_populates='order')
 
 
 # begin #

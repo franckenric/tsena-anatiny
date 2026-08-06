@@ -10,8 +10,16 @@ import type { Column } from "../components/index";
 import { assignmentsService } from "../services/operations.service";
 import { productsService } from "../services/products.service";
 import { usersService } from "../services/users.service";
-import { Layout, Card, Button, DataTable, Input } from "../components/index";
+import {
+  Layout,
+  Card,
+  Button,
+  DataTable,
+  QuantityInput,
+  Select
+} from "../components/index";
 import { Modal } from "../components/Modal";
+import { Pencil, Trash2 } from "lucide-react";
 
 function AssignmentForm({
   assignment,
@@ -39,6 +47,14 @@ function AssignmentForm({
   const sel = (field: string, value: number) =>
     setForm((p) => ({ ...p, [field]: value }));
 
+  const assignmentValidation = (() => {
+    const issues: string[] = [];
+    if (!form.user_id) issues.push("Commercial requis");
+    if (!form.product_id) issues.push("Produit requis");
+    if (form.quantity < 1) issues.push("Quantité invalide (min 1)");
+    return issues;
+  })();
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.quantity || form.quantity < 1) {
@@ -53,59 +69,69 @@ function AssignmentForm({
   };
 
   return (
-    <form className="space-y-4" onSubmit={handleSubmit}>
-      {errors.submit && (
-        <div className="rounded-xl border border-warning/50 bg-warning/10 px-3 py-2 text-sm text-ink">
-          {errors.submit}
+    <form className="flex flex-col gap-0" onSubmit={handleSubmit}>
+      <div className="space-y-4 pb-4">
+        {errors.submit && (
+          <div className="rounded-xl border border-warning/50 bg-warning/10 px-3 py-2 text-sm text-ink">
+            {errors.submit}
+          </div>
+        )}
+
+        <div className="rounded-2xl border border-border/60 bg-bg/30 p-4 space-y-4">
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted">
+            Affectation
+          </p>
+          <Select
+            label="Commercial"
+            value={String(form.user_id)}
+            onValueChange={(value) => sel("user_id", parseInt(value))}
+            options={users.map((u) => ({
+              label: u.email,
+              value: String(u.id)
+            }))}
+            placeholder="Sélectionner un commercial"
+            disabled={isLoading}
+          />
+          <Select
+            label="Produit"
+            value={String(form.product_id)}
+            onValueChange={(value) => sel("product_id", parseInt(value))}
+            options={products.map((p) => ({
+              label: `${p.name} (${p.sku})`,
+              value: String(p.id)
+            }))}
+            placeholder="Sélectionner un produit"
+            disabled={isLoading}
+          />
+          <QuantityInput
+            label="Quantité assignée"
+            value={form.quantity}
+            onChange={(value) => sel("quantity", value || 1)}
+            error={errors.quantity}
+            placeholder="1"
+            disabled={isLoading}
+            min={1}
+          />
         </div>
-      )}
-      <div className="space-y-1.5">
-        <label className="block text-sm font-semibold text-ink">
-          Commercial
-        </label>
-        <select
-          value={form.user_id}
-          onChange={(e) => sel("user_id", parseInt(e.target.value))}
-          className="h-12 w-full rounded-xl border border-border bg-panel px-3.5 text-sm text-ink outline-none transition focus-visible:border-brand/70 focus-visible:ring-2 focus-visible:ring-brand/25"
-          disabled={isLoading}
-        >
-          {users.map((u) => (
-            <option key={u.id} value={u.id}>
-              {u.email}
-            </option>
-          ))}
-        </select>
+
+        {assignmentValidation.length > 0 && (
+          <ul className="space-y-0.5 rounded-xl border border-warning/40 bg-warning/8 px-3 py-2">
+            {assignmentValidation.map((msg) => (
+              <li key={msg} className="text-xs text-warning">
+                • {msg}
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
-      <div className="space-y-1.5">
-        <label className="block text-sm font-semibold text-ink">Produit</label>
-        <select
-          value={form.product_id}
-          onChange={(e) => sel("product_id", parseInt(e.target.value))}
-          className="h-12 w-full rounded-xl border border-border bg-panel px-3.5 text-sm text-ink outline-none transition focus-visible:border-brand/70 focus-visible:ring-2 focus-visible:ring-brand/25"
-          disabled={isLoading}
-        >
-          {products.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name} ({p.sku})
-            </option>
-          ))}
-        </select>
-      </div>
-      <Input
-        label="Quantité assignée"
-        type="number"
-        value={form.quantity}
-        onChange={(e) => sel("quantity", parseInt(e.target.value) || 1)}
-        error={errors.quantity}
-        placeholder="1"
-        disabled={isLoading}
-      />
-      <div className="flex gap-3 pt-2">
+
+      <div className="flex shrink-0 gap-3 border-t border-border/60 pt-4">
         <Button
           type="submit"
           isLoading={isLoading}
           variant="primary"
           className="flex-1"
+          disabled={isLoading || assignmentValidation.length > 0}
         >
           {assignment ? "Mettre à jour" : "Assigner"}
         </Button>
@@ -133,7 +159,7 @@ export function CommercialAssignmentsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selected, setSelected] = useState<CommercialAssignment | null>(null);
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(20);
   const [total, setTotal] = useState(0);
 
   useEffect(() => {
@@ -148,7 +174,9 @@ export function CommercialAssignmentsPage() {
   }, []);
   useEffect(() => {
     load();
-  }, [page]);
+  }, [page, pageSize]);
+
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   const load = async () => {
     try {
@@ -239,31 +267,36 @@ export function CommercialAssignmentsPage() {
       title="Affectations commerciales"
       subtitle="Gestion des produits assignés aux commerciaux"
     >
-      <div className="space-y-6">
-        <div className="flex justify-end">
-          <Button
-            variant="primary"
-            onClick={() => {
-              setSelected(null);
-              setIsModalOpen(true);
-            }}
-          >
-            + Nouvelle affectation
-          </Button>
-        </div>
+      <div className="flex h-full min-h-0 flex-col gap-6 overflow-hidden">
         {error && (
           <div className="rounded-2xl border border-warning/50 bg-warning/10 px-4 py-3 text-sm text-ink">
             {error}
           </div>
         )}
-        <Card title="Affectations" description={`Total: ${total} affectations`}>
+        <Card
+          title="Affectations"
+          description={`Total: ${total} affectations`}
+          className="flex min-h-0 flex-1 flex-col"
+          bodyClassName="flex min-h-0 flex-1 flex-col"
+          headerAction={
+            <Button
+              variant="primary"
+              onClick={() => {
+                setSelected(null);
+                setIsModalOpen(true);
+              }}
+            >
+              + Nouvelle affectation
+            </Button>
+          }
+        >
           <DataTable
             columns={columns}
             data={assignments}
             isLoading={isLoading}
             emptyMessage="Aucune affectation"
             actions={(a) => (
-              <div className="flex gap-2">
+              <>
                 <Button
                   size="sm"
                   variant="secondary"
@@ -272,29 +305,59 @@ export function CommercialAssignmentsPage() {
                     setSelected(a);
                     setIsModalOpen(true);
                   }}
+                  title="Modifier"
+                  aria-label="Modifier"
+                  className="h-8 w-8 p-0"
                 >
-                  Modifier
+                  <Pencil className="h-3.5 w-3.5" />
                 </Button>
                 <Button
                   size="sm"
                   variant="danger"
                   disabled={isFormLoading}
                   onClick={() => handleDelete(a)}
+                  title="Supprimer"
+                  aria-label="Supprimer"
+                  className="h-8 w-8 p-0"
                 >
-                  Supprimer
+                  <Trash2 className="h-3.5 w-3.5" />
                 </Button>
-              </div>
+              </>
             )}
           />
         </Card>
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted">
-            Page {page} / {Math.max(1, Math.ceil(total / pageSize))}
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-xl border border-border/60 bg-panel/65 px-2.5 py-2 sm:gap-3 sm:px-3">
+          <p className="text-xs font-medium text-muted sm:text-sm">
+            Page {page} / {totalPages}
           </p>
-          <div className="flex gap-2">
+          <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
+            <label
+              className="text-[11px] font-semibold uppercase tracking-wide text-muted sm:text-xs"
+              htmlFor="assignments-page-size"
+            >
+              Par page
+            </label>
+            <select
+              id="assignments-page-size"
+              className="h-8 min-w-[68px] rounded-lg border border-border bg-bg px-2 text-xs font-semibold text-ink outline-none transition focus-visible:border-brand/70 focus-visible:ring-2 focus-visible:ring-brand/25 sm:h-9 sm:min-w-[72px] sm:text-sm"
+              value={pageSize}
+              onChange={(e) => {
+                const nextSize = Number(e.target.value) || 20;
+                setPageSize(nextSize);
+                setPage(1);
+              }}
+              disabled={isLoading}
+            >
+              {[10, 20, 50, 100].map((size) => (
+                <option key={size} value={size}>
+                  {size}
+                </option>
+              ))}
+            </select>
             <Button
               size="sm"
               variant="secondary"
+              className="min-w-[84px] sm:min-w-[96px]"
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1}
             >
@@ -303,8 +366,9 @@ export function CommercialAssignmentsPage() {
             <Button
               size="sm"
               variant="secondary"
+              className="min-w-[84px] sm:min-w-[96px]"
               onClick={() => setPage((p) => p + 1)}
-              disabled={page >= Math.ceil(total / pageSize)}
+              disabled={page >= totalPages}
             >
               Suivant
             </Button>

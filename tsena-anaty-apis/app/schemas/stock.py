@@ -23,6 +23,8 @@ class StockArrival(BaseModel):
     product_id: int
     quantity: int
     lot_id: int
+    unit_cost: float
+    another_price: float = 0.0
     reference: Optional[str] = None
 
 

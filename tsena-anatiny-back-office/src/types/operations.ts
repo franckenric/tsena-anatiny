@@ -12,7 +12,7 @@ export interface Lot {
 
 export interface CreateLotPayload {
   reference?: string;
-  total_expense: number;
+  total_expense?: number;
   received_at?: string;
 }
 
@@ -23,6 +23,33 @@ export interface UpdateLotPayload {
 
 export interface LotListResponse {
   items: Lot[];
+  total: number;
+}
+
+export interface LotExpense {
+  id: number;
+  lot_id: number;
+  name: string;
+  description?: string;
+  amount: number;
+  created_at?: string;
+}
+
+export interface CreateLotExpensePayload {
+  lot_id: number;
+  name: string;
+  description?: string;
+  amount: number;
+}
+
+export interface UpdateLotExpensePayload {
+  name?: string;
+  description?: string;
+  amount?: number;
+}
+
+export interface LotExpenseListResponse {
+  items: LotExpense[];
   total: number;
 }
 
@@ -45,6 +72,8 @@ export interface StockArrivalPayload {
   product_id: number;
   quantity: number;
   lot_id: number;
+  unit_cost: number;
+  another_price?: number;
   reference?: string;
 }
 
@@ -67,8 +96,13 @@ export interface StockMovement {
   product_id: number;
   user_id: number;
   lot_id?: number;
+  commande_id?: number;
   type: MovementType;
   quantity: number;
+  unit_cost?: number;
+  another_price?: number;
+  other_price_reason?: string;
+  total_cost?: number;
   stock_before?: number;
   stock_after?: number;
   reference?: string;
@@ -81,8 +115,13 @@ export interface CreateStockMovementPayload {
   product_id: number;
   user_id: number;
   lot_id?: number;
+  commande_id?: number;
   type: MovementType;
   quantity: number;
+  unit_cost?: number;
+  another_price?: number;
+  other_price_reason?: string;
+  total_cost?: number;
   stock_before?: number;
   stock_after?: number;
   reference?: string;
@@ -90,8 +129,13 @@ export interface CreateStockMovementPayload {
 
 export interface UpdateStockMovementPayload {
   lot_id?: number;
+  commande_id?: number;
   type?: MovementType;
   quantity?: number;
+  unit_cost?: number;
+  another_price?: number;
+  other_price_reason?: string;
+  total_cost?: number;
   stock_before?: number;
   stock_after?: number;
   reference?: string;
@@ -102,42 +146,110 @@ export interface StockMovementListResponse {
   total: number;
 }
 
+// ── Cart Items ───────────────────────────────────────────────────────────────
+export interface CartItem {
+  id: number;
+  customer_id: number;
+  product_id: number;
+  quantity: number;
+  unit_cost?: number;
+  another_price?: number;
+  other_price_reason?: string;
+  created_at?: string;
+}
+
+export interface CreateCartItemPayload {
+  customer_id?: number;
+  product_id: number;
+  quantity: number;
+  unit_cost?: number;
+  another_price?: number;
+  other_price_reason?: string;
+}
+
+export interface UpdateCartItemPayload {
+  quantity?: number;
+  unit_cost?: number;
+  another_price?: number;
+  other_price_reason?: string;
+}
+
+export interface CheckoutCartPayload {
+  user_id: number;
+  order_number?: string;
+  customer_id?: number;
+  another_price?: number;
+  other_price_reason?: string;
+  status?: OrderStatus;
+  note?: string;
+}
+
+export interface CartItemListResponse {
+  items: CartItem[];
+  total: number;
+}
+
 // ── Orders ───────────────────────────────────────────────────────────────────
 export type OrderStatus = "draft" | "confirmed" | "delivered" | "cancelled";
+
+export interface OrderMovementPayload {
+  product_id: number;
+  quantity: number;
+  unit_cost?: number;
+  another_price?: number;
+  other_price_reason?: string;
+}
+
+export interface CustomerRef {
+  id: number;
+  name: string;
+  phone: string;
+  delivery_address?: string;
+}
 
 export interface Order {
   id: number;
   order_number?: string;
   user_id: number;
-  customer_name: string;
-  customer_phone?: string;
-  delivery_address?: string;
-  product_id: number;
+  customer_id: number;
+  product_id?: number;
   quantity?: number;
+  unit_cost?: number;
+  another_price?: number;
+  other_price_reason?: string;
   status?: OrderStatus;
   note?: string;
   user?: User | null;
   product?: Product | null;
+  customer?: CustomerRef | null;
+  stock_movements?: StockMovement[];
   created_at?: string;
 }
 
 export interface CreateOrderPayload {
+  order_number?: string;
   user_id: number;
-  customer_name: string;
-  customer_phone?: string;
-  delivery_address?: string;
-  product_id: number;
+  customer_id: number;
+  product_id?: number;
   quantity?: number;
+  unit_cost?: number;
+  another_price?: number;
+  other_price_reason?: string;
+  movement?: OrderMovementPayload;
+  movements?: OrderMovementPayload[];
   status?: OrderStatus;
   note?: string;
 }
 
 export interface UpdateOrderPayload {
-  customer_name?: string;
-  customer_phone?: string;
-  delivery_address?: string;
+  customer_id?: number;
   product_id?: number;
   quantity?: number;
+  unit_cost?: number;
+  another_price?: number;
+  other_price_reason?: string;
+  movement?: OrderMovementPayload;
+  movements?: OrderMovementPayload[];
   status?: OrderStatus;
   note?: string;
 }

@@ -15,8 +15,13 @@ class StockMovementsBase(BaseModel):
     product_id: Optional[int] = None
     user_id: Optional[int] = None
     lot_id: Optional[int] = None
+    commande_id: Optional[int] = None
     type: Optional[TypeEnum] = None
     quantity: Optional[int] = None
+    unit_cost: Optional[float] = None
+    another_price: Optional[float] = None
+    other_price_reason: Optional[str] = None
+    total_cost: Optional[float] = None
     stock_before: Optional[int] = None
     stock_after: Optional[int] = None
     reference: Optional[str] = None
@@ -37,6 +42,7 @@ class StockMovementsInDBBase(StockMovementsBase):
     id: Optional[int]
     product_id: Optional[int] = None
     user_id: Optional[int] = None
+    created_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 

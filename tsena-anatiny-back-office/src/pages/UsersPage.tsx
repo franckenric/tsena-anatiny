@@ -19,7 +19,7 @@ export function UsersPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(20);
   const [total, setTotal] = useState(0);
 
   useEffect(() => {
@@ -28,7 +28,9 @@ export function UsersPage() {
 
   useEffect(() => {
     loadUsers();
-  }, [page]);
+  }, [page, pageSize]);
+
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   const loadRoles = async () => {
     try {
@@ -159,7 +161,7 @@ export function UsersPage() {
       title="Utilisateurs"
       subtitle="Gérez les utilisateurs de votre plateforme"
     >
-      <div className="animate-fade-up space-y-6">
+      <div className="animate-fade-up flex h-full min-h-0 flex-col gap-6 overflow-hidden">
         <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-panel/65 px-4 py-3">
           <div className="inline-flex items-center gap-2 text-sm font-semibold text-ink">
             <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-brand/15 text-brand ring-1 ring-brand/20">
@@ -167,10 +169,6 @@ export function UsersPage() {
             </span>
             Gestion des comptes
           </div>
-          <Button onClick={handleCreate} variant="primary">
-            <Plus className="mr-2 h-4 w-4" />
-            Ajouter un utilisateur
-          </Button>
         </div>
 
         {error && (
@@ -182,6 +180,14 @@ export function UsersPage() {
         <Card
           title="Liste des utilisateurs"
           description={`Total: ${total} utilisateurs`}
+          className="flex min-h-0 flex-1 flex-col"
+          bodyClassName="flex min-h-0 flex-1 flex-col"
+          headerAction={
+            <Button onClick={handleCreate} variant="primary">
+              <Plus className="mr-2 h-4 w-4" />
+              Ajouter un utilisateur
+            </Button>
+          }
         >
           <DataTable
             columns={columns}
@@ -189,38 +195,66 @@ export function UsersPage() {
             isLoading={isLoading}
             emptyMessage="Aucun utilisateur trouvé"
             actions={(user) => (
-              <div className="flex gap-2">
+              <>
                 <Button
                   size="sm"
                   variant="secondary"
                   onClick={() => handleEdit(user)}
                   disabled={isFormLoading}
+                  title="Modifier"
+                  aria-label="Modifier"
+                  className="h-8 w-8 p-0"
                 >
-                  <Pencil className="mr-1.5 h-3.5 w-3.5" />
-                  Modifier
+                  <Pencil className="h-3.5 w-3.5" />
                 </Button>
                 <Button
                   size="sm"
                   variant="danger"
                   onClick={() => handleDelete(user)}
                   disabled={isFormLoading}
+                  title="Supprimer"
+                  aria-label="Supprimer"
+                  className="h-8 w-8 p-0"
                 >
-                  <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-                  Supprimer
+                  <Trash2 className="h-3.5 w-3.5" />
                 </Button>
-              </div>
+              </>
             )}
           />
         </Card>
 
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted">
-            Page {page} de {Math.ceil(total / pageSize)}
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-xl border border-border/60 bg-panel/65 px-2.5 py-2 sm:gap-3 sm:px-3">
+          <p className="text-xs font-medium text-muted sm:text-sm">
+            Page {page} de {totalPages}
           </p>
-          <div className="flex gap-2">
+          <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
+            <label
+              className="text-[11px] font-semibold uppercase tracking-wide text-muted sm:text-xs"
+              htmlFor="users-page-size"
+            >
+              Par page
+            </label>
+            <select
+              id="users-page-size"
+              className="h-8 min-w-[68px] rounded-lg border border-border bg-bg px-2 text-xs font-semibold text-ink outline-none transition focus-visible:border-brand/70 focus-visible:ring-2 focus-visible:ring-brand/25 sm:h-9 sm:min-w-[72px] sm:text-sm"
+              value={pageSize}
+              onChange={(e) => {
+                const nextSize = Number(e.target.value) || 20;
+                setPageSize(nextSize);
+                setPage(1);
+              }}
+              disabled={isLoading}
+            >
+              {[10, 20, 50, 100].map((size) => (
+                <option key={size} value={size}>
+                  {size}
+                </option>
+              ))}
+            </select>
             <Button
               size="sm"
               variant="secondary"
+              className="min-w-[84px] sm:min-w-[96px]"
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1}
             >
@@ -229,8 +263,9 @@ export function UsersPage() {
             <Button
               size="sm"
               variant="secondary"
+              className="min-w-[84px] sm:min-w-[96px]"
               onClick={() => setPage((p) => p + 1)}
-              disabled={page >= Math.ceil(total / pageSize)}
+              disabled={page >= totalPages}
             >
               Suivant
             </Button>

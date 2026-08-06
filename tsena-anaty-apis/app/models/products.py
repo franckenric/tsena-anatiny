@@ -18,9 +18,8 @@ class Products(Base):
     name = Column(String(255), nullable=False)
     description = Column(Text)
     image = Column(String(255), nullable=False)
-    cost_price = Column(Float)
-    selling_price = Column(Float)
     unit = Column(String(255))
+    selling_price = Column(Float)
     low_stock_alert = Column(Integer)
     status = Column(Enum(StatusEnum))
 

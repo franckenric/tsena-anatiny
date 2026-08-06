@@ -1,4 +1,5 @@
 export { Input } from "./Input";
+export { QuantityInput } from "./QuantityInput";
 export { Button } from "./Button";
 export { Select } from "./Select";
 export { Card } from "./Card";

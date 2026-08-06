@@ -15,6 +15,7 @@ import {
 import {
   dashboardService,
   type DashboardOrderInsights,
+  type DashboardProductInsights,
   type DashboardStats
 } from "../services/dashboard.service";
 
@@ -34,10 +35,22 @@ const defaultOrderInsights: DashboardOrderInsights = {
   byCommercial: []
 };
 
+const defaultProductInsights: DashboardProductInsights = {
+  totalProducts: 0,
+  totalUnitsInStock: 0,
+  soldUnits: 0,
+  soldPercentage: 0,
+  inStockPercentage: 0,
+  byCategory: [],
+  soldByCategory: []
+};
+
 export function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats>(defaultStats);
   const [orderInsights, setOrderInsights] =
     useState<DashboardOrderInsights>(defaultOrderInsights);
+  const [productInsights, setProductInsights] =
+    useState<DashboardProductInsights>(defaultProductInsights);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,12 +58,15 @@ export function DashboardPage() {
     try {
       setIsLoading(true);
       setError(null);
-      const [nextStats, nextOrderInsights] = await Promise.all([
-        dashboardService.getStats(),
-        dashboardService.getOrderInsights()
-      ]);
+      const [nextStats, nextOrderInsights, nextProductInsights] =
+        await Promise.all([
+          dashboardService.getStats(),
+          dashboardService.getOrderInsights(),
+          dashboardService.getProductInsights()
+        ]);
       setStats(nextStats);
       setOrderInsights(nextOrderInsights);
+      setProductInsights(nextProductInsights);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Erreur de chargement du dashboard"
@@ -111,13 +127,17 @@ export function DashboardPage() {
     ...orderInsights.byCommercial.map((item) => item.unitsSold),
     1
   );
+  const maxCategorySoldUnits = Math.max(
+    ...productInsights.soldByCategory.map((item) => item.unitsSold),
+    1
+  );
 
   return (
     <Layout
       title="Vue d'ensemble"
       subtitle="Suivez vos indicateurs clés en temps réel"
     >
-      <div className="animate-fade-up space-y-6">
+      <div className="animate-fade-up h-full min-h-0 space-y-6 overflow-y-auto pr-1">
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/60 bg-panel/65 p-4">
           <div>
             <p className="text-xs uppercase tracking-[0.14em] text-muted">
@@ -246,6 +266,121 @@ export function DashboardPage() {
         </section>
 
         <section className="grid gap-4 xl:grid-cols-5">
+          <article className="rounded-2xl border border-border/70 bg-panel/80 p-5 shadow-[0_18px_36px_-28px_rgba(8,18,38,0.6)] xl:col-span-3">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-warning/20 text-warning ring-1 ring-warning/25">
+                <Shapes className="h-4 w-4" />
+              </span>
+              <div>
+                <h3 className="font-display text-lg font-semibold text-ink">
+                  Produits vendus par categorie
+                </h3>
+                <p className="text-sm text-muted">
+                  Repartition des ventes par categorie
+                </p>
+              </div>
+            </div>
+
+            {productInsights.soldByCategory.length === 0 ? (
+              <p className="mt-6 text-sm text-muted">
+                Aucune vente par categorie disponible.
+              </p>
+            ) : (
+              <div className="mt-5 space-y-3">
+                {productInsights.soldByCategory.slice(0, 8).map((item) => {
+                  const width = `${Math.max(8, (item.unitsSold / maxCategorySoldUnits) * 100)}%`;
+                  return (
+                    <div
+                      key={`${item.categoryId}-${item.categoryName}`}
+                      className="rounded-xl border border-border/60 bg-bg/55 p-3"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="truncate text-sm font-semibold text-ink">
+                          {item.categoryName}
+                        </p>
+                        <p className="shrink-0 text-xs text-muted">
+                          {item.ordersCount.toLocaleString("fr-FR")} commandes
+                        </p>
+                      </div>
+                      <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-panel">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-warning to-brand transition-all duration-700"
+                          style={{ width: isLoading ? "12%" : width }}
+                        />
+                      </div>
+                      <p className="mt-1.5 text-xs font-semibold text-ink">
+                        {item.unitsSold.toLocaleString("fr-FR")} produits vendus
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </article>
+
+          <article className="rounded-2xl border border-border/70 bg-panel/80 p-5 shadow-[0_18px_36px_-28px_rgba(8,18,38,0.6)] xl:col-span-2">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-success/15 text-success ring-1 ring-success/25">
+                <BarChart3 className="h-4 w-4" />
+              </span>
+              <div>
+                <h3 className="font-display text-lg font-semibold text-ink">
+                  Pourcentage vendus
+                </h3>
+                <p className="text-sm text-muted">
+                  Part vendue vs stock disponible
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 flex items-center justify-center">
+              <div
+                className="relative flex h-40 w-40 items-center justify-center rounded-full"
+                style={{
+                  background: `conic-gradient(hsl(var(--success)) ${isLoading ? 12 : productInsights.soldPercentage}%, hsl(var(--border)) 0%)`
+                }}
+              >
+                <div className="flex h-28 w-28 flex-col items-center justify-center rounded-full bg-panel text-center">
+                  <p className="text-xs uppercase tracking-[0.12em] text-muted">
+                    Vendu
+                  </p>
+                  <p className="text-2xl font-bold text-ink">
+                    {isLoading
+                      ? "..."
+                      : `${productInsights.soldPercentage.toFixed(1)}%`}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-5 grid gap-2">
+              <div className="flex items-center justify-between rounded-xl border border-border/60 bg-bg/55 px-3 py-2.5 text-sm">
+                <span className="text-muted">Unites vendues</span>
+                <span className="font-semibold text-ink">
+                  {isLoading
+                    ? "..."
+                    : productInsights.soldUnits.toLocaleString("fr-FR")}
+                </span>
+              </div>
+              <div className="flex items-center justify-between rounded-xl border border-border/60 bg-bg/55 px-3 py-2.5 text-sm">
+                <span className="text-muted">Unites en stock</span>
+                <span className="font-semibold text-ink">
+                  {isLoading
+                    ? "..."
+                    : productInsights.totalUnitsInStock.toLocaleString("fr-FR")}
+                </span>
+              </div>
+              <div className="flex items-center justify-between rounded-xl border border-border/60 bg-bg/55 px-3 py-2.5 text-sm">
+                <span className="text-muted">Part en stock</span>
+                <span className="font-semibold text-ink">
+                  {isLoading
+                    ? "..."
+                    : `${productInsights.inStockPercentage.toFixed(1)}%`}
+                </span>
+              </div>
+            </div>
+          </article>
+
           <article className="rounded-2xl border border-border/70 bg-panel/80 p-5 shadow-[0_18px_36px_-28px_rgba(8,18,38,0.6)] xl:col-span-2">
             <div className="flex items-center gap-2">
               <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-success/15 text-success ring-1 ring-success/25">

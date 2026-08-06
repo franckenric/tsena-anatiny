@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import {
   Boxes,
   ClipboardList,
+  ContactRound,
   LayoutDashboard,
   LogOut,
   Package,
@@ -28,6 +29,7 @@ const navItems = [
   { label: "Lots", href: "/lots", icon: ScanBarcode },
   { label: "Mouvements", href: "/stock-movements", icon: ScanBarcode },
   { label: "Commandes", href: "/orders", icon: ShoppingCart },
+  { label: "Clients", href: "/customers", icon: ContactRound },
   {
     label: "Affectations",
     href: "/commercial-assignments",
@@ -95,9 +97,9 @@ export function Layout({ children, title, subtitle }: LayoutProps) {
           </div>
         </aside>
 
-        <main className="flex-1 overflow-auto">
-          <div className="min-h-screen px-4 py-6 sm:px-6 lg:px-8">
-            <div className="mx-auto max-w-7xl">
+        <main className="flex-1 overflow-hidden">
+          <div className="h-full overflow-hidden px-4 py-6 sm:px-6 lg:px-8">
+            <div className="mx-auto flex h-[95vh] min-h-0 max-w-7xl flex-col">
               <div className="animate-fade-up mb-6 rounded-2xl border border-border/60 bg-panel/70 p-5 backdrop-blur xl:p-6">
                 <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-border/60 bg-bg/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
                   Espace professionnel
@@ -112,7 +114,7 @@ export function Layout({ children, title, subtitle }: LayoutProps) {
                 </div>
               </div>
 
-              {children}
+              <div className="min-h-0 flex-1">{children}</div>
             </div>
           </div>
         </main>

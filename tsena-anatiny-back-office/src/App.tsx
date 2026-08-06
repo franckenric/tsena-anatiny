@@ -9,6 +9,7 @@ import { LotsPage } from "./pages/LotsPage";
 import { StockMovementsPage } from "./pages/StockMovementsPage";
 import { OrdersPage } from "./pages/OrdersPage";
 import { CommercialAssignmentsPage } from "./pages/CommercialAssignmentsPage";
+import { CustomersPage } from "./pages/CustomersPage";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
 
 function App() {
@@ -24,6 +25,7 @@ function App() {
         <Route path="/lots" element={<LotsPage />} />
         <Route path="/stock-movements" element={<StockMovementsPage />} />
         <Route path="/orders" element={<OrdersPage />} />
+        <Route path="/customers" element={<CustomersPage />} />
         <Route
           path="/commercial-assignments"
           element={<CommercialAssignmentsPage />}

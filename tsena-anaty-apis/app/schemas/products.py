@@ -15,9 +15,8 @@ class ProductsBase(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     image: Optional[str] = None
-    cost_price: Optional[float] = None
-    selling_price: Optional[float] = None
     unit: Optional[str] = None
+    selling_price: Optional[float] = None
     low_stock_alert: Optional[int] = None
     status: Optional[StatusEnum] = None
 

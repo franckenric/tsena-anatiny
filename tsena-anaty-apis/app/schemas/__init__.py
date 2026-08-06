@@ -4,6 +4,19 @@ from .categories import (
   CategoriesUpdate,  
   ResponseCategories
 )
+from .cart_items import (
+  CartItems,
+  CartItemsCreate,
+  CartItemsUpdate,
+  ResponseCartItems,
+  CartCheckoutRequest,
+)
+from .customers import (
+  Customers,
+  CustomersCreate,
+  CustomersUpdate,
+  ResponseCustomers
+)
 from .commercial_assignments import ( 
   CommercialAssignments,  
   CommercialAssignmentsCreate,  
@@ -16,11 +29,19 @@ from .lots import (
   LotUpdate,
   ResponseLots
 )
+from .lot_expenses import (
+  LotExpense,
+  LotExpenseCreate,
+  LotExpenseUpdate,
+  ResponseLotExpenses
+)
 from .msg import Msg
 from .orders import ( 
   Orders,  
   OrdersCreate,  
+  OrdersCreateRequest,
   OrdersUpdate,  
+  OrdersUpdateRequest,
   ResponseOrders
 )
 from .products import ( 

@@ -14,9 +14,8 @@ export interface Product {
   name: string;
   description?: string;
   image?: string;
-  cost_price?: number;
-  selling_price?: number;
   unit?: string;
+  selling_price?: number;
   low_stock_alert?: number;
   status?: ProductStatus;
   categorie?: Category | null;
@@ -40,9 +39,8 @@ export interface CreateProductPayload {
   name: string;
   image: string;
   description?: string;
-  cost_price?: number;
-  selling_price?: number;
   unit?: string;
+  selling_price?: number;
   low_stock_alert?: number;
   status?: ProductStatus;
 }
@@ -53,9 +51,8 @@ export interface UpdateProductPayload {
   name?: string;
   image?: string;
   description?: string;
-  cost_price?: number;
-  selling_price?: number;
   unit?: string;
+  selling_price?: number;
   low_stock_alert?: number;
   status?: ProductStatus;
 }

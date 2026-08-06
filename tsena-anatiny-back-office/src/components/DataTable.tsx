@@ -18,6 +18,7 @@ interface DataTableProps<T> {
   searchable?: boolean;
   searchPlaceholder?: string;
   gridCardRender?: (row: T) => ReactNode;
+  tableMaxHeight?: string;
 }
 
 export function DataTable<T extends { id?: number | string }>({
@@ -29,11 +30,13 @@ export function DataTable<T extends { id?: number | string }>({
   defaultView = "table",
   searchable = true,
   searchPlaceholder = "Rechercher...",
-  gridCardRender
+  gridCardRender,
+  tableMaxHeight
 }: DataTableProps<T>) {
   const rows = Array.isArray(data) ? data : [];
   const [view, setView] = useState<"table" | "grid">(defaultView);
   const [searchQuery, setSearchQuery] = useState("");
+  const resolvedTableMaxHeight = tableMaxHeight ?? "100%";
 
   const renderCellValue = (row: T, col: Column<T>) => {
     const value = row[col.accessor as keyof T];
@@ -141,9 +144,9 @@ export function DataTable<T extends { id?: number | string }>({
 
   if (filteredRows.length === 0) {
     return (
-      <div>
+      <div className="flex h-full min-h-0 flex-col">
         {controls}
-        <div className="flex h-32 items-center justify-center rounded-xl border border-border/60 bg-panel/30">
+        <div className="flex min-h-0 flex-1 items-center justify-center rounded-xl border border-border/60 bg-panel/30">
           <p className="text-sm text-muted">
             {query ? "Aucun resultat pour cette recherche" : emptyMessage}
           </p>
@@ -154,49 +157,54 @@ export function DataTable<T extends { id?: number | string }>({
 
   if (view === "grid") {
     return (
-      <div>
+      <div className="flex h-full min-h-0 flex-col">
         {controls}
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {filteredRows.map((row, rowIdx) => (
-            <article
-              key={row.id || rowIdx}
-              className="rounded-xl border border-border/60 bg-panel/70 p-4 shadow-[0_14px_28px_-22px_rgba(8,18,38,0.6)]"
-            >
-              {gridCardRender ? (
-                gridCardRender(row)
-              ) : (
-                <div className="space-y-2.5">
-                  {columns.map((col, colIdx) => (
-                    <div
-                      key={colIdx}
-                      className="flex items-start justify-between gap-3 border-b border-border/40 pb-2 last:border-b-0 last:pb-0"
-                    >
-                      <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">
-                        {col.header}
-                      </span>
-                      <span className="text-right text-sm text-ink">
-                        {renderCellValue(row, col)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {actions && (
-                <div className="mt-4 border-t border-border/50 pt-3">
-                  {actions(row)}
-                </div>
-              )}
-            </article>
-          ))}
+        <div className="min-h-0 flex-1 overflow-auto">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {filteredRows.map((row, rowIdx) => (
+              <article
+                key={row.id || rowIdx}
+                className="rounded-xl border border-border/60 bg-panel/70 p-4 shadow-[0_14px_28px_-22px_rgba(8,18,38,0.6)]"
+              >
+                {gridCardRender ? (
+                  gridCardRender(row)
+                ) : (
+                  <div className="space-y-2.5">
+                    {columns.map((col, colIdx) => (
+                      <div
+                        key={colIdx}
+                        className="flex items-start justify-between gap-3 border-b border-border/40 pb-2 last:border-b-0 last:pb-0"
+                      >
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">
+                          {col.header}
+                        </span>
+                        <span className="text-right text-sm text-ink">
+                          {renderCellValue(row, col)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {actions && (
+                  <div className="mt-4 flex justify-end border-t border-border/50 pt-3">
+                    {actions(row)}
+                  </div>
+                )}
+              </article>
+            ))}
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div>
+    <div className="flex h-full min-h-0 flex-col">
       {controls}
-      <div className="overflow-x-auto rounded-xl border border-border/60">
+      <div
+        className="min-h-0 flex-1 overflow-auto rounded-xl border border-border/60"
+        style={{ maxHeight: resolvedTableMaxHeight }}
+      >
         <table className="w-full">
           <thead className="sticky top-0 z-10">
             <tr className="border-b border-border bg-bg/95 backdrop-blur">
@@ -210,7 +218,7 @@ export function DataTable<T extends { id?: number | string }>({
                 </th>
               ))}
               {actions && (
-                <th className="px-4 py-3.5 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
+                <th className="px-4 py-3.5 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
                   Actions
                 </th>
               )}
@@ -232,7 +240,11 @@ export function DataTable<T extends { id?: number | string }>({
                   </td>
                 ))}
                 {actions && (
-                  <td className="px-4 py-3 text-sm">{actions(row)}</td>
+                  <td className="px-4 py-3 text-right text-sm">
+                    <div className="flex items-center justify-end gap-1.5">
+                      {actions(row)}
+                    </div>
+                  </td>
                 )}
               </tr>
             ))}

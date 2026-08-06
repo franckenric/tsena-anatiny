@@ -5,13 +5,17 @@ interface CardProps {
   className?: string;
   title?: string;
   description?: string;
+  headerAction?: ReactNode;
+  bodyClassName?: string;
 }
 
 export function Card({
   children,
   className = "",
   title,
-  description
+  description,
+  headerAction,
+  bodyClassName = ""
 }: CardProps) {
   return (
     <div
@@ -19,17 +23,22 @@ export function Card({
     >
       {(title || description) && (
         <div className="border-b border-border/50 bg-bg/40 px-6 py-4">
-          {title && (
-            <h3 className="font-display text-lg font-semibold text-ink">
-              {title}
-            </h3>
-          )}
-          {description && (
-            <p className="mt-1 text-sm text-muted">{description}</p>
-          )}
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              {title && (
+                <h3 className="font-display text-lg font-semibold text-ink">
+                  {title}
+                </h3>
+              )}
+              {description && (
+                <p className="mt-1 text-sm text-muted">{description}</p>
+              )}
+            </div>
+            {headerAction && <div className="shrink-0">{headerAction}</div>}
+          </div>
         </div>
       )}
-      <div className="p-6">{children}</div>
+      <div className={`p-6 ${bodyClassName}`}>{children}</div>
     </div>
   );
 }

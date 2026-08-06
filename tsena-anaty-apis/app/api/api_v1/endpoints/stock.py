@@ -31,21 +31,29 @@ def _create_stock_movement(
     stock_after: int,
     reference: str,
     lot_id: int | None = None,
+    unit_cost: float | None = None,
+    another_price: float | None = None,
 ) -> None:
+    another = float(another_price or 0)
+    total_cost = (
+        float(quantity) * float(unit_cost) + another
+        if unit_cost is not None
+        else None
+    )
     movement_in = schemas.StockMovementsCreate(
         product_id=product_id,
         user_id=user_id,
         lot_id=lot_id,
         type=movement_type,
         quantity=quantity,
+        unit_cost=unit_cost,
+        another_price=another,
+        total_cost=total_cost,
         stock_before=stock_before,
         stock_after=stock_after,
         reference=reference,
     )
     crud.stock_movements.create(db=db, obj_in=movement_in, commit=False, refresh=False)
-
-
-
 
 
 @router.get("/", response_model=schemas.ResponseStock)
@@ -158,6 +166,9 @@ def register_stock_arrival(
     if arrival_in.quantity <= 0:
         raise HTTPException(status_code=422, detail="Arrival quantity must be greater than 0")
 
+    if arrival_in.unit_cost <= 0:
+        raise HTTPException(status_code=422, detail="Unit cost must be greater than 0")
+
     product = crud.products.get(db=db, id=arrival_in.product_id)
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
@@ -204,6 +215,8 @@ def register_stock_arrival(
             stock_after=stock_after,
             reference=movement_reference,
             lot_id=arrival_in.lot_id,
+            unit_cost=arrival_in.unit_cost,
+            another_price=float(arrival_in.another_price or 0),
         )
 
         db.commit()

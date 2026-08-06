@@ -258,8 +258,14 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
                 # Use current model BEFORE updating previous_model
                 current_model = attr.property.mapper.class_
 
+                # Always include id for proper relationship loading
                 if columns:
-                    result = result.load_only(*[getattr(current_model, col) for col in columns])
+                    cols_to_load = [getattr(current_model, col) for col in columns]
+                    # Ensure id is loaded for proper relationship mapping
+                    id_col = getattr(current_model, "id")
+                    if id_col not in cols_to_load:
+                        cols_to_load.insert(0, id_col)
+                    result = result.load_only(*cols_to_load)
                 else:
                     result = result.load_only(getattr(current_model, "id"))
 

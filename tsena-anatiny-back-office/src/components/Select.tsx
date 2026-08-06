@@ -1,10 +1,17 @@
-import { Check, ChevronDown, ChevronUp } from "lucide-react";
-import * as SelectPrimitive from "@radix-ui/react-select";
 import { cn } from "../lib/utils";
+import { Label } from "./ui/label";
+import {
+  Select as UiSelect,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "./ui/select";
 
 export interface SelectOption {
   label: string;
   value: string;
+  searchText?: string;
 }
 
 interface SelectProps {
@@ -16,6 +23,10 @@ interface SelectProps {
   error?: string;
   description?: string;
   disabled?: boolean;
+  searchValue?: string;
+  onSearchValueChange?: (value: string) => void;
+  searchPlaceholder?: string;
+  noResultsMessage?: string;
 }
 
 export function Select({
@@ -26,58 +37,55 @@ export function Select({
   placeholder = "Sélectionner...",
   error,
   description,
-  disabled
+  disabled,
+  searchValue,
+  onSearchValueChange,
+  searchPlaceholder = "Rechercher...",
+  noResultsMessage = "Aucun résultat"
 }: SelectProps) {
+  const normalizedQuery = (searchValue || "").trim().toLowerCase();
+  const visibleOptions =
+    typeof onSearchValueChange === "function" && normalizedQuery
+      ? options.filter((option) => {
+          const source = (option.searchText || option.label).toLowerCase();
+          return source.includes(normalizedQuery);
+        })
+      : options;
+
   return (
     <div className="space-y-1.5">
-      {label && (
-        <label className="block text-sm font-semibold text-ink">{label}</label>
-      )}
+      {label && <Label>{label}</Label>}
 
-      <SelectPrimitive.Root
-        value={value}
-        onValueChange={onValueChange}
-        disabled={disabled}
-      >
-        <SelectPrimitive.Trigger
-          className={cn(
-            "flex h-12 w-full items-center justify-between rounded-xl border border-border bg-panel/85 px-3.5 text-sm text-ink outline-none transition focus-visible:border-brand/70 focus-visible:ring-2 focus-visible:ring-brand/25 data-[placeholder]:text-muted/80 disabled:cursor-not-allowed disabled:opacity-50",
-            error && "border-warning/60"
+      <UiSelect value={value} onValueChange={onValueChange} disabled={disabled}>
+        <SelectTrigger className={cn(error && "border-warning/60")}>
+          <SelectValue placeholder={placeholder} />
+        </SelectTrigger>
+        <SelectContent>
+          {typeof onSearchValueChange === "function" && (
+            <div className="sticky top-0 z-10 border-b border-border/60 bg-popover p-2">
+              <input
+                value={searchValue || ""}
+                onChange={(e) => onSearchValueChange(e.target.value)}
+                placeholder={searchPlaceholder}
+                className="h-8 w-full rounded-md border border-border bg-background px-2 text-sm outline-none focus-visible:border-brand/70 focus-visible:ring-2 focus-visible:ring-brand/20"
+                onKeyDown={(e) => e.stopPropagation()}
+              />
+            </div>
           )}
-        >
-          <SelectPrimitive.Value placeholder={placeholder} />
-          <SelectPrimitive.Icon>
-            <ChevronDown className="h-4 w-4 opacity-70" />
-          </SelectPrimitive.Icon>
-        </SelectPrimitive.Trigger>
 
-        <SelectPrimitive.Portal>
-          <SelectPrimitive.Content className="z-50 max-h-80 overflow-hidden rounded-xl border border-border bg-panel shadow-xl">
-            <SelectPrimitive.ScrollUpButton className="flex h-8 items-center justify-center text-muted">
-              <ChevronUp className="h-4 w-4" />
-            </SelectPrimitive.ScrollUpButton>
-            <SelectPrimitive.Viewport className="p-1">
-              {options.map((option) => (
-                <SelectPrimitive.Item
-                  key={option.value}
-                  value={option.value}
-                  className="relative flex h-10 cursor-default select-none items-center rounded-lg pl-8 pr-3 text-sm text-ink outline-none data-[highlighted]:bg-brand/15 data-[highlighted]:text-ink"
-                >
-                  <SelectPrimitive.ItemIndicator className="absolute left-2 inline-flex h-4 w-4 items-center justify-center">
-                    <Check className="h-4 w-4" />
-                  </SelectPrimitive.ItemIndicator>
-                  <SelectPrimitive.ItemText>
-                    {option.label}
-                  </SelectPrimitive.ItemText>
-                </SelectPrimitive.Item>
-              ))}
-            </SelectPrimitive.Viewport>
-            <SelectPrimitive.ScrollDownButton className="flex h-8 items-center justify-center text-muted">
-              <ChevronDown className="h-4 w-4" />
-            </SelectPrimitive.ScrollDownButton>
-          </SelectPrimitive.Content>
-        </SelectPrimitive.Portal>
-      </SelectPrimitive.Root>
+          {visibleOptions.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+
+          {visibleOptions.length === 0 && (
+            <div className="px-2 py-2 text-xs text-muted">
+              {noResultsMessage}
+            </div>
+          )}
+        </SelectContent>
+      </UiSelect>
 
       {description && <p className="text-xs text-muted">{description}</p>}
       {error && <p className="text-xs text-warning">{error}</p>}

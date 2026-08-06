@@ -1,17 +1,27 @@
 import { useState, useEffect } from "react";
+import { Pencil, Printer, Trash2 } from "lucide-react";
 import type {
   Order,
   CreateOrderPayload,
   UpdateOrderPayload,
   OrderStatus
 } from "../types/operations";
-import type { Product } from "../types/product";
+import type { Customer } from "../types/customer";
 import type { User } from "../types/user";
 import type { Column } from "../components/index";
-import { ordersService } from "../services/operations.service";
-import { productsService } from "../services/products.service";
-import { usersService } from "../services/users.service";
-import { Layout, Card, Button, DataTable, Input } from "../components/index";
+import {
+  ordersService,
+  cartItemsService
+} from "../services/operations.service";
+import { customersService } from "../services/customers.service";
+import {
+  Layout,
+  Card,
+  Button,
+  DataTable,
+  Input,
+  Select
+} from "../components/index";
 import { Modal } from "../components/Modal";
 
 const STATUS_LABELS: Record<OrderStatus, string> = {
@@ -28,165 +38,789 @@ const STATUS_COLORS: Record<OrderStatus, string> = {
   cancelled: "bg-warning/20 text-warning"
 };
 
+const PROJECT_NAME = "TSENA ANATINY";
+const THERMAL_PAPER_WIDTH_MM = 58;
+
+const formatAr = (value: number) =>
+  `${Number(value || 0).toLocaleString("fr-FR")} Ar`;
+
+const numberToFrenchWords = (value: number): string => {
+  const units = [
+    "zero",
+    "un",
+    "deux",
+    "trois",
+    "quatre",
+    "cinq",
+    "six",
+    "sept",
+    "huit",
+    "neuf",
+    "dix",
+    "onze",
+    "douze",
+    "treize",
+    "quatorze",
+    "quinze",
+    "seize"
+  ];
+  const tens = ["", "", "vingt", "trente", "quarante", "cinquante", "soixante"];
+
+  const convertBelowHundred = (n: number): string => {
+    if (n <= 16) return units[n];
+    if (n < 20) return `dix-${units[n - 10]}`;
+    if (n < 70) {
+      const ten = Math.floor(n / 10);
+      const rem = n % 10;
+      if (rem === 0) return tens[ten];
+      if (rem === 1) return `${tens[ten]} et un`;
+      return `${tens[ten]}-${units[rem]}`;
+    }
+    if (n < 80) {
+      if (n === 71) return "soixante et onze";
+      return `soixante-${convertBelowHundred(n - 60)}`;
+    }
+    if (n === 80) return "quatre-vingts";
+    return `quatre-vingt-${convertBelowHundred(n - 80)}`;
+  };
+
+  const convertBelowThousand = (n: number): string => {
+    if (n < 100) return convertBelowHundred(n);
+    const hundred = Math.floor(n / 100);
+    const rem = n % 100;
+
+    let hundredLabel = hundred === 1 ? "cent" : `${units[hundred]} cent`;
+    if (rem === 0 && hundred > 1) {
+      hundredLabel += "s";
+    }
+    if (rem === 0) return hundredLabel;
+    return `${hundredLabel} ${convertBelowHundred(rem)}`;
+  };
+
+  const intValue = Math.max(0, Math.floor(Number(value) || 0));
+  if (intValue === 0) return "zero ariary";
+
+  const parts: string[] = [];
+  const billions = Math.floor(intValue / 1_000_000_000);
+  const millions = Math.floor((intValue % 1_000_000_000) / 1_000_000);
+  const thousands = Math.floor((intValue % 1_000_000) / 1000);
+  const rest = intValue % 1000;
+
+  if (billions > 0) {
+    parts.push(
+      `${convertBelowThousand(billions)} ${billions > 1 ? "milliards" : "milliard"}`
+    );
+  }
+  if (millions > 0) {
+    parts.push(
+      `${convertBelowThousand(millions)} ${millions > 1 ? "millions" : "million"}`
+    );
+  }
+  if (thousands > 0) {
+    if (thousands === 1) {
+      parts.push("mille");
+    } else {
+      parts.push(`${convertBelowThousand(thousands)} mille`);
+    }
+  }
+  if (rest > 0) {
+    parts.push(convertBelowThousand(rest));
+  }
+
+  return `${parts.join(" ")} ariary`;
+};
+
+const escapeHtml = (value: string) =>
+  value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+
+const buildOrderReceiptHtml = ({
+  order,
+  productLines,
+  otherPrice,
+  otherPriceReason,
+  orderNumber,
+  customerName,
+  customerAddress,
+  customerPhone
+}: {
+  order: Order;
+  productLines: Array<{
+    product_id?: number;
+    name: string;
+    quantity: number;
+    unitPrice: number;
+    total: number;
+    another_price?: number;
+    other_price_reason?: string;
+  }>;
+  otherPrice: number;
+  otherPriceReason?: string;
+  orderNumber?: string;
+  customerName?: string;
+  customerAddress?: string;
+  customerPhone?: string;
+}) => {
+  const safeProductRows = productLines.length
+    ? productLines
+        .map(
+          (line) => `<div class="prod-line">
+      <div class="prod-name">${escapeHtml(line.name || "-")}</div>
+      <div class="prod-meta">
+        <span>Qté: ${escapeHtml(String(line.quantity || 0))}</span>
+        <span>PU: ${escapeHtml(formatAr(line.unitPrice || 0))}</span>
+      </div>
+      <div class="prod-total">Total: ${escapeHtml(formatAr(line.total || 0))}</div>
+    </div>`
+        )
+        .join("")
+    : `<div class="prod-line">
+      <div class="prod-name">-</div>
+      <div class="prod-meta"><span>Qté: 0</span><span>PU: ${escapeHtml(formatAr(0))}</span></div>
+      <div class="prod-total">Total: ${escapeHtml(formatAr(0))}</div>
+    </div>`;
+
+  const productsSubTotal = productLines.reduce(
+    (sum, line) => sum + Number(line.total || 0),
+    0
+  );
+  const globalTotal = productsSubTotal + Number(otherPrice || 0);
+  const globalTotalInWords = numberToFrenchWords(globalTotal);
+  const trimmedOtherPriceReason = (otherPriceReason || "").trim();
+  const extraPriceLabel =
+    trimmedOtherPriceReason.length > 0
+      ? trimmedOtherPriceReason
+      : "Frais supplémentaires";
+
+  const resolvedOrderNumber =
+    (orderNumber || "").trim() ||
+    (order.order_number || "").trim() ||
+    (order.id ? `CMD-${order.id}` : "-");
+  const resolvedCustomerName = customerName || order.customer?.name || "-";
+  const resolvedCustomerAddress =
+    customerAddress || order.customer?.delivery_address || "-";
+  const receiptPhoneRaw = customerPhone || order.customer?.phone || "-";
+  const receiptPhone =
+    receiptPhoneRaw === "-"
+      ? receiptPhoneRaw
+      : receiptPhoneRaw.replace(/\s+/g, "");
+  const qrPayload = [
+    PROJECT_NAME,
+    `Commande: ${resolvedOrderNumber}`,
+    `Client: ${resolvedCustomerName}`,
+    `Tel: ${receiptPhone}`
+  ].join(" | ");
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(qrPayload)}`;
+
+  return `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ticket Commande</title>
+  <style>
+    @page {
+      size: ${THERMAL_PAPER_WIDTH_MM}mm auto;
+      margin: 0;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      font-family: "Courier New", monospace;
+      width: ${THERMAL_PAPER_WIDTH_MM}mm;
+      padding: 3mm;
+      color: #000;
+      font-size: 9px;
+      line-height: 1.35;
+    }
+    .center {
+      text-align: center;
+    }
+    .title {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+    }
+    .separator {
+      border-top: 1px dashed #000;
+      margin: 6px 0;
+    }
+    .separator-strong {
+      border-top: 1px solid #000;
+      margin: 6px 0;
+    }
+    .row {
+      margin: 2px 0;
+      word-break: break-word;
+    }
+    .kv {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+      margin: 2px 0;
+    }
+    .kv .key {
+      font-weight: 700;
+      min-width: 6mm;
+    }
+    .kv .value {
+      text-align: right;
+      flex: 1;
+      word-break: break-word;
+    }
+    .phone-value {
+      white-space: nowrap;
+      word-break: normal;
+    }
+    .label {
+      font-weight: 700;
+      display: inline;
+    }
+    .prod-line {
+      border-bottom: 1px dashed #000;
+      padding: 3px 0;
+      margin: 1px 0;
+    }
+    .prod-name {
+      font-weight: 700;
+      word-break: break-word;
+    }
+    .prod-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: 1px;
+      font-size: 10px;
+    }
+    .prod-total {
+      text-align: right;
+      margin-top: 1px;
+      font-weight: 700;
+    }
+    .note {
+      margin-top: 4px;
+      padding-top: 4px;
+      border-top: 1px dashed #000;
+    }
+    .qr-wrap {
+      margin-top: 6px;
+      text-align: center;
+    }
+    .qr {
+      width: 26mm;
+      height: 26mm;
+      object-fit: contain;
+      image-rendering: pixelated;
+    }
+  </style>
+</head>
+<body>
+  <div class="center title">${escapeHtml(PROJECT_NAME)}</div>
+  <div class="center">Ticket commande</div>
+  <div class="separator"></div>
+
+  <div class="kv"><span class="key">N°</span><span class="value">${escapeHtml(resolvedOrderNumber)}</span></div>
+  <div class="kv"><span class="key">Client</span><span class="value">${escapeHtml(resolvedCustomerName)}</span></div>
+  <div class="kv"><span class="key">Téléphone</span><span class="value phone-value">${escapeHtml(receiptPhone)}</span></div>
+  <div class="kv"><span class="key">Adresse</span><span class="value">${escapeHtml(resolvedCustomerAddress)}</span></div>
+
+  <div class="separator"></div>
+  <div class="row"><span class="label">Produits:</span></div>
+  ${safeProductRows}
+
+  <div class="separator"></div>
+  <div class="kv"><span class="key">Sous-total</span><span class="value">${formatAr(productsSubTotal)}</span></div>
+
+  <div class="separator-strong"></div>
+  <div class="kv"><span class="key">${escapeHtml(extraPriceLabel)}</span><span class="value">${formatAr(otherPrice)}</span></div>
+  <div class="kv"><span class="key">TOTAL</span><span class="value">${formatAr(globalTotal)}</span></div>
+  <div class="row"><span class="label">Arrêté à:</span> ${escapeHtml(globalTotalInWords)}</div>
+
+  <div class="qr-wrap">
+    <img class="qr" src="${qrUrl}" alt="QR Commande" />
+  </div>
+
+  <div class="note center">Imprimé le ${escapeHtml(new Date().toLocaleString("fr-FR"))}</div>
+</body>
+</html>`;
+};
+
+type CartItem = {
+  cart_item_id?: number;
+  product_id: number;
+  product_name: string;
+  quantity: number;
+  unit_cost: number;
+  another_price: number;
+  other_price_reason?: string;
+};
+
 function OrderForm({
   order,
-  products,
   users,
+  customers,
+  initialCartItems,
   onSubmit,
+  onConfirm,
   onCancel,
   isLoading
 }: {
   order?: Order;
-  products: Product[];
   users: User[];
+  customers: Customer[];
+  initialCartItems?: CartItem[];
   onSubmit: (p: CreateOrderPayload | UpdateOrderPayload) => Promise<void>;
+  onConfirm: () => Promise<void>;
   onCancel: () => void;
   isLoading: boolean;
 }) {
   const [form, setForm] = useState({
     user_id: order?.user_id ?? (users[0]?.id || 0),
-    product_id: order?.product_id ?? (products[0]?.id || 0),
-    customer_name: order?.customer_name ?? "",
-    customer_phone: order?.customer_phone ?? "",
-    delivery_address: order?.delivery_address ?? "",
-    quantity: order?.quantity ?? 1,
+    customer_id: order?.customer_id ?? 0,
+    another_price: Number(order?.another_price || 0),
+    other_price_reason: order?.other_price_reason || "",
     status: (order?.status ?? "draft") as OrderStatus,
     note: order?.note ?? ""
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isCartLoading, setIsCartLoading] = useState(false);
+  const [customerSearchValue, setCustomerSearchValue] = useState("");
+  const [isCustomerSearchLoading, setIsCustomerSearchLoading] = useState(false);
+  const [searchCustomers, setSearchCustomers] = useState<Customer[]>(customers);
+  const [cartItems, setCartItems] = useState<CartItem[]>(() => {
+    if (initialCartItems && initialCartItems.length > 0) {
+      return initialCartItems;
+    }
+    return [];
+  });
+
   const sel = (field: string, value: string | number) =>
     setForm((p) => ({ ...p, [field]: value }));
+
+  const cartTotal = cartItems.reduce(
+    (sum, item) =>
+      sum +
+      Number(item.quantity || 0) * Number(item.unit_cost || 0) +
+      Number(item.another_price || 0),
+    0
+  );
+  const grandTotal = cartTotal + Number(form.another_price || 0);
+  const selectedCustomer =
+    searchCustomers.find((item) => item.id === form.customer_id) ||
+    customers.find((item) => item.id === form.customer_id);
+
+  const orderValidation = (() => {
+    const issues: string[] = [];
+    if (!form.customer_id) issues.push("Client requis");
+    if (!order && cartItems.length === 0)
+      issues.push("Panier vide: chargez d'abord le panier client");
+    if (Number(form.another_price || 0) > 0 && !form.other_price_reason.trim())
+      issues.push("Raison requise quand Other price est > 0");
+    if (Number(form.another_price || 0) < 0)
+      issues.push("Other price invalide");
+    return issues;
+  })();
+
+  useEffect(() => {
+    setSearchCustomers(customers);
+  }, [customers]);
+
+  useEffect(() => {
+    if (order) return;
+
+    const query = customerSearchValue.trim();
+    const timeoutId = window.setTimeout(async () => {
+      if (!query) {
+        setSearchCustomers(customers);
+        setIsCustomerSearchLoading(false);
+        return;
+      }
+
+      try {
+        setIsCustomerSearchLoading(true);
+        const result = await customersService.searchCustomersByPhone(
+          query,
+          1,
+          30
+        );
+        setSearchCustomers(result.items);
+      } catch {
+        setSearchCustomers([]);
+      } finally {
+        setIsCustomerSearchLoading(false);
+      }
+    }, 350);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [customerSearchValue, customers, order]);
+
+  const loadCustomerCart = async () => {
+    if (!form.customer_id) {
+      setErrors((prev) => ({
+        ...prev,
+        customer_id: "Client requis"
+      }));
+      return;
+    }
+
+    try {
+      setIsCartLoading(true);
+      setErrors((prev) => ({ ...prev, submit: "", customer_id: "" }));
+
+      const cartResponse = await cartItemsService.getCartItems(
+        form.customer_id,
+        1,
+        500
+      );
+      const mappedItems: CartItem[] = cartResponse.items.map((item) => ({
+        cart_item_id: item.id,
+        product_id: item.product_id,
+        product_name: `Produit #${item.product_id}`,
+        quantity: Number(item.quantity || 0),
+        unit_cost: Number(item.unit_cost || 0),
+        another_price: Number(item.another_price || 0),
+        other_price_reason: item.other_price_reason || undefined
+      }));
+
+      setCartItems(mappedItems);
+    } catch (err) {
+      setErrors((prev) => ({
+        ...prev,
+        submit: err instanceof Error ? err.message : "Erreur chargement panier"
+      }));
+    } finally {
+      setIsCartLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (order && initialCartItems && initialCartItems.length > 0) {
+      setCartItems(initialCartItems);
+      setForm((prev) => ({
+        ...prev,
+        customer_id: order.customer_id || 0
+      }));
+    }
+  }, [initialCartItems, order]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const errs: Record<string, string> = {};
-    if (!form.customer_name.trim()) errs.customer_name = "Nom client requis";
-    if (!form.product_id) errs.product_id = "Produit requis";
+    if (!form.customer_id) errs.customer_id = "Client requis";
+    if (!order && cartItems.length === 0) {
+      errs.submit = "Panier vide: ajoutez au moins un produit";
+    }
+    if (!order && !form.customer_id) {
+      errs.submit = "Chargez d'abord le panier client";
+    }
+    if (Number(form.another_price || 0) < 0) {
+      errs.another_price = "Other price invalide";
+    }
+    if (
+      Number(form.another_price || 0) > 0 &&
+      !form.other_price_reason.trim()
+    ) {
+      errs.other_price_reason = "Raison requise quand other price est > 0";
+    }
     if (Object.keys(errs).length) {
       setErrors(errs);
       return;
     }
     try {
-      await onSubmit(form);
+      const now = new Date();
+      const pad = (n: number, l = 2) => String(n).padStart(l, "0");
+      const dateTime =
+        now.getFullYear().toString() +
+        pad(now.getMonth() + 1) +
+        pad(now.getDate()) +
+        pad(now.getHours()) +
+        pad(now.getMinutes()) +
+        pad(now.getSeconds());
+      const generatedOrderNumber = order ? undefined : `${dateTime}`;
+
+      if (!order) {
+        await onSubmit({
+          user_id: form.user_id,
+          customer_id: form.customer_id,
+          another_price: Number(form.another_price || 0),
+          other_price_reason:
+            Number(form.another_price || 0) > 0
+              ? form.other_price_reason.trim() || undefined
+              : undefined,
+          status: "draft",
+          note: form.note || undefined,
+          ...(generatedOrderNumber
+            ? { order_number: generatedOrderNumber }
+            : {})
+        });
+        return;
+      }
+
+      await onSubmit({
+        user_id: form.user_id,
+        customer_id: form.customer_id,
+        another_price: Number(form.another_price || 0),
+        other_price_reason:
+          Number(form.another_price || 0) > 0
+            ? form.other_price_reason.trim() || undefined
+            : undefined,
+        status: form.status,
+        note: form.note || undefined,
+        ...(generatedOrderNumber ? { order_number: generatedOrderNumber } : {})
+      });
     } catch (err) {
       setErrors({ submit: err instanceof Error ? err.message : "Erreur" });
     }
   };
 
   return (
-    <form
-      className="max-h-[70vh] space-y-4 overflow-y-auto pr-1"
-      onSubmit={handleSubmit}
-    >
-      {errors.submit && (
-        <div className="rounded-xl border border-warning/50 bg-warning/10 px-3 py-2 text-sm text-ink">
-          {errors.submit}
+    <form className="flex flex-col gap-0" onSubmit={handleSubmit}>
+      <div className="space-y-4 overflow-y-auto pb-4 max-h-[65vh]">
+        {errors.submit && (
+          <div className="rounded-xl border border-warning/50 bg-warning/10 px-3 py-2 text-sm text-ink">
+            {errors.submit}
+          </div>
+        )}
+
+        {/* Commercial & Statut */}
+        <div className="rounded-2xl border border-border/60 bg-bg/30 p-4 space-y-4">
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted">
+            Commande
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Select
+              label="Commercial"
+              value={String(form.user_id)}
+              onValueChange={(value) => sel("user_id", parseInt(value))}
+              options={users.map((u) => ({
+                label: u.email,
+                value: String(u.id)
+              }))}
+              placeholder="Sélectionner un commercial"
+              disabled={isLoading}
+            />
+            <Select
+              label="Statut"
+              value={form.status}
+              onValueChange={(value) => sel("status", value)}
+              options={(Object.keys(STATUS_LABELS) as OrderStatus[]).map(
+                (s) => ({
+                  label: STATUS_LABELS[s],
+                  value: s
+                })
+              )}
+              disabled={isLoading || !order}
+            />
+          </div>
         </div>
-      )}
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-1.5">
-          <label className="block text-sm font-semibold text-ink">
-            Commercial
-          </label>
-          <select
-            value={form.user_id}
-            onChange={(e) => sel("user_id", parseInt(e.target.value))}
-            className="h-12 w-full rounded-xl border border-border bg-panel px-3.5 text-sm text-ink outline-none transition focus-visible:border-brand/70 focus-visible:ring-2 focus-visible:ring-brand/25"
-            disabled={isLoading}
-          >
-            {users.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.email}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="space-y-1.5">
-          <label className="block text-sm font-semibold text-ink">
-            Produit
-          </label>
-          <select
-            value={form.product_id}
-            onChange={(e) => sel("product_id", parseInt(e.target.value))}
-            className="h-12 w-full rounded-xl border border-border bg-panel px-3.5 text-sm text-ink outline-none transition focus-visible:border-brand/70 focus-visible:ring-2 focus-visible:ring-brand/25"
-            disabled={isLoading}
-          >
-            {products.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-          {errors.product_id && (
-            <p className="text-xs text-warning">{errors.product_id}</p>
+
+        {/* Client */}
+        <div className="rounded-2xl border border-border/60 bg-bg/30 p-4 space-y-3">
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted">
+            Client
+          </p>
+          <Select
+            label="Client"
+            value={form.customer_id ? String(form.customer_id) : ""}
+            onValueChange={(value) => sel("customer_id", parseInt(value, 10))}
+            options={searchCustomers.map((customer) => ({
+              label: `${customer.name} (${customer.phone})`,
+              value: String(customer.id),
+              searchText: `${customer.phone} ${customer.name}`
+            }))}
+            placeholder="Sélectionner un client"
+            searchValue={customerSearchValue}
+            onSearchValueChange={setCustomerSearchValue}
+            searchPlaceholder="Filtrer par téléphone..."
+            noResultsMessage={
+              isCustomerSearchLoading
+                ? "Recherche en cours..."
+                : "Aucun client trouvé"
+            }
+            disabled={isLoading || !!order}
+          />
+          {errors.customer_id && (
+            <p className="text-xs text-warning">{errors.customer_id}</p>
+          )}
+          {selectedCustomer && (
+            <div className="rounded-xl border border-border/60 bg-bg/35 px-3 py-2 text-xs text-muted grid grid-cols-3 gap-2">
+              <div>
+                <span className="font-semibold text-ink">Nom</span>
+                <br />
+                {selectedCustomer.name}
+              </div>
+              <div>
+                <span className="font-semibold text-ink">Tél</span>
+                <br />
+                {selectedCustomer.phone}
+              </div>
+              <div>
+                <span className="font-semibold text-ink">Adresse</span>
+                <br />
+                {selectedCustomer.delivery_address || "-"}
+              </div>
+            </div>
           )}
         </div>
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Input
-          label="Nom client"
-          value={form.customer_name}
-          onChange={(e) => sel("customer_name", e.target.value)}
-          error={errors.customer_name}
-          placeholder="Nom du client"
-          disabled={isLoading}
-        />
-        <Input
-          label="Téléphone client"
-          value={form.customer_phone}
-          onChange={(e) => sel("customer_phone", e.target.value)}
-          placeholder="+261 34 ..."
-          disabled={isLoading}
-        />
-      </div>
-      <Input
-        label="Adresse de livraison"
-        value={form.delivery_address}
-        onChange={(e) => sel("delivery_address", e.target.value)}
-        placeholder="Adresse..."
-        disabled={isLoading}
-      />
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Input
-          label="Quantité"
-          type="number"
-          value={form.quantity}
-          onChange={(e) => sel("quantity", parseInt(e.target.value) || 1)}
-          placeholder="1"
-          disabled={isLoading}
-        />
-        <div className="space-y-1.5">
-          <label className="block text-sm font-semibold text-ink">Statut</label>
-          <select
-            value={form.status}
-            onChange={(e) => sel("status", e.target.value)}
-            className="h-12 w-full rounded-xl border border-border bg-panel px-3.5 text-sm text-ink outline-none transition focus-visible:border-brand/70 focus-visible:ring-2 focus-visible:ring-brand/25"
-            disabled={isLoading}
-          >
-            {(Object.keys(STATUS_LABELS) as OrderStatus[]).map((s) => (
-              <option key={s} value={s}>
-                {STATUS_LABELS[s]}
-              </option>
-            ))}
-          </select>
+
+        {/* Other price */}
+        <div className="rounded-2xl border border-border/60 bg-bg/30 p-4 space-y-4">
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted">
+            Frais supplémentaires
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Input
+              label="Other price (Ar)"
+              type="number"
+              value={form.another_price}
+              onChange={(e) => {
+                const nextValue = parseFloat(e.target.value) || 0;
+                setForm((prev) => ({
+                  ...prev,
+                  another_price: nextValue,
+                  other_price_reason:
+                    nextValue > 0 ? prev.other_price_reason : ""
+                }));
+              }}
+              error={errors.another_price}
+              placeholder="0"
+              disabled={isLoading}
+            />
+            {Number(form.another_price || 0) > 0 && (
+              <Input
+                label="Raison"
+                value={form.other_price_reason}
+                onChange={(e) => sel("other_price_reason", e.target.value)}
+                error={errors.other_price_reason}
+                placeholder="Raison du other price"
+                disabled={isLoading}
+              />
+            )}
+          </div>
         </div>
+
+        {/* Panier */}
+        <div className="rounded-2xl border border-border/60 bg-bg/30 p-4 space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs font-semibold uppercase tracking-widest text-muted">
+              {order ? "Panier de la commande" : "Panier client"}
+            </p>
+            {!order && (
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={loadCustomerCart}
+                disabled={isLoading || isCartLoading}
+                isLoading={isCartLoading}
+              >
+                Charger panier
+              </Button>
+            )}
+          </div>
+
+          {cartItems.length === 0 ? (
+            <p className="text-xs text-muted">Aucun produit dans le panier.</p>
+          ) : (
+            <div className="space-y-2">
+              {cartItems.map((item, index) => {
+                const lineTotal =
+                  Number(item.quantity || 0) * Number(item.unit_cost || 0) +
+                  Number(item.another_price || 0);
+                return (
+                  <div
+                    key={`${item.product_id}-${index}`}
+                    className="rounded-xl border border-border/60 bg-panel/55 px-3 py-2"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-ink">
+                          {item.product_name}
+                        </p>
+                        <p className="text-xs text-muted">
+                          Qté {item.quantity} × {formatAr(item.unit_cost)}
+                          {item.another_price > 0
+                            ? ` + ${formatAr(item.another_price)}`
+                            : ""}
+                        </p>
+                        {item.other_price_reason && (
+                          <p className="text-xs text-muted">
+                            Raison: {item.other_price_reason}
+                          </p>
+                        )}
+                      </div>
+                      <p className="text-sm font-semibold text-ink whitespace-nowrap">
+                        {formatAr(lineTotal)}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+              <div className="flex items-center justify-between border-t border-border/60 pt-2">
+                <p className="text-sm font-semibold text-ink">Total panier</p>
+                <p className="text-sm font-bold text-ink">
+                  {formatAr(cartTotal)}
+                </p>
+              </div>
+              <div className="flex items-center justify-between border-t border-border/60 pt-2">
+                <p className="text-sm font-semibold text-ink">Total commande</p>
+                <p className="text-sm font-bold text-brand">
+                  {formatAr(grandTotal)}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Note */}
+        <Input
+          label="Note (optionnel)"
+          value={form.note}
+          onChange={(e) => sel("note", e.target.value)}
+          placeholder="..."
+          disabled={isLoading}
+        />
+
+        {orderValidation.length > 0 && (
+          <ul className="space-y-0.5 rounded-xl border border-warning/40 bg-warning/8 px-3 py-2">
+            {orderValidation.map((msg) => (
+              <li key={msg} className="text-xs text-warning">
+                • {msg}
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
-      <Input
-        label="Note (optionnel)"
-        value={form.note}
-        onChange={(e) => sel("note", e.target.value)}
-        placeholder="..."
-        disabled={isLoading}
-      />
-      <div className="flex gap-3 pt-2">
+
+      <div className="flex shrink-0 gap-3 border-t border-border/60 pt-4">
         <Button
           type="submit"
           isLoading={isLoading}
           variant="primary"
           className="flex-1"
+          disabled={isLoading || orderValidation.length > 0}
         >
-          {order ? "Mettre à jour" : "Créer"}
+          {order ? "Mettre à jour" : "Créer commande (brouillon)"}
         </Button>
+        {order && order.status === "draft" && (
+          <Button
+            type="button"
+            onClick={() => void onConfirm()}
+            variant="primary"
+            className="flex-1"
+            disabled={isLoading}
+          >
+            Confirmer
+          </Button>
+        )}
         <Button
           type="button"
           onClick={onCancel}
@@ -203,30 +837,31 @@ function OrderForm({
 
 export function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isFormLoading, setIsFormLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{
+    type: "info" | "success";
+    message: string;
+  } | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selected, setSelected] = useState<Order | null>(null);
+  const [selectedCartItems, setSelectedCartItems] = useState<CartItem[]>([]);
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(20);
   const [total, setTotal] = useState(0);
 
   useEffect(() => {
-    productsService
-      .getProducts(1, 200)
-      .then((r) => setProducts(r.items))
-      .catch(() => {});
-    usersService
-      .getUsers(1, 200)
-      .then((r) => setUsers(r.items))
-      .catch(() => {});
-  }, []);
-  useEffect(() => {
     load();
-  }, [page]);
+  }, [page, pageSize]);
+
+  useEffect(() => {
+    if (!notice) return;
+    const timeout = window.setTimeout(() => setNotice(null), 4500);
+    return () => window.clearTimeout(timeout);
+  }, [notice]);
 
   const load = async () => {
     try {
@@ -235,6 +870,30 @@ export function OrdersPage() {
       const r = await ordersService.getOrders(page, pageSize);
       setOrders(r.items);
       setTotal(r.total);
+
+      const nextUsersMap = new Map<number, User>();
+      const nextCustomersMap = new Map<number, Customer>();
+      for (const order of r.items) {
+        const resolvedUserId = order.user_id || order.user?.id;
+        if (resolvedUserId) {
+          nextUsersMap.set(resolvedUserId, {
+            id: resolvedUserId,
+            email: order.user?.email || `user#${resolvedUserId}`
+          } as User);
+        }
+
+        const resolvedCustomerId = order.customer_id || order.customer?.id;
+        if (resolvedCustomerId && order.customer?.name) {
+          nextCustomersMap.set(resolvedCustomerId, {
+            id: resolvedCustomerId,
+            name: order.customer.name,
+            phone: order.customer.phone || "-",
+            delivery_address: order.customer.delivery_address
+          });
+        }
+      }
+      setUsers(Array.from(nextUsersMap.values()));
+      setCustomers(Array.from(nextCustomersMap.values()));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur");
     } finally {
@@ -267,12 +926,41 @@ export function OrdersPage() {
           payload as UpdateOrderPayload
         );
         setOrders((prev) => prev.map((x) => (x.id === selected.id ? u : x)));
+        setNotice({
+          type: "success",
+          message: `Commande ${u.order_number ?? `#${u.id}`} mise a jour avec succes.`
+        });
+        await load();
       } else {
-        const c = await ordersService.createOrder(
-          payload as CreateOrderPayload
-        );
+        const createPayload = payload as CreateOrderPayload;
+        const resolvedCustomerId = createPayload.customer_id;
+        if (!resolvedCustomerId) {
+          throw new Error(
+            "Client panier introuvable pour la création commande"
+          );
+        }
+
+        setNotice({
+          type: "info",
+          message: "Validation du panier en cours..."
+        });
+
+        const c = await cartItemsService.checkout(resolvedCustomerId, {
+          user_id: createPayload.user_id,
+          order_number: createPayload.order_number,
+          customer_id: resolvedCustomerId,
+          another_price: createPayload.another_price,
+          other_price_reason: createPayload.other_price_reason,
+          status: createPayload.status,
+          note: createPayload.note
+        });
         setOrders((prev) => [c, ...prev]);
         setTotal((t) => t + 1);
+        setNotice({
+          type: "success",
+          message: `Commande ${c.order_number ?? `#${c.id}`} validee depuis le panier.`
+        });
+        await load();
       }
       setIsModalOpen(false);
       setSelected(null);
@@ -283,36 +971,306 @@ export function OrdersPage() {
     }
   };
 
+  const handleConfirmSelectedOrder = async () => {
+    if (!selected) return;
+
+    try {
+      setIsFormLoading(true);
+      const customerId = selected.customer_id || selected.customer?.id;
+      if (!customerId) {
+        throw new Error(
+          "Impossible de confirmer: customer_id manquant sur la commande"
+        );
+      }
+
+      const updated = await ordersService.updateOrder(selected.id, {
+        customer_id: customerId,
+        status: "confirmed"
+      });
+      setOrders((prev) =>
+        prev.map((item) => (item.id === selected.id ? updated : item))
+      );
+      setNotice({
+        type: "success",
+        message: `Commande ${updated.order_number ?? `#${updated.id}`} confirmée.`
+      });
+      await load();
+      setIsModalOpen(false);
+      setSelected(null);
+      setSelectedCartItems([]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur confirmation");
+    } finally {
+      setIsFormLoading(false);
+    }
+  };
+
+  const mapCartItemsFromApi = (
+    items: Awaited<ReturnType<typeof cartItemsService.getCartItems>>["items"]
+  ): CartItem[] => {
+    return items.map((item) => ({
+      cart_item_id: item.id,
+      product_id: item.product_id,
+      product_name: `Produit #${item.product_id}`,
+      quantity: Number(item.quantity || 0),
+      unit_cost: Number(item.unit_cost || 0),
+      another_price: Number(item.another_price || 0),
+      other_price_reason: item.other_price_reason || undefined
+    }));
+  };
+
+  const getOrderOutMovements = (order: Order) =>
+    (order.stock_movements || []).filter(
+      (movement) => !movement.type || movement.type === "out_stock"
+    );
+
+  const mapCartItemsFromOrder = (order: Order): CartItem[] => {
+    const outMovements = getOrderOutMovements(order);
+    if (outMovements.length === 0) {
+      if (!order.product_id) return [];
+      return [
+        {
+          product_id: order.product_id,
+          product_name: order.product?.name || `Produit #${order.product_id}`,
+          quantity: Number(order.quantity || 0),
+          unit_cost: Number(order.unit_cost || 0),
+          another_price: Number(order.another_price || 0),
+          other_price_reason: order.other_price_reason || undefined
+        }
+      ];
+    }
+
+    const aggregated = new Map<number, CartItem>();
+    for (const movement of outMovements) {
+      const productId = Number(movement.product_id || 0);
+      if (!productId) continue;
+
+      const existing = aggregated.get(productId);
+      if (!existing) {
+        aggregated.set(productId, {
+          product_id: productId,
+          product_name: movement.product?.name || `Produit #${productId}`,
+          quantity: Number(movement.quantity || 0),
+          unit_cost: Number(movement.unit_cost || 0),
+          another_price: Number(movement.another_price || 0),
+          other_price_reason: movement.other_price_reason || undefined
+        });
+        continue;
+      }
+
+      existing.quantity += Number(movement.quantity || 0);
+      existing.another_price += Number(movement.another_price || 0);
+      if (!existing.other_price_reason && movement.other_price_reason) {
+        existing.other_price_reason = movement.other_price_reason;
+      }
+      if (!existing.unit_cost && movement.unit_cost) {
+        existing.unit_cost = Number(movement.unit_cost || 0);
+      }
+    }
+
+    return Array.from(aggregated.values());
+  };
+
+  const resolveOrderCustomerId = async (
+    order: Order
+  ): Promise<number | null> => {
+    if (order.customer_id) return order.customer_id;
+    if (order.customer?.id) return order.customer.id;
+    return null;
+  };
+
+  const openEditOrderModal = async (order: Order) => {
+    try {
+      setIsFormLoading(true);
+      let cartFromSource: CartItem[] = [];
+
+      if ((order.status ?? "draft") === "draft") {
+        const customerId = await resolveOrderCustomerId(order);
+        if (customerId) {
+          const cartResponse = await cartItemsService.getCartItems(
+            customerId,
+            1,
+            500
+          );
+          cartFromSource = mapCartItemsFromApi(cartResponse.items);
+        }
+      }
+
+      if (cartFromSource.length === 0) {
+        cartFromSource = mapCartItemsFromOrder(order);
+      }
+
+      setSelectedCartItems(cartFromSource);
+      setSelected(order);
+      setIsModalOpen(true);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Erreur chargement panier commande"
+      );
+      setSelectedCartItems(mapCartItemsFromOrder(order));
+      setSelected(order);
+      setIsModalOpen(true);
+    } finally {
+      setIsFormLoading(false);
+    }
+  };
+
+  const handlePrintOrder = async (order: Order) => {
+    const resolvedOrderNumber =
+      (order.order_number || "").trim() || (order.id ? `CMD-${order.id}` : "-");
+
+    const outMovements = getOrderOutMovements(order);
+    const movementLines = outMovements.map((movement) => ({
+      product_id: Number(movement.product_id || 0),
+      name:
+        movement.product?.name ||
+        `Produit #${Number(movement.product_id || 0)}`,
+      quantity: Number(movement.quantity || 0),
+      unitPrice: Number(movement.unit_cost || 0),
+      total: Number(movement.quantity || 0) * Number(movement.unit_cost || 0),
+      another_price: Number(movement.another_price || 0),
+      other_price_reason: movement.other_price_reason || undefined
+    }));
+
+    const fallbackLines =
+      movementLines.length > 0
+        ? movementLines
+        : order.product_id && Number(order.quantity || 0) > 0
+          ? [
+              {
+                product_id: order.product_id,
+                name: order.product?.name || `Produit #${order.product_id}`,
+                quantity: Number(order.quantity || 0),
+                unitPrice: Number(order.unit_cost || 0),
+                total:
+                  Number(order.quantity || 0) * Number(order.unit_cost || 0),
+                another_price: Number(order.another_price || 0),
+                other_price_reason: order.other_price_reason || undefined
+              }
+            ]
+          : [];
+
+    const movementOtherPrice = movementLines.reduce(
+      (sum, line) => sum + Number(line.another_price || 0),
+      0
+    );
+    const movementOtherPriceReason = movementLines
+      .map((line) => (line.other_price_reason || "").trim())
+      .find((reason) => reason.length > 0);
+
+    const otherPrice =
+      Number(order.another_price || 0) > 0
+        ? Number(order.another_price || 0)
+        : movementOtherPrice;
+    const otherPriceReason =
+      (order.other_price_reason || "").trim() ||
+      movementOtherPriceReason ||
+      undefined;
+
+    const resolvedOrderCustomerId =
+      order.customer_id || order.customer?.id || undefined;
+    const customerFromState = resolvedOrderCustomerId
+      ? customers.find((item) => item.id === resolvedOrderCustomerId)
+      : undefined;
+
+    const receiptCustomerName =
+      order.customer?.name || customerFromState?.name || "-";
+    const receiptCustomerAddress =
+      order.customer?.delivery_address ||
+      customerFromState?.delivery_address ||
+      "-";
+    const receiptCustomerPhone =
+      order.customer?.phone || customerFromState?.phone || "-";
+
+    const receiptHtml = buildOrderReceiptHtml({
+      order,
+      productLines: fallbackLines,
+      otherPrice,
+      otherPriceReason,
+      orderNumber: resolvedOrderNumber,
+      customerName: receiptCustomerName,
+      customerAddress: receiptCustomerAddress,
+      customerPhone: receiptCustomerPhone
+    });
+
+    const printWindow = window.open("", "_blank", "width=420,height=760");
+    if (!printWindow) {
+      setError("Impossible d'ouvrir la fenêtre d'impression (popup bloquée)");
+      return;
+    }
+
+    printWindow.document.open();
+    printWindow.document.write(receiptHtml);
+    printWindow.document.close();
+    printWindow.focus();
+
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 250);
+  };
+
   const columns: Column<Order>[] = [
     {
       header: "N°",
       accessor: "order_number",
       render: (v, r) => v ?? `#${r.id}`,
-      width: "12%"
+      width: "10%"
     },
-    { header: "Client", accessor: "customer_name", width: "20%" },
     {
-      header: "Produit",
+      header: "Client",
+      accessor: "customer_id",
+      render: (_, r) => r.customer?.name ?? `#${r.customer_id}`,
+      width: "18%"
+    },
+    {
+      header: "Panier",
       accessor: "product_id",
-      render: (_, r) => r.product?.name ?? `#${r.product_id}`,
-      width: "20%"
+      render: (_, r) => {
+        const outMovements = getOrderOutMovements(r);
+        if (outMovements.length > 0) {
+          const uniqueProducts = new Set(
+            outMovements
+              .map((movement) => Number(movement.product_id || 0))
+              .filter((id) => id > 0)
+          );
+          const totalQty = outMovements.reduce(
+            (sum, movement) => sum + Number(movement.quantity || 0),
+            0
+          );
+          return `${uniqueProducts.size} produit(s) / Qté ${totalQty}`;
+        }
+
+        if (!r.product_id) return "Panier non détaillé";
+        return `1 produit / Qté ${Number(r.quantity || 0)}`;
+      },
+      width: "18%"
     },
     {
       header: "Commercial",
       accessor: "user_id",
       render: (_, r) => r.user?.email ?? `#${r.user_id}`,
-      width: "20%"
+      width: "18%"
     },
     {
-      header: "Qté",
+      header: "Qté totale",
       accessor: "quantity",
-      render: (v) => v ?? "-",
-      width: "8%"
+      render: (v, r) => {
+        const outMovements = getOrderOutMovements(r);
+        if (outMovements.length > 0) {
+          return outMovements.reduce(
+            (sum, movement) => sum + Number(movement.quantity || 0),
+            0
+          );
+        }
+        return v ?? "-";
+      },
+      width: "7%"
     },
     {
       header: "Statut",
       accessor: "status",
-      width: "15%",
+      width: "13%",
       render: (v: OrderStatus) => (
         <span
           className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${STATUS_COLORS[v] ?? "bg-muted/20 text-muted"}`}
@@ -320,67 +1278,130 @@ export function OrdersPage() {
           {STATUS_LABELS[v] ?? v}
         </span>
       )
+    },
+    {
+      header: "Date création",
+      accessor: "created_at",
+      width: "16%",
+      render: (v) => (v ? new Date(v).toLocaleString("fr-FR") : "-")
     }
   ];
 
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
   return (
     <Layout title="Commandes" subtitle="Gestion des commandes clients">
-      <div className="space-y-6">
-        <div className="flex justify-end">
-          <Button
-            variant="primary"
-            onClick={() => {
-              setSelected(null);
-              setIsModalOpen(true);
-            }}
+      <div className="flex h-full min-h-0 flex-col gap-6 overflow-hidden">
+        {notice && (
+          <div
+            className={`rounded-2xl border px-4 py-3 text-sm text-ink ${
+              notice.type === "success"
+                ? "border-success/50 bg-success/10"
+                : "border-brand/40 bg-brand/10"
+            }`}
           >
-            + Nouvelle commande
-          </Button>
-        </div>
+            {notice.message}
+          </div>
+        )}
         {error && (
           <div className="rounded-2xl border border-warning/50 bg-warning/10 px-4 py-3 text-sm text-ink">
             {error}
           </div>
         )}
-        <Card title="Commandes" description={`Total: ${total} commandes`}>
+        <Card
+          title="Commandes"
+          description={`Total: ${total} commandes`}
+          className="flex min-h-0 flex-1 flex-col"
+          bodyClassName="flex min-h-0 flex-1 flex-col"
+          headerAction={
+            <Button
+              variant="primary"
+              onClick={() => {
+                setSelected(null);
+                setSelectedCartItems([]);
+                setIsModalOpen(true);
+              }}
+            >
+              + Confirmer panier
+            </Button>
+          }
+        >
           <DataTable
             columns={columns}
             data={orders}
             isLoading={isLoading}
             emptyMessage="Aucune commande"
             actions={(o) => (
-              <div className="flex gap-2">
+              <>
                 <Button
                   size="sm"
                   variant="secondary"
                   disabled={isFormLoading}
-                  onClick={() => {
-                    setSelected(o);
-                    setIsModalOpen(true);
-                  }}
+                  onClick={() => handlePrintOrder(o)}
+                  title="Imprimer"
+                  aria-label="Imprimer"
+                  className="h-8 w-8 p-0"
                 >
-                  Modifier
+                  <Printer className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={isFormLoading}
+                  onClick={() => void openEditOrderModal(o)}
+                  title="Modifier"
+                  aria-label="Modifier"
+                  className="h-8 w-8 p-0"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
                 </Button>
                 <Button
                   size="sm"
                   variant="danger"
                   disabled={isFormLoading}
                   onClick={() => handleDelete(o)}
+                  title="Supprimer"
+                  aria-label="Supprimer"
+                  className="h-8 w-8 p-0"
                 >
-                  Supprimer
+                  <Trash2 className="h-3.5 w-3.5" />
                 </Button>
-              </div>
+              </>
             )}
           />
         </Card>
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted">
-            Page {page} / {Math.max(1, Math.ceil(total / pageSize))}
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-xl border border-border/60 bg-panel/65 px-2.5 py-2 sm:gap-3 sm:px-3">
+          <p className="text-xs font-medium text-muted sm:text-sm">
+            Page {page} / {totalPages}
           </p>
-          <div className="flex gap-2">
+          <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
+            <label
+              className="text-[11px] font-semibold uppercase tracking-wide text-muted sm:text-xs"
+              htmlFor="orders-page-size"
+            >
+              Par page
+            </label>
+            <select
+              id="orders-page-size"
+              className="h-8 min-w-[68px] rounded-lg border border-border bg-bg px-2 text-xs font-semibold text-ink outline-none transition focus-visible:border-brand/70 focus-visible:ring-2 focus-visible:ring-brand/25 sm:h-9 sm:min-w-[72px] sm:text-sm"
+              value={pageSize}
+              onChange={(e) => {
+                const nextSize = Number(e.target.value) || 20;
+                setPageSize(nextSize);
+                setPage(1);
+              }}
+              disabled={isLoading}
+            >
+              {[10, 20, 50, 100].map((size) => (
+                <option key={size} value={size}>
+                  {size}
+                </option>
+              ))}
+            </select>
             <Button
               size="sm"
               variant="secondary"
+              className="min-w-[84px] sm:min-w-[96px]"
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1}
             >
@@ -389,8 +1410,9 @@ export function OrdersPage() {
             <Button
               size="sm"
               variant="secondary"
+              className="min-w-[84px] sm:min-w-[96px]"
               onClick={() => setPage((p) => p + 1)}
-              disabled={page >= Math.ceil(total / pageSize)}
+              disabled={page >= totalPages}
             >
               Suivant
             </Button>
@@ -401,17 +1423,21 @@ export function OrdersPage() {
           onClose={() => {
             setIsModalOpen(false);
             setSelected(null);
+            setSelectedCartItems([]);
           }}
-          title={selected ? "Modifier commande" : "Nouvelle commande"}
+          title={selected ? "Mise a jour panier" : "Confirmation panier"}
         >
           <OrderForm
             order={selected ?? undefined}
-            products={products}
             users={users}
+            customers={customers}
+            initialCartItems={selectedCartItems}
             onSubmit={handleSubmit}
+            onConfirm={handleConfirmSelectedOrder}
             onCancel={() => {
               setIsModalOpen(false);
               setSelected(null);
+              setSelectedCartItems([]);
             }}
             isLoading={isFormLoading}
           />

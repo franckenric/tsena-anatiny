@@ -1,37 +1,12 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react";
-import { cva, type VariantProps } from "class-variance-authority";
-import { cn } from "../lib/utils";
+import type { ButtonHTMLAttributes, ComponentProps, ReactNode } from "react";
+import { Button as UiButton } from "./ui/button";
 
-const buttonVariants = cva(
-  "inline-flex items-center justify-center rounded-xl font-semibold transition duration-200 disabled:pointer-events-none disabled:opacity-60",
-  {
-    variants: {
-      variant: {
-        primary:
-          "bg-brand text-white shadow-lg shadow-brand/35 hover:-translate-y-0.5 hover:bg-brand/90",
-        secondary:
-          "border border-border bg-panel/80 text-ink hover:-translate-y-0.5 hover:border-brand/35 hover:bg-panel",
-        danger:
-          "bg-warning text-white shadow-lg shadow-warning/35 hover:-translate-y-0.5 hover:bg-warning/90",
-        ghost: "text-ink hover:bg-panel/80"
-      },
-      size: {
-        sm: "h-9 px-3 text-xs",
-        md: "h-12 px-5 text-sm",
-        lg: "h-14 px-6 text-base"
-      }
-    },
-    defaultVariants: {
-      variant: "primary",
-      size: "md"
-    }
-  }
-);
+type LegacyButtonVariant = "primary" | "secondary" | "danger" | "ghost";
+type LegacyButtonSize = "sm" | "md" | "lg";
 
-interface ButtonProps
-  extends
-    ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {
+interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: LegacyButtonVariant;
+  size?: LegacyButtonSize;
   children: ReactNode;
   isLoading?: boolean;
 }
@@ -45,10 +20,21 @@ export function Button({
   className = "",
   ...props
 }: ButtonProps) {
+  const mappedVariant: NonNullable<ComponentProps<typeof UiButton>["variant"]> =
+    variant === "primary"
+      ? "default"
+      : variant === "danger"
+        ? "destructive"
+        : variant;
+  const mappedSize: NonNullable<ComponentProps<typeof UiButton>["size"]> =
+    size === "md" ? "default" : size;
+
   return (
-    <button
+    <UiButton
       disabled={disabled || isLoading}
-      className={cn(buttonVariants({ variant, size }), className)}
+      variant={mappedVariant}
+      size={mappedSize}
+      className={className}
       {...props}
     >
       {isLoading ? (
@@ -59,6 +45,6 @@ export function Button({
       ) : (
         children
       )}
-    </button>
+    </UiButton>
   );
 }

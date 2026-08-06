@@ -10,8 +10,41 @@ import type { Product } from "../types/product";
 import type { Column } from "../components/index";
 import { lotsService, stockService } from "../services/operations.service";
 import { productsService } from "../services/products.service";
-import { Layout, Card, Button, DataTable, Input } from "../components/index";
+import {
+  Layout,
+  Card,
+  Button,
+  DataTable,
+  Input,
+  QuantityInput,
+  Select
+} from "../components/index";
 import { Modal } from "../components/Modal";
+import { Pencil, Trash2 } from "lucide-react";
+
+const getLotDateLabel = (lot: Lot) => {
+  const rawDate = lot.received_at ?? lot.created_at;
+  if (!rawDate) return "Date inconnue";
+
+  const parsed = new Date(rawDate);
+  if (Number.isNaN(parsed.getTime())) return "Date inconnue";
+
+  return parsed.toLocaleDateString("fr-FR");
+};
+
+const getLotOptions = (lots: Lot[]) => [
+  { label: "Sélectionner un lot", value: "0" },
+  ...[...lots]
+    .sort((a, b) => {
+      const aTime = new Date(a.received_at ?? a.created_at ?? 0).getTime();
+      const bTime = new Date(b.received_at ?? b.created_at ?? 0).getTime();
+      return bTime - aTime;
+    })
+    .map((lot) => ({
+      label: `#${lot.id} - ${getLotDateLabel(lot)} - ${lot.reference || "Sans référence"} (${Number(lot.total_expense || 0).toLocaleString("fr-FR")} Ar)`,
+      value: String(lot.id)
+    }))
+];
 
 function StockForm({
   stock,
@@ -38,6 +71,13 @@ function StockForm({
     reference: ""
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const stockValidation = (() => {
+    const issues: string[] = [];
+    if (!form.product_id) issues.push("Produit requis");
+    if (!stock && !form.lot_id) issues.push("Lot requis");
+    return issues;
+  })();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,103 +111,106 @@ function StockForm({
   };
 
   return (
-    <form className="space-y-4" onSubmit={handleSubmit}>
-      {errors.submit && (
-        <div className="rounded-xl border border-warning/50 bg-warning/10 px-3 py-2 text-sm text-ink">
-          {errors.submit}
+    <form className="flex flex-col gap-0" onSubmit={handleSubmit}>
+      <div className="space-y-4 pb-4">
+        {errors.submit && (
+          <div className="rounded-xl border border-warning/50 bg-warning/10 px-3 py-2 text-sm text-ink">
+            {errors.submit}
+          </div>
+        )}
+
+        <div className="rounded-2xl border border-border/60 bg-bg/30 p-4 space-y-4">
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted">
+            Produit
+          </p>
+          <Select
+            label="Produit"
+            value={String(form.product_id)}
+            onValueChange={(value) =>
+              setForm((p) => ({ ...p, product_id: parseInt(value) }))
+            }
+            options={products.map((p) => ({
+              label: `${p.name} (${p.sku})`,
+              value: String(p.id)
+            }))}
+            placeholder="Sélectionner un produit"
+            disabled={isLoading}
+            error={errors.product_id}
+          />
         </div>
-      )}
-      <div className="space-y-1.5">
-        <label className="block text-sm font-semibold text-ink">Produit</label>
-        <select
-          value={form.product_id}
-          onChange={(e) =>
-            setForm((p) => ({ ...p, product_id: parseInt(e.target.value) }))
-          }
-          className="h-12 w-full rounded-xl border border-border bg-panel px-3.5 text-sm text-ink outline-none transition focus-visible:border-brand/70 focus-visible:ring-2 focus-visible:ring-brand/25"
-          disabled={isLoading}
-        >
-          {products.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name} ({p.sku})
-            </option>
-          ))}
-        </select>
-        {errors.product_id && (
-          <p className="text-xs text-warning">{errors.product_id}</p>
+
+        <div className="rounded-2xl border border-border/60 bg-bg/30 p-4 space-y-4">
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted">
+            Détails stock
+          </p>
+          <QuantityInput
+            label="Quantité"
+            value={form.quantity}
+            onChange={(value) => setForm((p) => ({ ...p, quantity: value }))}
+            placeholder="0"
+            disabled={isLoading}
+            min={0}
+          />
+          {stock ? (
+            <label className="inline-flex cursor-pointer items-center gap-3">
+              <span className="text-sm font-semibold text-ink">Réservé</span>
+              <span className="relative inline-flex h-7 w-12 items-center">
+                <input
+                  type="checkbox"
+                  className="peer sr-only"
+                  checked={form.reserved}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, reserved: e.target.checked }))
+                  }
+                  disabled={isLoading}
+                />
+                <span className="absolute inset-0 rounded-full bg-border transition peer-checked:bg-brand peer-disabled:opacity-60" />
+                <span className="absolute left-1 h-5 w-5 rounded-full bg-white shadow transition peer-checked:translate-x-5" />
+              </span>
+            </label>
+          ) : (
+            <>
+              <Select
+                label="Lot"
+                value={String(form.lot_id || "")}
+                onValueChange={(value) =>
+                  setForm((p) => ({ ...p, lot_id: parseInt(value) || 0 }))
+                }
+                options={getLotOptions(lots)}
+                disabled={isLoading}
+                error={errors.lot_id}
+              />
+              <Input
+                label="Référence lot"
+                value={form.reference}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, reference: e.target.value }))
+                }
+                placeholder="ARRIVAGE-2026-06"
+                disabled={isLoading}
+              />
+            </>
+          )}
+        </div>
+
+        {stockValidation.length > 0 && (
+          <ul className="space-y-0.5 rounded-xl border border-warning/40 bg-warning/8 px-3 py-2">
+            {stockValidation.map((msg) => (
+              <li key={msg} className="text-xs text-warning">
+                • {msg}
+              </li>
+            ))}
+          </ul>
         )}
       </div>
-      <Input
-        label="Quantité"
-        type="number"
-        value={form.quantity}
-        onChange={(e) =>
-          setForm((p) => ({ ...p, quantity: parseInt(e.target.value) || 0 }))
-        }
-        placeholder="0"
-        disabled={isLoading}
-      />
-      {stock ? (
-        <label className="inline-flex cursor-pointer items-center gap-3">
-          <span className="text-sm font-semibold text-ink">Réservé</span>
-          <span className="relative inline-flex h-7 w-12 items-center">
-            <input
-              type="checkbox"
-              className="peer sr-only"
-              checked={form.reserved}
-              onChange={(e) =>
-                setForm((p) => ({ ...p, reserved: e.target.checked }))
-              }
-              disabled={isLoading}
-            />
-            <span className="absolute inset-0 rounded-full bg-border transition peer-checked:bg-brand peer-disabled:opacity-60" />
-            <span className="absolute left-1 h-5 w-5 rounded-full bg-white shadow transition peer-checked:translate-x-5" />
-          </span>
-        </label>
-      ) : (
-        <>
-          <div className="space-y-1.5">
-            <label className="block text-sm font-semibold text-ink">Lot</label>
-            <select
-              value={form.lot_id || ""}
-              onChange={(e) =>
-                setForm((p) => ({
-                  ...p,
-                  lot_id: parseInt(e.target.value) || 0
-                }))
-              }
-              className="h-12 w-full rounded-xl border border-border bg-panel px-3.5 text-sm text-ink outline-none transition focus-visible:border-brand/70 focus-visible:ring-2 focus-visible:ring-brand/25"
-              disabled={isLoading}
-            >
-              <option value={0}>Sélectionner un lot</option>
-              {lots.map((l) => (
-                <option key={l.id} value={l.id}>
-                  #{l.id} - {l.reference || "Sans référence"} (
-                  {Number(l.total_expense || 0).toLocaleString("fr-FR")} Ar)
-                </option>
-              ))}
-            </select>
-            {errors.lot_id && (
-              <p className="text-xs text-warning">{errors.lot_id}</p>
-            )}
-          </div>
-          <Input
-            label="Référence lot"
-            value={form.reference}
-            onChange={(e) =>
-              setForm((p) => ({ ...p, reference: e.target.value }))
-            }
-            placeholder="ARRIVAGE-2026-06"
-            disabled={isLoading}
-          />
-        </>
-      )}
-      <div className="flex gap-3 pt-2">
+
+      <div className="flex shrink-0 gap-3 border-t border-border/60 pt-4">
         <Button
           type="submit"
           isLoading={isLoading}
           variant="primary"
           className="flex-1"
+          disabled={isLoading || stockValidation.length > 0}
         >
           {stock ? "Mettre à jour" : "Créer"}
         </Button>
@@ -195,7 +238,7 @@ export function StockPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selected, setSelected] = useState<Stock | null>(null);
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(20);
   const [total, setTotal] = useState(0);
 
   useEffect(() => {
@@ -212,7 +255,9 @@ export function StockPage() {
 
   useEffect(() => {
     load();
-  }, [page]);
+  }, [page, pageSize]);
+
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   const load = async () => {
     try {
@@ -307,31 +352,36 @@ export function StockPage() {
 
   return (
     <Layout title="Stock" subtitle="Gestion des stocks produits">
-      <div className="space-y-6">
-        <div className="flex justify-end">
-          <Button
-            variant="primary"
-            onClick={() => {
-              setSelected(null);
-              setIsModalOpen(true);
-            }}
-          >
-            + Entrée stock
-          </Button>
-        </div>
+      <div className="flex h-full min-h-0 flex-col gap-6 overflow-hidden">
         {error && (
           <div className="rounded-2xl border border-warning/50 bg-warning/10 px-4 py-3 text-sm text-ink">
             {error}
           </div>
         )}
-        <Card title="Stocks" description={`Total: ${total} entrées`}>
+        <Card
+          title="Stocks"
+          description={`Total: ${total} entrées`}
+          className="flex min-h-0 flex-1 flex-col"
+          bodyClassName="flex min-h-0 flex-1 flex-col"
+          headerAction={
+            <Button
+              variant="primary"
+              onClick={() => {
+                setSelected(null);
+                setIsModalOpen(true);
+              }}
+            >
+              + Entrée stock
+            </Button>
+          }
+        >
           <DataTable
             columns={columns}
             data={stocks}
             isLoading={isLoading}
             emptyMessage="Aucun stock"
             actions={(s) => (
-              <div className="flex gap-2">
+              <>
                 <Button
                   size="sm"
                   variant="secondary"
@@ -340,30 +390,60 @@ export function StockPage() {
                     setSelected(s);
                     setIsModalOpen(true);
                   }}
+                  title="Modifier"
+                  aria-label="Modifier"
+                  className="h-8 w-8 p-0"
                 >
-                  Modifier
+                  <Pencil className="h-3.5 w-3.5" />
                 </Button>
                 <Button
                   size="sm"
                   variant="danger"
                   disabled={isFormLoading}
                   onClick={() => handleDelete(s)}
+                  title="Supprimer"
+                  aria-label="Supprimer"
+                  className="h-8 w-8 p-0"
                 >
-                  Supprimer
+                  <Trash2 className="h-3.5 w-3.5" />
                 </Button>
-              </div>
+              </>
             )}
           />
         </Card>
 
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted">
-            Page {page} / {Math.max(1, Math.ceil(total / pageSize))}
+        <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-xl border border-border/60 bg-panel/65 px-2.5 py-2 sm:gap-3 sm:px-3">
+          <p className="text-xs font-medium text-muted sm:text-sm">
+            Page {page} / {totalPages}
           </p>
-          <div className="flex gap-2">
+          <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
+            <label
+              className="text-[11px] font-semibold uppercase tracking-wide text-muted sm:text-xs"
+              htmlFor="stock-page-size"
+            >
+              Par page
+            </label>
+            <select
+              id="stock-page-size"
+              className="h-8 min-w-[68px] rounded-lg border border-border bg-bg px-2 text-xs font-semibold text-ink outline-none transition focus-visible:border-brand/70 focus-visible:ring-2 focus-visible:ring-brand/25 sm:h-9 sm:min-w-[72px] sm:text-sm"
+              value={pageSize}
+              onChange={(e) => {
+                const nextSize = Number(e.target.value) || 20;
+                setPageSize(nextSize);
+                setPage(1);
+              }}
+              disabled={isLoading}
+            >
+              {[10, 20, 50, 100].map((size) => (
+                <option key={size} value={size}>
+                  {size}
+                </option>
+              ))}
+            </select>
             <Button
               size="sm"
               variant="secondary"
+              className="min-w-[84px] sm:min-w-[96px]"
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1}
             >
@@ -372,8 +452,9 @@ export function StockPage() {
             <Button
               size="sm"
               variant="secondary"
+              className="min-w-[84px] sm:min-w-[96px]"
               onClick={() => setPage((p) => p + 1)}
-              disabled={page >= Math.ceil(total / pageSize)}
+              disabled={page >= totalPages}
             >
               Suivant
             </Button>

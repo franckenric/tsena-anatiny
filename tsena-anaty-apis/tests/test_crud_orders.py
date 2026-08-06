@@ -54,6 +54,8 @@ def test_create_orders(db: Session):
         delivery_address='psRliQ2xjQPSuiCQHUbTLl8Ccl0B81VvqSW3N99pW8STAVWZXQ7vqhwZ5OKaVc9sQC1dLYqha3pFFpHgUeuPYUlVncivd45y6IJk',
         product_id=products.id,
         quantity=10,
+        unit_cost=15000,
+        another_price=500,
         status='draft',
         note='jEp5eLkOH23JUsUQW1Nzr110yUXb0vJZYcK9Mnx',
     )
@@ -116,6 +118,8 @@ def test_update_orders(db: Session):
         delivery_address='FrYzVOHFUeWqDSjvKrRouN8BjABoN431VNA7U8DpRXwj0CufX258tDISi8iFEDBRpZ2UBbrEWNBeedbH',
         product_id=products.id,
         quantity=0,
+        unit_cost=12000,
+        another_price=0,
         status='draft',
         note='AZouWg0yRH8AJU77NnOlq2yy5lX94',
     )
@@ -240,6 +244,8 @@ def test_get_orders(db: Session):
         delivery_address='T2kiuOXPYceu9J9Oe4UjOJVNYkBXHBECvXm07tUBGD2xEguDXe9itvO9ipQF6dQpS5soT4jjjJWZXlWed',
         product_id=products.id,
         quantity=3,
+        unit_cost=10000,
+        another_price=250,
         status='confirmed',
         note='3Ad7Rfi985Mn82BVkgiYxobECwPQDxw3CWQMWlApWFJ1nmdTaqyFE1tu',
     )
@@ -306,6 +312,8 @@ def test_get_by_id_orders(db: Session):
         delivery_address='rExYKcdo7vZKBXvleszBKu2q1qsXWOYyyfRUN8K',
         product_id=products.id,
         quantity=15,
+        unit_cost=20000,
+        another_price=1000,
         status='cancelled',
         note='gVuIjqsSjCVdOlVspW6gyEvdus0uLZb0GgzxX',
     )
@@ -382,6 +390,8 @@ def test_delete_orders(db: Session):
         delivery_address='mC2VsG5WDDUzNZznFIX2bIbaFRjzFfg4AGyosHtyuadk972zg7sKkbg43Qf2z',
         product_id=products.id,
         quantity=15,
+        unit_cost=17500,
+        another_price=750,
         status='delivered',
         note='D8WpPK7u2Tty9i44vsd8KJkE9Xwvzqwdbwn0G5L6vuOf8yEpqa26PWzIM4M0QyA',
     )

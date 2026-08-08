@@ -38,8 +38,11 @@ function generateRef(date?: string): string {
   return `ACHAT-${y}${m}${day}`;
 }
 
-const roundToNearestThousand = (value: number) =>
-  Math.max(0, Math.round(value / 1000) * 1000);
+const roundToNearestThousand = (value: number) => {
+  if (!Number.isFinite(value) || value <= 0) return 0;
+  if (value < 500) return Math.round(value * 100) / 100;
+  return Math.max(1000, Math.round(value / 1000) * 1000);
+};
 
 function CreateLotForm({
   onSubmit,
@@ -299,6 +302,7 @@ export function LotsPage() {
     null
   );
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [estimatedMargin, setEstimatedMargin] = useState(100);
 
   const load = async () => {
     try {
@@ -429,19 +433,34 @@ export function LotsPage() {
     {} as Record<number, Product>
   );
 
+  type ProductVariantItem = NonNullable<Product["variants"]>[number];
+
+  const variantById = products.reduce(
+    (acc, product) => {
+      for (const v of product.variants ?? []) {
+        acc[v.id] = v;
+      }
+      return acc;
+    },
+    {} as Record<number, ProductVariantItem>
+  );
+
+  const currentStockByVariant = products.reduce(
+    (acc, product) => {
+      for (const v of product.variants ?? []) {
+        acc[v.id] = Number(v.quantity ?? 0);
+      }
+      return acc;
+    },
+    {} as Record<number, number>
+  );
+
   type LotProductRow = StockMovement & {
     line_total: number;
     current_stock: number;
     sold_quantity: number;
     selling_price: number;
-    estimated_price_25: number;
-    estimated_price_50: number;
-    estimated_price_75: number;
-    estimated_price_100: number;
-    estimated_price_200: number;
-    estimated_price_300: number;
-    estimated_price_400: number;
-    estimated_price_500: number;
+    base_unit_cost: number;
   };
 
   const stockLotColumns: Column<LotProductRow>[] = [
@@ -454,11 +473,25 @@ export function LotsPage() {
         const productName =
           row.product?.name || fallbackProduct?.name || `#${row.product_id}`;
         const productSku = row.product?.sku || fallbackProduct?.sku || "-";
+        const movementVariant =
+          row.variant_id != null ? variantById[row.variant_id] : undefined;
+        const variant = movementVariant ?? row.variant;
+        const parent =
+          movementVariant?.parent_id != null
+            ? variantById[movementVariant.parent_id]
+            : undefined;
 
         return (
           <div>
             <p className="font-semibold text-ink">{productName}</p>
             <p className="text-xs text-muted">{productSku}</p>
+            {variant && (
+              <p className="text-xs font-medium text-brand">
+                {variant.name || `Variante #${variant.id}`}
+                {parent?.name ? ` (${parent.name})` : ""}
+                {variant.sku ? ` · ${variant.sku}` : ""}
+              </p>
+            )}
           </div>
         );
       }
@@ -480,8 +513,14 @@ export function LotsPage() {
       header: "Prix unitaire",
       accessor: "unit_cost",
       width: "12%",
-      render: (v) =>
-        v != null ? `${Number(v).toLocaleString("fr-FR")} Ar` : "-"
+      render: (v, row) => {
+        const variantUnitCost =
+          row.variant_id != null
+            ? effectiveVariantUnitCost(row.variant_id)
+            : null;
+        const value = variantUnitCost ?? Number(v ?? 0);
+        return value > 0 ? `${Number(value).toLocaleString("fr-FR")} Ar` : "-";
+      }
     },
     {
       header: "Prix total",
@@ -490,82 +529,18 @@ export function LotsPage() {
       render: (v) => `${Number(v || 0).toLocaleString("fr-FR")} Ar`
     },
     {
-      header: "PV estime (25/50/75/100%)",
-      accessor: "estimated_price_25",
-      width: "18%",
-      render: (_, row) => {
+      header: "PV estime",
+      accessor: "base_unit_cost",
+      width: "12%",
+      render: (v, row) => {
         if (!row.quantity || row.quantity <= 0) return "-";
-        return (
-          <div className="space-y-0.5 text-xs">
-            <p>
-              25%:{" "}
-              {row.estimated_price_25.toLocaleString("fr-FR", {
-                maximumFractionDigits: 2
-              })}{" "}
-              Ar
-            </p>
-            <p>
-              50%:{" "}
-              {row.estimated_price_50.toLocaleString("fr-FR", {
-                maximumFractionDigits: 2
-              })}{" "}
-              Ar
-            </p>
-            <p>
-              75%:{" "}
-              {row.estimated_price_75.toLocaleString("fr-FR", {
-                maximumFractionDigits: 2
-              })}{" "}
-              Ar
-            </p>
-            <p>
-              100%:{" "}
-              {row.estimated_price_100.toLocaleString("fr-FR", {
-                maximumFractionDigits: 2
-              })}{" "}
-              Ar
-            </p>
-          </div>
+        const price = roundToNearestThousand(
+          Number(v) * (1 + estimatedMargin / 100)
         );
-      }
-    },
-    {
-      header: "PV estime (200/300/400/500%)",
-      accessor: "estimated_price_200",
-      width: "18%",
-      render: (_, row) => {
-        if (!row.quantity || row.quantity <= 0) return "-";
         return (
-          <div className="space-y-0.5 text-xs">
-            <p>
-              200%:{" "}
-              {row.estimated_price_200.toLocaleString("fr-FR", {
-                maximumFractionDigits: 2
-              })}{" "}
-              Ar
-            </p>
-            <p>
-              300%:{" "}
-              {row.estimated_price_300.toLocaleString("fr-FR", {
-                maximumFractionDigits: 2
-              })}{" "}
-              Ar
-            </p>
-            <p>
-              400%:{" "}
-              {row.estimated_price_400.toLocaleString("fr-FR", {
-                maximumFractionDigits: 2
-              })}{" "}
-              Ar
-            </p>
-            <p>
-              500%:{" "}
-              {row.estimated_price_500.toLocaleString("fr-FR", {
-                maximumFractionDigits: 2
-              })}{" "}
-              Ar
-            </p>
-          </div>
+          <span className="font-semibold text-brand">
+            {price.toLocaleString("fr-FR")} Ar
+          </span>
         );
       }
     },
@@ -679,6 +654,28 @@ export function LotsPage() {
     {} as Record<number, number>
   );
 
+  const soldQuantityByLotAndVariant = allStockMovements.reduce(
+    (acc, movement) => {
+      if (movement.type !== "out_stock") return acc;
+      if (!movement.lot_id || !movement.variant_id) return acc;
+      const key = `${movement.lot_id}:${movement.variant_id}`;
+      acc[key] = (acc[key] || 0) + Number(movement.quantity || 0);
+      return acc;
+    },
+    {} as Record<string, number>
+  );
+
+  const soldQuantityByVariant = allStockMovements.reduce(
+    (acc, movement) => {
+      if (movement.type !== "out_stock") return acc;
+      if (!movement.variant_id) return acc;
+      acc[movement.variant_id] =
+        (acc[movement.variant_id] || 0) + Number(movement.quantity || 0);
+      return acc;
+    },
+    {} as Record<number, number>
+  );
+
   const deliveredSellingStatsByProduct = deliveredOrders.reduce(
     (acc, order) => {
       const productId = order.product_id;
@@ -720,45 +717,88 @@ export function LotsPage() {
     {} as Record<string, { quantity: number; total: number }>
   );
 
-  const getLotProductRows = (lotId: number): LotProductRow[] =>
-    getStockLinesForLot(lotId).map((line, _idx, lines) => {
-      const lineTotal =
-        (line.quantity || 0) * Number(line.unit_cost || 0) +
-        Number(line.another_price || 0);
-      const currentStock =
-        currentStockByProduct[line.product_id] ?? Number(line.stock_after || 0);
-      const soldQuantity =
-        soldQuantityByLotAndProduct[`${lotId}:${line.product_id}`] ??
-        soldQuantityByProduct[line.product_id] ??
-        0;
+  const effectiveVariantSellingPrice = (variantId: number): number | null => {
+    let current = variantById[variantId];
+    while (current) {
+      if (current.selling_price) return Number(current.selling_price);
+      if (current.parent_id == null) break;
+      current = variantById[current.parent_id];
+    }
+    return null;
+  };
+
+  const effectiveVariantUnitCost = (variantId: number): number | null => {
+    let current = variantById[variantId];
+    while (current) {
+      if (current.unit_cost != null) return Number(current.unit_cost);
+      if (current.parent_id == null) break;
+      current = variantById[current.parent_id];
+    }
+    return null;
+  };
+
+  const getLotProductRows = (lotId: number): LotProductRow[] => {
+    const lines = getStockLinesForLot(lotId);
+    const totalPurchase = lines.reduce(
+      (sum, item) =>
+        sum +
+        (Number(item.quantity || 0) * Number(item.unit_cost || 0) +
+          Number(item.another_price || 0)),
+      0
+    );
+    const totalQuantity = lines.reduce(
+      (sum, item) => sum + Number(item.quantity || 0),
+      0
+    );
+    const totalExtraExpenses = lotExpenses.reduce(
+      (sum, expense) => sum + Number(expense.amount || 0),
+      0
+    );
+
+    const buildRow = (
+      line: StockMovement,
+      qty: number,
+      unitCost: number,
+      anotherPrice: number,
+      variantId?: number | null
+    ): LotProductRow => {
+      const baseUnitCost =
+        variantId != null
+          ? (effectiveVariantUnitCost(variantId) ?? Number(unitCost || 0))
+          : Number(unitCost || 0);
+      const lineTotal = qty * baseUnitCost + anotherPrice;
+
+      const currentStock = variantId
+        ? (currentStockByVariant[variantId] ??
+          Number(line.stock_after || 0))
+        : (currentStockByProduct[line.product_id] ??
+          Number(line.stock_after || 0));
+
+      const soldQuantity = variantId
+        ? (soldQuantityByLotAndVariant[`${lotId}:${variantId}`] ??
+          soldQuantityByVariant[variantId] ??
+          0)
+        : (soldQuantityByLotAndProduct[`${lotId}:${line.product_id}`] ??
+          soldQuantityByProduct[line.product_id] ??
+          0);
+
       const sellingStatsByLot =
         sellingPriceStatsByLotAndProduct[`${lotId}:${line.product_id}`];
       const sellingStatsByProduct =
         deliveredSellingStatsByProduct[line.product_id] ?? null;
-      const sellingPrice = sellingStatsByLot
-        ? roundToNearestThousand(
-            sellingStatsByLot.total / sellingStatsByLot.quantity
-          )
-        : sellingStatsByProduct
+      const variantSellingPrice =
+        variantId != null ? effectiveVariantSellingPrice(variantId) : null;
+      const sellingPrice =
+        variantSellingPrice ??
+        (sellingStatsByLot
           ? roundToNearestThousand(
-              sellingStatsByProduct.total / sellingStatsByProduct.quantity
+              sellingStatsByLot.total / sellingStatsByLot.quantity
             )
-          : 0;
-      const totalPurchase = lines.reduce(
-        (sum, item) =>
-          sum +
-          (Number(item.quantity || 0) * Number(item.unit_cost || 0) +
-            Number(item.another_price || 0)),
-        0
-      );
-      const totalQuantity = lines.reduce(
-        (sum, item) => sum + Number(item.quantity || 0),
-        0
-      );
-      const totalExtraExpenses = lotExpenses.reduce(
-        (sum, expense) => sum + Number(expense.amount || 0),
-        0
-      );
+          : sellingStatsByProduct
+            ? roundToNearestThousand(
+                sellingStatsByProduct.total / sellingStatsByProduct.quantity
+              )
+            : 0);
 
       // Repartit les depenses additionnelles pour que le prix estime couvre bien la depense totale du lot.
       let allocatedExpenses = 0;
@@ -766,40 +806,71 @@ export function LotsPage() {
         if (totalPurchase > 0) {
           allocatedExpenses = (lineTotal / totalPurchase) * totalExtraExpenses;
         } else if (totalQuantity > 0) {
-          allocatedExpenses =
-            (Number(line.quantity || 0) / totalQuantity) * totalExtraExpenses;
+          allocatedExpenses = (qty / totalQuantity) * totalExtraExpenses;
         }
       }
 
       const effectiveLineTotal = lineTotal + allocatedExpenses;
-      const unitCostWithExtra =
-        (line.quantity || 0) > 0
-          ? effectiveLineTotal / Number(line.quantity || 1)
-          : 0;
-      const estimatedPrice25 = roundToNearestThousand(unitCostWithExtra * 1.25);
-      const estimatedPrice50 = roundToNearestThousand(unitCostWithExtra * 1.5);
-      const estimatedPrice75 = roundToNearestThousand(unitCostWithExtra * 1.75);
-      const estimatedPrice100 = roundToNearestThousand(unitCostWithExtra * 2);
-      const estimatedPrice200 = roundToNearestThousand(unitCostWithExtra * 3);
-      const estimatedPrice300 = roundToNearestThousand(unitCostWithExtra * 4);
-      const estimatedPrice400 = roundToNearestThousand(unitCostWithExtra * 5);
-      const estimatedPrice500 = roundToNearestThousand(unitCostWithExtra * 6);
+      const unitCostWithExtra = qty > 0 ? effectiveLineTotal / qty : 0;
+
       return {
         ...line,
+        quantity: qty,
+        unit_cost: baseUnitCost,
+        another_price: anotherPrice,
+        variant_id: variantId ?? null,
         line_total: lineTotal,
         current_stock: currentStock,
         sold_quantity: soldQuantity,
         selling_price: sellingPrice,
-        estimated_price_25: estimatedPrice25,
-        estimated_price_50: estimatedPrice50,
-        estimated_price_75: estimatedPrice75,
-        estimated_price_100: estimatedPrice100,
-        estimated_price_200: estimatedPrice200,
-        estimated_price_300: estimatedPrice300,
-        estimated_price_400: estimatedPrice400,
-        estimated_price_500: estimatedPrice500
+        base_unit_cost: unitCostWithExtra
       };
-    });
+    };
+
+    const rows: LotProductRow[] = [];
+    for (const line of lines) {
+      const product = productById[line.product_id] ?? line.product;
+      const productVariants = product?.variants ?? [];
+      const leaves = productVariants.filter(
+        (v) => !productVariants.some((child) => child.parent_id === v.id)
+      );
+
+      if (line.variant_id) {
+        rows.push(
+          buildRow(
+            line,
+            Number(line.quantity || 0),
+            Number(line.unit_cost || 0),
+            Number(line.another_price || 0),
+            line.variant_id
+          )
+        );
+      } else if (leaves.length > 0) {
+        for (const leaf of leaves) {
+          rows.push(
+            buildRow(
+              line,
+              Number(leaf.quantity ?? 0),
+              Number(line.unit_cost || 0),
+              0,
+              leaf.id
+            )
+          );
+        }
+      } else {
+        rows.push(
+          buildRow(
+            line,
+            Number(line.quantity || 0),
+            Number(line.unit_cost || 0),
+            Number(line.another_price || 0),
+            null
+          )
+        );
+      }
+    }
+    return rows;
+  };
 
   const getLotSoldAmount = (lotId: number): number => {
     // Calculate: sum of all out_stock movements for this lot: Σ(quantité × unit_cost + another_price)
@@ -1117,11 +1188,41 @@ export function LotsPage() {
 
             {lotDetailsTab === "products" && (
               <div className="space-y-3">
+                <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border/60 bg-bg/30 px-4 py-3">
+                  <p className="shrink-0 text-xs font-semibold uppercase tracking-wide text-muted">
+                    PV estime
+                  </p>
+                  <span className="shrink-0 text-xs font-semibold text-muted">
+                    25%
+                  </span>
+                  <input
+                    type="range"
+                    min={25}
+                    max={500}
+                    step={25}
+                    value={estimatedMargin}
+                    onChange={(e) =>
+                      setEstimatedMargin(Number(e.target.value))
+                    }
+                    className="min-w-40 flex-1 accent-brand"
+                  />
+                  <span className="shrink-0 text-xs font-semibold text-muted">
+                    500%
+                  </span>
+                  <span className="w-14 shrink-0 text-right text-sm font-bold text-brand">
+                    {estimatedMargin}%
+                  </span>
+                </div>
                 <DataTable
                   columns={stockLotColumns}
                   data={getLotProductRows(selectedLotForDetails.id)}
                   isLoading={false}
                   emptyMessage="Aucun mouvement entree dans ce lot"
+                  getRowKey={(row) =>
+                    row.variant_id
+                      ? `${row.id}-v${row.variant_id}`
+                      : `${row.id}-p${row.product_id}`
+                  }
                   tableMaxHeight="calc(100vh - 30rem)"
                 />
               </div>

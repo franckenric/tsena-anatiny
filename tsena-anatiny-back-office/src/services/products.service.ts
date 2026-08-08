@@ -3,7 +3,13 @@ import type {
   CreateProductPayload,
   UpdateProductPayload,
   ProductListResponse,
-  ProductImageUploadResponse
+  ProductImageUploadResponse,
+  ReceiptExtractionResult,
+  ReceiptImportRequest,
+  ProductVariantNode,
+  ProductVariant,
+  CreateVariantPayload,
+  UpdateVariantPayload
 } from "../types/product";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api/v1";
@@ -26,7 +32,7 @@ export const productsService = {
   async getProducts(
     page = 1,
     pageSize = 20,
-    relation = '["categorie{id,name}","stock{quantity}","commercial_assignment{user_id}","commercial_assignment.user{full_name,email}"]'
+    relation = '["categorie{id,name}","stock{quantity}","variants{id,parent_id,name,sku,quantity,unit_cost,selling_price}","commercial_assignment{user_id}","commercial_assignment.user{full_name,email}"]'
   ): Promise<ProductListResponse> {
     const skip = (page - 1) * pageSize;
     const token = getToken() || "";
@@ -140,5 +146,133 @@ export const productsService = {
     }
 
     return response.json();
+  },
+
+  async uploadVariantImage(file: File): Promise<ProductImageUploadResponse> {
+    return this.uploadProductImage(file);
+  },
+
+  async extractReceipt(file: File): Promise<ReceiptExtractionResult> {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await fetch(
+      `${API_BASE_URL}/products/extract-receipt`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${getToken()}`
+        },
+        body: formData
+      }
+    );
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.detail || "Erreur extraction reçu");
+    }
+
+    return response.json();
+  },
+
+  async importReceipt(payload: ReceiptImportRequest): Promise<Product[]> {
+    const response = await fetch(
+      `${API_BASE_URL}/products/import-receipt`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${getToken()}`
+        },
+        body: JSON.stringify(payload)
+      }
+    );
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.detail || "Erreur import du reçu");
+    }
+
+    clearProductsCache();
+    return response.json();
+  },
+
+  async getVariants(productId: number): Promise<ProductVariantNode[]> {
+    const response = await fetch(
+      `${API_BASE_URL}/products/${productId}/variants`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${getToken()}`
+        }
+      }
+    );
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.detail || "Erreur chargement variantes");
+    }
+    return response.json();
+  },
+
+  async createVariant(
+    productId: number,
+    payload: CreateVariantPayload
+  ): Promise<ProductVariant> {
+    const response = await fetch(
+      `${API_BASE_URL}/products/${productId}/variants`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${getToken()}`
+        },
+        body: JSON.stringify(payload)
+      }
+    );
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.detail || "Erreur création variante");
+    }
+    return response.json();
+  },
+
+  async updateVariant(
+    productId: number,
+    variantId: number,
+    payload: UpdateVariantPayload
+  ): Promise<ProductVariant> {
+    const response = await fetch(
+      `${API_BASE_URL}/products/${productId}/variants/${variantId}`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${getToken()}`
+        },
+        body: JSON.stringify(payload)
+      }
+    );
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.detail || "Erreur mise à jour variante");
+    }
+    return response.json();
+  },
+
+  async deleteVariant(productId: number, variantId: number): Promise<void> {
+    const response = await fetch(
+      `${API_BASE_URL}/products/${productId}/variants/${variantId}`,
+      {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${getToken()}`
+        }
+      }
+    );
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.detail || "Erreur suppression variante");
+    }
   }
 };

@@ -20,6 +20,7 @@ def test_create_users(db: Session):
         email='jbyL3@rytxp.com',
         password='kmPvQ',
         is_active=False,
+        role_id=1,
         phone_numer='3b8AzlKx',
         address='rpS',
     )
@@ -44,6 +45,7 @@ def test_update_users(db: Session):
         email='z0yjt@kyqvl.com',
         password='Ha3yd',
         is_active=False,
+        role_id=1,
         phone_numer='i4HN6KVf',
         address='zxvLbOvg6bwWsu7mK130b4TLEifdBuq4tEQ50YEvXa5Sc8FPd18qt',
     )
@@ -106,7 +108,7 @@ def test_update_users(db: Session):
     update_data = schemas.UsersUpdate(**{
         k: _updated_value(k, v)
         for k, v in users_data.model_dump().items()
-        if k not in ['id', 'hashed_password', 'role_id'] and not isinstance(v, dict)
+        if k not in ['id', 'hashed_password', 'role_id'] and v is not None and not isinstance(v, dict)
     })
     updated_users = crud.users.update(
         db=db, db_obj=users, obj_in=update_data
@@ -127,6 +129,7 @@ def test_get_users(db: Session):
         email='QXkBr@ryl55.com',
         password='9fMNw',
         is_active=True,
+        role_id=1,
         phone_numer='o5t8ymU1kh',
         address='pcrJXgwJh0rateJ1rcjTfQNi8prd0qKV1S6y0oQFgHjuEUesh4K',
     )
@@ -157,6 +160,7 @@ def test_get_by_id_users(db: Session):
         email='8yqII@h1u4l.com',
         password='QIL2e',
         is_active=True,
+        role_id=1,
         phone_numer='I7KPapSBss',
         address='nV19GQnBdxkrsbe2DmTYZIEakOw5u9pJEHWlO7wsA4aFME',
     )
@@ -188,6 +192,7 @@ def test_delete_users(db: Session):
         email='ETx6v@o1ip7.com',
         password='KvHsd',
         is_active=True,
+        role_id=1,
         phone_numer='1RBvjpY',
         address='IFMGw9816NxMOWXyQqX0FhgwbV3j2fkgsgwCZCAvEd9FiwQzkf',
     )

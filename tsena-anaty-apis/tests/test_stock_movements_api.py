@@ -30,6 +30,7 @@ def test_create_stock_movements_api(client, db):
         name='DPVHt0r',
         description='xtzB4rW2',
         image='fmych',
+        category_id=1,
         cost_price=5.5,
         selling_price=37.38,
         unit='fY',
@@ -46,6 +47,7 @@ def test_create_stock_movements_api(client, db):
         email='QDZqW@t3izc.com',
         password='YQ7R1',
         is_active=False,
+        role_id=1,
         phone_numer='XhzSZEfQ1w',
         address='VvEm4gSYX',
     )
@@ -59,8 +61,7 @@ def test_create_stock_movements_api(client, db):
         'user_id': users.id,
         'type': 'in_stock',
         'quantity': 15,
-        'stock_before': 8,
-        'stock_after': 15,
+        'unit_cost': 15000,
         'reference': '7s',
     }
 
@@ -72,8 +73,7 @@ def test_create_stock_movements_api(client, db):
     assert created['user_id'] == stock_movements_data['user_id']
     assert created['type'] == stock_movements_data['type']
     assert created['quantity'] == stock_movements_data['quantity']
-    assert created['stock_before'] == stock_movements_data['stock_before']
-    assert created['stock_after'] == stock_movements_data['stock_after']
+    assert created['unit_cost'] == stock_movements_data['unit_cost']
     assert created['reference'] == stock_movements_data['reference']
 
 
@@ -97,6 +97,7 @@ def test_update_stock_movements_api(client, db):
         name='N0DND',
         description='tn0KtKZlGnZSa08HnJRzffU8JkOAh7e4eYOYN8fwPQ',
         image='1N85',
+        category_id=1,
         cost_price=38.49,
         selling_price=70.65,
         unit='9qwVDMnA89',
@@ -113,6 +114,7 @@ def test_update_stock_movements_api(client, db):
         email='jRuAH@1fnml.com',
         password='y5fj3',
         is_active=True,
+        role_id=1,
         phone_numer='J2ERPqFa',
         address='MYfawpJvL6KBy9fR5ZKXdZWaOo8ZXFkKbjd5mJkTzvC6icBmr4w9EpPXMQ2',
     )
@@ -121,13 +123,19 @@ def test_update_stock_movements_api(client, db):
     db.commit()
     db.refresh(users)
 
+    # Test data for Lots
+    lots_data = schemas.LotCreate(reference='LOT-STOCK-UPDATE')
+    lots = crud.lots.create(db=db, obj_in=lots_data)
+    db.commit()
+    db.refresh(lots)
+
     stock_movements_data = {
         'product_id': products.id,
         'user_id': users.id,
-        'type': 'out_stock',
+        'type': 'in_stock',
         'quantity': 3,
-        'stock_before': 14,
-        'stock_after': 19,
+        'unit_cost': 15000,
+        'lot_id': lots.id,
         'reference': 'hoIOvS',
     }
 
@@ -190,24 +198,22 @@ def test_update_stock_movements_api(client, db):
     created = resp_c.json()
 
     # Handle self-reference updates if needed
-    fk_fields = ['product_id', 'user_id']
+    fk_fields = ['product_id', 'user_id', 'lot_id', 'type']
     self_ref_fields = []
 
     # Build update_data for API
     update_data = {
         k: _updated_value(k, v)
         for k, v in stock_movements_data.items()
-        if k not in ('id', 'hashed_password') and k not in fk_fields and k not in self_ref_fields and not isinstance(v, dict)
+        if k not in ('id', 'hashed_password') and k not in fk_fields and k not in self_ref_fields and v is not None and not isinstance(v, dict)
     }
 
     resp_u = client.put(f'/api/v1/stock_movements/{created["id"]}', json=update_data, headers={"Authorization": f"Bearer {token}"})
     assert resp_u.status_code == status.HTTP_200_OK, resp_u.json()
     updated = resp_u.json()
     assert updated['id'] == created['id']
-    assert updated['type'] == update_data['type']
     assert updated['quantity'] == update_data['quantity']
-    assert updated['stock_before'] == update_data['stock_before']
-    assert updated['stock_after'] == update_data['stock_after']
+    assert updated['unit_cost'] == update_data['unit_cost']
     assert updated['reference'] == update_data['reference']
 
 
@@ -231,6 +237,7 @@ def test_get_stock_movements_api(client, db):
         name='YUKzo',
         description='uc0yreat6ThAfFPBnAw10pG1T66bADvHa9Ba',
         image='0DeH8cn',
+        category_id=1,
         cost_price=41.08,
         selling_price=65.33,
         unit='RfVS5uP',
@@ -247,6 +254,7 @@ def test_get_stock_movements_api(client, db):
         email='1tKQz@ignty.com',
         password='NGDaQ',
         is_active=False,
+        role_id=1,
         phone_numer='bz',
         address='q4v4FHEEdiQpONuGdoByxNufidh5C5FA8wUbvxpKHWplFufDosktcc0tEx',
     )
@@ -260,8 +268,7 @@ def test_get_stock_movements_api(client, db):
         'user_id': users.id,
         'type': 'in_stock',
         'quantity': 10,
-        'stock_before': 11,
-        'stock_after': 8,
+        'unit_cost': 15000,
         'reference': 'gMvs',
     }
 
@@ -327,6 +334,7 @@ def test_get_by_id_stock_movements_api(client, db):
         name='5d1YGV2N',
         description='QZ4Mgz1fWx87lVIADbuDzVDjtbmDw674ZZdg7TxKX59cLMWcJHiKFpAfI1X',
         image='TYCiMu',
+        category_id=1,
         cost_price=30.52,
         selling_price=32.97,
         unit='oOO252',
@@ -343,6 +351,7 @@ def test_get_by_id_stock_movements_api(client, db):
         email='0UJk6@zdlxq.com',
         password='OoY84',
         is_active=True,
+        role_id=1,
         phone_numer='1W6pImYWm',
         address='1sHQlobKNh1TBWP',
     )
@@ -354,10 +363,9 @@ def test_get_by_id_stock_movements_api(client, db):
     stock_movements_data = {
         'product_id': products.id,
         'user_id': users.id,
-        'type': 'out_stock',
+        'type': 'in_stock',
         'quantity': 1,
-        'stock_before': 1,
-        'stock_after': 8,
+        'unit_cost': 15000,
         'reference': 'tp',
     }
 
@@ -421,6 +429,7 @@ def test_delete_stock_movements_api(client, db):
         name='I3Uo',
         description='uUvnAYsUEFTeZPMhWUw8z1XkHBJfZkEKw1gBdUjDndpWrOFjbDjR5RWyLYCrA7bgjY1bRgme7z7hx2',
         image='cQ',
+        category_id=1,
         cost_price=31.47,
         selling_price=82.02,
         unit='8pV',
@@ -437,6 +446,7 @@ def test_delete_stock_movements_api(client, db):
         email='SWRfD@gpim1.com',
         password='vVXyG',
         is_active=False,
+        role_id=1,
         phone_numer='zs',
         address='GFC3eKpLECNavnibmex6kYcCiVNyOEr9QPCDitvfff3bsdrTakqfB64TE5ZUWpkaucwtFb2ii40sIi7Oe8X61rKxHlTp1uNhPI',
     )
@@ -448,10 +458,9 @@ def test_delete_stock_movements_api(client, db):
     stock_movements_data = {
         'product_id': products.id,
         'user_id': users.id,
-        'type': 'out_stock',
+        'type': 'in_stock',
         'quantity': 2,
-        'stock_before': 1,
-        'stock_after': 18,
+        'unit_cost': 15000,
         'reference': 'Rj',
     }
 

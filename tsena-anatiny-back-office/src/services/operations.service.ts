@@ -209,7 +209,7 @@ export const stockService = {
 export const stockMovementsService = {
   async getMovements(page = 1, size = 20): Promise<StockMovementListResponse> {
     const data = await apiFetch<any>(
-      listUrl("/stock_movements/", page, size, '["product","user"]')
+      listUrl("/stock_movements/", page, size, '["product","user","variant{name,sku}"]')
     );
     return normalize<StockMovement>(data);
   },
@@ -291,7 +291,7 @@ export const ordersService = {
   async getOrders(
     page = 1,
     size = 20,
-    relation = '["customer{name,phone,delivery_address}","user{email}","stock_movements{product_id,quantity,unit_cost,another_price,other_price_reason,type}","stock_movements.product{name}"]'
+    relation = '["customer{name,phone,delivery_address}","user{email}","stock_movements{product_id,variant_id,quantity,unit_cost,another_price,other_price_reason,type}","stock_movements.product{name}","stock_movements.variant{name,sku}"]'
   ): Promise<OrderListResponse> {
     const data = await apiFetch<any>(listUrl("/orders/", page, size, relation));
     return normalize<Order>(data);

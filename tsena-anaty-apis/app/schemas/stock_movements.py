@@ -7,6 +7,7 @@ from typing import Any, List, Optional
 from pydantic import BaseModel, ConfigDict, field_validator
 from app.enum.type import TypeEnum
 from .products import Products
+from .product_variants import ProductVariant
 from .users import Users
 from .lots import Lot
 
@@ -15,6 +16,7 @@ class StockMovementsBase(BaseModel):
     product_id: Optional[int] = None
     user_id: Optional[int] = None
     lot_id: Optional[int] = None
+    variant_id: Optional[int] = None
     commande_id: Optional[int] = None
     type: Optional[TypeEnum] = None
     quantity: Optional[int] = None
@@ -55,6 +57,7 @@ class StockMovementsWithRelation(StockMovementsInDBBase):
     product: Optional[Products] = None
     user: Optional[Users] = None
     lot: Optional[Lot] = None
+    variant: Optional[ProductVariant] = None
 
 
 class StockMovementsInDB(StockMovementsInDBBase):

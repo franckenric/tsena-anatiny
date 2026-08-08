@@ -1,0 +1,21 @@
+{
+  "receipt_number": "307498410501020665",
+  "receipt_date": "9:11 AM, Aug 6th, 2026 (PDT)",
+  "seller": "Shenzhen L&y Technology Co., Ltd.",
+  "currency": "USD",
+  "items": [
+    {
+      "name": "Candy Color Soft Frosted TPU Back Cover Case for iPhone 6s 6 Plus 7 8 Plus 11 12 13 14 Pro Max Xr Xs",
+      "quantity": 10.0,
+      "unit_price": 0.79,
+      "total_price": 7.9
+    }
+  ],
+  "subtotal": 7.9,
+  "shipping_fee": 2.5,
+  "order_total": 10.4,
+  "payment_fee": 0.32,
+  "amount_paid": 10.72,
+  "total_fees": 2.82,
+  "source_file": "Receipt_307498410501020665_1786032714091.pdf"
+}

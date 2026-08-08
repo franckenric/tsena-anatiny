@@ -29,6 +29,7 @@ def test_create_commercial_assignments_api(client, db):
         email='qukUU@fqsup.com',
         password='D4mdc',
         is_active=False,
+        role_id=1,
         phone_numer='Q2QM',
         address='As0Kg841YDjfcctxOOJvePo0HYFR5lhAi1K3LbBYnt0JrQwdsPCym',
     )
@@ -43,6 +44,7 @@ def test_create_commercial_assignments_api(client, db):
         name='Smv',
         description='XlPCew',
         image='gu5',
+        category_id=1,
         cost_price=75.2,
         selling_price=34.77,
         unit='Fz',
@@ -88,6 +90,7 @@ def test_update_commercial_assignments_api(client, db):
         email='GfSb2@17nar.com',
         password='nh1TB',
         is_active=False,
+        role_id=1,
         phone_numer='21JHNg',
         address='CCqjN2rDRBjMFNTJ16YpO4rXWa7gnDgwiQvQLHaf4IqIGnKTGjdTgCUVIfEdLBhl5',
     )
@@ -102,6 +105,7 @@ def test_update_commercial_assignments_api(client, db):
         name='UHuigp',
         description='eTlWnWp1buNEONrSWsv4rDdxJuHk4NdJAclPLJFxnx66dB2RqOp8JnaGMEImjNXYlxZMO5nk1LlUm9CzxaRNwuMk2ubZM',
         image='gnFfEpS',
+        category_id=1,
         cost_price=74.44,
         selling_price=27.84,
         unit='BcKyzMB',
@@ -184,7 +188,7 @@ def test_update_commercial_assignments_api(client, db):
     update_data = {
         k: _updated_value(k, v)
         for k, v in commercial_assignments_data.items()
-        if k not in ('id', 'hashed_password') and k not in fk_fields and k not in self_ref_fields and not isinstance(v, dict)
+        if k not in ('id', 'hashed_password') and k not in fk_fields and k not in self_ref_fields and v is not None and not isinstance(v, dict)
     }
 
     resp_u = client.put(f'/api/v1/commercial_assignments/{created["id"]}', json=update_data, headers={"Authorization": f"Bearer {token}"})
@@ -213,6 +217,7 @@ def test_get_commercial_assignments_api(client, db):
         email='ns8LM@xkik5.com',
         password='9MJiv',
         is_active=True,
+        role_id=1,
         phone_numer='8Iasxd2GLF',
         address='X2OQeiEREmbapnrQfjVIP6Ag',
     )
@@ -227,6 +232,7 @@ def test_get_commercial_assignments_api(client, db):
         name='WSPxUUNUk3',
         description='qAtBE4mx',
         image='2K55fZ',
+        category_id=1,
         cost_price=58.89,
         selling_price=27.5,
         unit='cRn',
@@ -305,6 +311,7 @@ def test_get_by_id_commercial_assignments_api(client, db):
         email='uSAto@avt40.com',
         password='1vAgk',
         is_active=False,
+        role_id=1,
         phone_numer='DzlO',
         address='uXB7',
     )
@@ -319,6 +326,7 @@ def test_get_by_id_commercial_assignments_api(client, db):
         name='656LNm',
         description='wlGDOYTMrqghovjlyB4t4otY0qhUvppKQqUOPGh',
         image='dNJDU1PBO',
+        category_id=1,
         cost_price=66.3,
         selling_price=83.24,
         unit='WcdAz',
@@ -395,6 +403,7 @@ def test_delete_commercial_assignments_api(client, db):
         email='2X7Ru@dno9f.com',
         password='hGx43',
         is_active=False,
+        role_id=1,
         phone_numer='4jK3Xd',
         address='FDTjOJF7f0XRx4h4xsExCXmBHkeKTWC9h09v1TEjLsLMwWA4Sx5B8o5Os',
     )
@@ -409,6 +418,7 @@ def test_delete_commercial_assignments_api(client, db):
         name='nGQ8518',
         description='FWg4FOGy1SNGeDOWd4h8LgwC4',
         image='w55i8NRFlB',
+        category_id=1,
         cost_price=30.0,
         selling_price=9.23,
         unit='AeS7fKQC',

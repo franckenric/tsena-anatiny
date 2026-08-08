@@ -20,6 +20,7 @@ def test_create_commercial_assignments(db: Session):
         email='q1QaO@a3byi.com',
         password='oH6hA',
         is_active=True,
+        role_id=1,
         phone_numer='bmPW2g8hCj',
         address='kfzvIRvbvwegRcEtn8GyuZjQxQKslSGgCur0nQ6mX8cQ6QQMODk1pSzY4tM3AgM9VkYgtLBytue5ygmzXt',
     )
@@ -34,6 +35,7 @@ def test_create_commercial_assignments(db: Session):
         name='0T',
         description='v8LR8hOuNrV2TqUuCsUt2ECymP61fRMqpxBCUzVJ0FLuJ61z',
         image='KE7',
+        category_id=1,
         cost_price=67.51,
         selling_price=25.98,
         unit='ZD',
@@ -70,6 +72,7 @@ def test_update_commercial_assignments(db: Session):
         email='6GM2V@z5i05.com',
         password='6XL1a',
         is_active=False,
+        role_id=1,
         phone_numer='uqZc1ARKIQ',
         address='e0lb4QMDLkqtAaFuimvYMIFW2t6gOPX9Rq2zWydsvKSUvLXNm1TwSMmuXTaaW9rqrGHEvzzuYETw3cjN1DXxEY40',
     )
@@ -84,6 +87,7 @@ def test_update_commercial_assignments(db: Session):
         name='RZob4u',
         description='0qScSioAjjBFCpwDPGUfXcAIB7wnaAsSPoTTB6hSZW0AJsO28svgEERrQZrnwgLwj8jtgTRs1UfcHPOuR5W6uPOUWS',
         image='5J',
+        category_id=1,
         cost_price=21.71,
         selling_price=75.53,
         unit='jDDM',
@@ -157,7 +161,7 @@ def test_update_commercial_assignments(db: Session):
     update_data = schemas.CommercialAssignmentsUpdate(**{
         k: _updated_value(k, v)
         for k, v in commercial_assignments_data.model_dump().items()
-        if k not in ['id', 'hashed_password', 'user_id', 'product_id'] and not isinstance(v, dict)
+        if k not in ['id', 'hashed_password', 'user_id', 'product_id'] and v is not None and not isinstance(v, dict)
     })
     updated_commercial_assignments = crud.commercial_assignments.update(
         db=db, db_obj=commercial_assignments, obj_in=update_data
@@ -175,6 +179,7 @@ def test_get_commercial_assignments(db: Session):
         email='dOlpS@y08vo.com',
         password='cSvLs',
         is_active=True,
+        role_id=1,
         phone_numer='ew5qml8yix',
         address='BFgJgTZIvAARHznVotIdgFuvxawX25pIAh1dMWqQbevegIO4pv23QAiakXwn9egV3JwwPhPqMkIGL',
     )
@@ -189,6 +194,7 @@ def test_get_commercial_assignments(db: Session):
         name='XiFxZnW1e',
         description='8L2GL0zYNlWITeB2e6TB5w4XZQdENJ6vHgNKmnpx8vpQcdT9YSxMp2fN8GKV8yw6SQn3cDdVor',
         image='MWx',
+        category_id=1,
         cost_price=83.76,
         selling_price=12.44,
         unit='1lY7GIJFNH',
@@ -235,6 +241,7 @@ def test_get_by_id_commercial_assignments(db: Session):
         email='58uXv@p0qgx.com',
         password='d7eJc',
         is_active=False,
+        role_id=1,
         phone_numer='L8AuFFR4vM',
         address='RZ1bWwOzR',
     )
@@ -249,6 +256,7 @@ def test_get_by_id_commercial_assignments(db: Session):
         name='HAjQK',
         description='BEDf3ZVRRM62npNELR8O5s7FitpPcM0KTbKDZ8PpGjGj0lcueh2E2RanNb9rP',
         image='iy',
+        category_id=1,
         cost_price=23.76,
         selling_price=54.09,
         unit='SaHfsAb',
@@ -299,6 +307,7 @@ def test_delete_commercial_assignments(db: Session):
         email='r7jKu@whjnq.com',
         password='LnME2',
         is_active=True,
+        role_id=1,
         phone_numer='fhxnqQeT',
         address='whg3qgsofGRfOEAdWFkPJuhq5ZVxxWgDeQE4LkGg0qRNvaEGpcqLelrd',
     )
@@ -313,6 +322,7 @@ def test_delete_commercial_assignments(db: Session):
         name='PX',
         description='',
         image='nmdQcDey',
+        category_id=1,
         cost_price=25.8,
         selling_price=83.03,
         unit='CiMUYxN3',

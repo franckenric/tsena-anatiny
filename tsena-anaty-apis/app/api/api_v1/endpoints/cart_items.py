@@ -94,7 +94,7 @@ def read_cart_items(
 
     cart_items = crud.cart_items.get_multi_where_array(
         db=db,
-        relations=['customer', 'product'],
+        relations=['customer', 'product', 'variant'],
         skip=offset,
         limit=limit,
         where=where,
@@ -125,16 +125,47 @@ def create_cart_item(
     if not product:
         raise HTTPException(status_code=404, detail='Product not found')
 
+    variant = None
+    if item_in.variant_id is not None:
+        variant = crud.product_variants.get(db=db, id=item_in.variant_id)
+        if not variant:
+            raise HTTPException(status_code=404, detail='Variant not found')
+        if variant.product_id != product.id:
+            raise HTTPException(status_code=422, detail='Variant does not belong to this product')
+        if crud.product_variants.has_children(db=db, variant_id=variant.id):
+            raise HTTPException(
+                status_code=422,
+                detail=f'Impossible de commander la variante « {variant.name} », choisissez une sous-variante',
+            )
+        available = crud.product_variants.effective_quantity(db, variant_id=variant.id)
+        if item_in.quantity > available:
+            raise HTTPException(
+                status_code=409,
+                detail=f'Stock insuffisant pour la variante « {variant.name} » (disponible: {available})',
+            )
+
     try:
         existing_item = crud.cart_items.get_by_customer_and_product(
             db=db,
             customer_id=customer.id,
             product_id=item_in.product_id,
+            variant_id=item_in.variant_id,
         )
 
         if existing_item:
+            combined_quantity = (existing_item.quantity or 0) + item_in.quantity
+            if variant is not None:
+                available = crud.product_variants.effective_quantity(
+                    db, variant_id=variant.id
+                )
+                if combined_quantity > available:
+                    raise HTTPException(
+                        status_code=409,
+                        detail=f'Stock insuffisant pour la variante « {variant.name} » (disponible: {available})',
+                    )
+
             update_payload: dict[str, Any] = {
-                'quantity': (existing_item.quantity or 0) + item_in.quantity,
+                'quantity': combined_quantity,
             }
             if item_in.unit_cost is not None:
                 update_payload['unit_cost'] = item_in.unit_cost
@@ -156,6 +187,7 @@ def create_cart_item(
         item = models.CartItems(
             customer_id=customer.id,
             product_id=item_in.product_id,
+            variant_id=item_in.variant_id,
             quantity=item_in.quantity,
             unit_cost=item_in.unit_cost,
             another_price=item_in.another_price,
@@ -166,6 +198,9 @@ def create_cart_item(
         db.commit()
         db.refresh(item)
         return item
+    except HTTPException:
+        db.rollback()
+        raise
     except IntegrityError:
         db.rollback()
         raise HTTPException(status_code=409, detail='Cart item creation conflict')
@@ -244,6 +279,7 @@ def checkout_cart(
         movements=[
             OrderMovementPayload(
                 product_id=item.product_id,
+                variant_id=item.variant_id,
                 quantity=item.quantity,
                 unit_cost=item.unit_cost,
                 another_price=item.another_price,
@@ -272,6 +308,7 @@ def checkout_cart(
                     db=db,
                     order=order,
                     product_id=movement.product_id,
+                    variant_id=movement.variant_id,
                     quantity=movement.quantity,
                     movement_user_id=movement_user_id,
                     unit_cost=movement.unit_cost,

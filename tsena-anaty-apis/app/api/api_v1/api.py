@@ -9,6 +9,7 @@ from app.api.api_v1.endpoints import lot_expenses
 from app.api.api_v1.endpoints import lots
 from app.api.api_v1.endpoints import orders
 from app.api.api_v1.endpoints import products
+from app.api.api_v1.endpoints import product_variants
 from app.api.api_v1.endpoints import roles
 from app.api.api_v1.endpoints import stock
 from app.api.api_v1.endpoints import stock_movements
@@ -24,6 +25,7 @@ api_router.include_router(lot_expenses.router, prefix="/lot_expenses", tags=["lo
 api_router.include_router(lots.router, prefix="/lots", tags=["lots"])
 api_router.include_router(orders.router, prefix="/orders", tags=["orders"])
 api_router.include_router(products.router, prefix="/products", tags=["products"])
+api_router.include_router(product_variants.router, tags=["product_variants"])
 api_router.include_router(roles.router, prefix="/roles", tags=["roles"])
 api_router.include_router(stock.router, prefix="/stock", tags=["stock"])
 api_router.include_router(stock_movements.router, prefix="/stock_movements", tags=["stock_movements"])

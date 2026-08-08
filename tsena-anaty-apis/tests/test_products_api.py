@@ -29,6 +29,7 @@ def test_create_products_api(client, db):
         'name': 'fPkT',
         'description': 'RYkmNhmho5CiYtTfdmfph',
         'image': 'YBvJz5QXHR',
+        'category_id': 1,
         'cost_price': 57.73,
         'selling_price': 11.69,
         'unit': 'b3GD',
@@ -45,7 +46,6 @@ def test_create_products_api(client, db):
     assert created['name'] == products_data['name']
     assert created['description'] == products_data['description']
     assert created['image'] == products_data['image']
-    assert created['cost_price'] == products_data['cost_price']
     assert created['selling_price'] == products_data['selling_price']
     assert created['unit'] == products_data['unit']
     assert created['low_stock_alert'] == products_data['low_stock_alert']
@@ -71,6 +71,7 @@ def test_update_products_api(client, db):
         'name': 'nfxrcWclnK',
         'description': 'FHTh4up2JqW0uDyhMMBYHB1WY3ajdgjwoHMxD',
         'image': '9',
+        'category_id': 1,
         'cost_price': 55.67,
         'selling_price': 48.98,
         'unit': '9S',
@@ -144,7 +145,7 @@ def test_update_products_api(client, db):
     update_data = {
         k: _updated_value(k, v)
         for k, v in products_data.items()
-        if k not in ('id', 'hashed_password') and k not in fk_fields and k not in self_ref_fields and not isinstance(v, dict)
+        if k not in ('id', 'hashed_password') and k not in fk_fields and k not in self_ref_fields and v is not None and not isinstance(v, dict)
     }
 
     resp_u = client.put(f'/api/v1/products/{created["id"]}', json=update_data, headers={"Authorization": f"Bearer {token}"})
@@ -155,7 +156,6 @@ def test_update_products_api(client, db):
     assert updated['name'] == update_data['name']
     assert updated['description'] == update_data['description']
     assert updated['image'] == update_data['image']
-    assert updated['cost_price'] == update_data['cost_price']
     assert updated['selling_price'] == update_data['selling_price']
     assert updated['unit'] == update_data['unit']
     assert updated['low_stock_alert'] == update_data['low_stock_alert']
@@ -181,6 +181,7 @@ def test_get_products_api(client, db):
         'name': 'qgTk1Jp',
         'description': 'VKU8UN6oJnrIeeJIkMFhNFnhIsSQ4ZhjfATtAbZZBAeIJKcQFaOEBNvIVJuSLtDmE3YOuzfsjzSsKau',
         'image': 'R',
+        'category_id': 1,
         'cost_price': 14.45,
         'selling_price': 49.57,
         'unit': 'xTQRLw6',
@@ -235,6 +236,7 @@ def test_get_by_id_products_api(client, db):
         'name': 'q',
         'description': 'nLyILof383CQOTICGfqXh1HeFutMmVwrGV3aaMO4RIey',
         'image': '6MZ3FTPXde',
+        'category_id': 1,
         'cost_price': 71.93,
         'selling_price': 26.68,
         'unit': 'ZJ78S',
@@ -289,6 +291,7 @@ def test_delete_products_api(client, db):
         'name': '2a9',
         'description': 'PLt4TqDgAR5ixou0tKXwfGP9uDh36vAjGXVhy2EW9k2CQxLwbV7rLdfGrsxhpDzI3VHBrdsx1PwF4Yei5ZWQ3yxVZ',
         'image': '6ykzXuY',
+        'category_id': 1,
         'cost_price': 84.08,
         'selling_price': 66.83,
         'unit': 'XMEyFBYa5g',

@@ -28,6 +28,7 @@ def test_create_users_api(client, db):
         'email': 'Ouwan@gkjz9.com',
         'password': 'z6OMM',
         'is_active': True,
+        'role_id': 2,
         'phone_numer': 'XYXiEkoKZC',
         'address': 'corThnSHKznv0PaIgjP4ReFyltPQQm7eLS4XkxWOf7LdYgUGk161azNrxLAZb',
     }
@@ -61,6 +62,7 @@ def test_update_users_api(client, db):
         'email': 'di1Lv@zygrw.com',
         'password': 'XnUUB',
         'is_active': False,
+        'role_id': 2,
         'phone_numer': 'wF5br53Ew',
         'address': 'z9PG7FEQ004WYI9HJ8EVBCczotaXNxBduOxUbWFwVwxQmDFblSrzvjDdX4q6C3YpiVOH0GtA2fbQlNeqUcdWQ7lfCmw',
     }
@@ -130,7 +132,7 @@ def test_update_users_api(client, db):
     update_data = {
         k: _updated_value(k, v)
         for k, v in users_data.items()
-        if k not in ('id', 'hashed_password') and k not in fk_fields and k not in self_ref_fields and not isinstance(v, dict)
+        if k not in ('id', 'hashed_password') and k not in fk_fields and k not in self_ref_fields and v is not None and not isinstance(v, dict)
     }
 
     resp_u = client.put(f'/api/v1/users/{created["id"]}', json=update_data, headers={"Authorization": f"Bearer {token}"})
@@ -161,6 +163,7 @@ def test_get_users_api(client, db):
         'email': '9aspv@iz09p.com',
         'password': 'FeRcc',
         'is_active': True,
+        'role_id': 2,
         'phone_numer': 'inpX',
         'address': 'ulT9tIsGNykGt87bbUrLuTHGeBD8xvAPD9RuwCAFYtgk',
     }
@@ -211,6 +214,7 @@ def test_get_by_id_users_api(client, db):
         'email': 'NbUWZ@er8ev.com',
         'password': 'yr2t5',
         'is_active': True,
+        'role_id': 2,
         'phone_numer': 'M3tlPW',
         'address': 'IFzJIkWUjegLqbGGYTXxLPtEyL7hbvDamqHd2ZuvPIMAwN4QUz4nlpL8TqHZrtiACV',
     }
@@ -261,6 +265,7 @@ def test_delete_users_api(client, db):
         'email': 'bZ4Kz@2dfzb.com',
         'password': 'brcjx',
         'is_active': False,
+        'role_id': 2,
         'phone_numer': 'hM',
         'address': 'o4Q4uyD7zgiYP15OLI3TYqmglMHCjgdAyd1MzGsoTiHowYkr2aU8k25bn7f9HxhHm',
     }

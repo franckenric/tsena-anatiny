@@ -34,11 +34,11 @@ def test_login_access_token(client, db):
     )
     assert authenticated_user is not None  # This might fail
 
-    # Test login endpoint
+    # Test login endpoint (login uses the phone number as username)
     response = client.post(
         "/api/v1/login/access-token",
         data={
-            "username": user.email,
+            "username": user.phone_numer,
             "password": password,
             "grant_type": "password"
         },

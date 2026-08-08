@@ -21,6 +21,7 @@ def test_create_stock_movements(db: Session):
         name='6y6IFBHsLJ',
         description='I',
         image='Df1SC',
+        category_id=1,
         cost_price=7.1,
         selling_price=99.83,
         unit='3R',
@@ -37,6 +38,7 @@ def test_create_stock_movements(db: Session):
         email='MJG0F@uaq9r.com',
         password='LzSaA',
         is_active=False,
+        role_id=1,
         phone_numer='OfbRrys4t',
         address='RCcjjifdd8VSEISUJbivLaMIwfddTKrUE3be8KZt6LykeZmOGfHR',
     )
@@ -79,6 +81,7 @@ def test_update_stock_movements(db: Session):
         name='sl0wQIOJOA',
         description='XN6IfW',
         image='yMkZ9BRUH',
+        category_id=1,
         cost_price=96.51,
         selling_price=16.45,
         unit='gZw4',
@@ -95,6 +98,7 @@ def test_update_stock_movements(db: Session):
         email='EkosC@qtd4q.com',
         password='0N3eS',
         is_active=True,
+        role_id=1,
         phone_numer='QQcw',
         address='FOj9SUdEy6Q3bmmHeFG2vGzEFlnnSIrOcjNQPPqR',
     )
@@ -174,7 +178,7 @@ def test_update_stock_movements(db: Session):
     update_data = schemas.StockMovementsUpdate(**{
         k: _updated_value(k, v)
         for k, v in stock_movements_data.model_dump().items()
-        if k not in ['id', 'hashed_password', 'product_id', 'user_id'] and not isinstance(v, dict)
+        if k not in ['id', 'hashed_password', 'product_id', 'user_id'] and v is not None and not isinstance(v, dict)
     })
     updated_stock_movements = crud.stock_movements.update(
         db=db, db_obj=stock_movements, obj_in=update_data
@@ -197,6 +201,7 @@ def test_get_stock_movements(db: Session):
         name='ABLmVKByt',
         description='u2gVhOBDwHntZyubjfKF5ng3DJ6EthVQ9J4H6lBSXFmEH4Xz9Ta5D',
         image='H2otLX',
+        category_id=1,
         cost_price=72.86,
         selling_price=55.21,
         unit='zC',
@@ -213,6 +218,7 @@ def test_get_stock_movements(db: Session):
         email='ykeqV@ppzpe.com',
         password='fOaVy',
         is_active=True,
+        role_id=1,
         phone_numer='XO',
         address='7aR1xn1C7s32o47YiqsVrwKlOylgpI7lekqyFaGooOHi8kaL3bFoTPmrxG5KGeOX1vQ2JmOCyHFq09H6nucX',
     )
@@ -261,6 +267,7 @@ def test_get_by_id_stock_movements(db: Session):
         name='HPgBbZa',
         description='muRaPMA8q',
         image='sVgNsI3m9',
+        category_id=1,
         cost_price=5.96,
         selling_price=35.93,
         unit='lMA6n0p6t',
@@ -277,6 +284,7 @@ def test_get_by_id_stock_movements(db: Session):
         email='1XCI2@pmvbk.com',
         password='KsxHJ',
         is_active=False,
+        role_id=1,
         phone_numer='IjsScddlch',
         address='vkMyZLaxKAhjK0YvIcjKVcaooPoI5F4x6KS3je1Ab7R3ko2Jm5yPSE',
     )
@@ -333,6 +341,7 @@ def test_delete_stock_movements(db: Session):
         name='gEb9S5VUs',
         description='dIdNecMCarqXm4I012OzfTHUrVjJhKj4tE2GbHPKBTy1g5RgdnKgJqNld6JwG6AC5mujB8qhlMF73g1vtVA7zfBaF2F',
         image='z6Y',
+        category_id=1,
         cost_price=33.31,
         selling_price=47.32,
         unit='lz',
@@ -349,6 +358,7 @@ def test_delete_stock_movements(db: Session):
         email='7anbA@2w3lo.com',
         password='2RrB8',
         is_active=True,
+        role_id=1,
         phone_numer='HI',
         address='D6EC36YzEBwjj0ZfbQJoow1tM0KbqlpuPd4XMq7g6iz5xdzwzkbxqYAoI6aHAfDjBlF850PJUPmm',
     )

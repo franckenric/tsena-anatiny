@@ -98,12 +98,32 @@ def _rollback_order_stock_out(
         return
 
     quantity_by_product: dict[int, int] = {}
+    quantity_by_variant: dict[int, int] = {}
     for movement in out_movements:
-        if not movement.product_id:
-            continue
-        quantity_by_product[movement.product_id] = (
-            quantity_by_product.get(movement.product_id, 0)
-            + int(movement.quantity or 0)
+        if movement.variant_id is not None:
+            quantity_by_variant[movement.variant_id] = (
+                quantity_by_variant.get(movement.variant_id, 0)
+                + int(movement.quantity or 0)
+            )
+        elif movement.product_id:
+            quantity_by_product[movement.product_id] = (
+                quantity_by_product.get(movement.product_id, 0)
+                + int(movement.quantity or 0)
+            )
+
+    for variant_id, qty_to_restore in quantity_by_variant.items():
+        variant = crud.product_variants.get(db=db, id=variant_id)
+        if not variant:
+            raise HTTPException(
+                status_code=409,
+                detail=f'Variant {variant_id} not found while rolling back order',
+            )
+        restored_qty = int(variant.quantity or 0) + int(qty_to_restore or 0)
+        crud.product_variants.update(
+            db=db,
+            db_obj=variant,
+            obj_in={'quantity': restored_qty},
+            commit=False,
         )
 
     for product_id, qty_to_restore in quantity_by_product.items():
@@ -130,23 +150,29 @@ def _compute_available_quantities_by_lot(
     *,
     db: Session,
     product_id: int,
+    variant_id: int | None = None,
 ) -> list[tuple[int, int]]:
     """Return FIFO lot availability as (lot_id, remaining_qty)."""
+    in_query = db.query(models.StockMovements).filter(
+        models.StockMovements.product_id == product_id,
+        models.StockMovements.type == TypeEnum.in_stock,
+        models.StockMovements.lot_id.isnot(None),
+    )
+    if variant_id is not None:
+        in_query = in_query.filter(models.StockMovements.variant_id == variant_id)
     in_movements = (
-        db.query(models.StockMovements)
-        .filter(models.StockMovements.product_id == product_id)
-        .filter(models.StockMovements.type == TypeEnum.in_stock)
-        .filter(models.StockMovements.lot_id.isnot(None))
-        .order_by(models.StockMovements.created_at.asc(), models.StockMovements.id.asc())
+        in_query.order_by(models.StockMovements.created_at.asc(), models.StockMovements.id.asc())
         .all()
     )
-    out_movements = (
-        db.query(models.StockMovements)
-        .filter(models.StockMovements.product_id == product_id)
-        .filter(models.StockMovements.type == TypeEnum.out_stock)
-        .filter(models.StockMovements.lot_id.isnot(None))
-        .all()
+
+    out_query = db.query(models.StockMovements).filter(
+        models.StockMovements.product_id == product_id,
+        models.StockMovements.type == TypeEnum.out_stock,
+        models.StockMovements.lot_id.isnot(None),
     )
+    if variant_id is not None:
+        out_query = out_query.filter(models.StockMovements.variant_id == variant_id)
+    out_movements = out_query.all()
 
     consumed_by_lot: dict[int, int] = {}
     for movement in out_movements:
@@ -178,6 +204,7 @@ def _apply_order_stock_out(
     unit_cost: float | None = None,
     another_price: float | None = None,
     other_price_reason: str | None = None,
+    variant_id: int | None = None,
 ) -> None:
     if quantity <= 0:
         raise HTTPException(status_code=422, detail='Order quantity must be greater than 0')
@@ -186,15 +213,34 @@ def _apply_order_stock_out(
     if not product:
         raise HTTPException(status_code=404, detail='Product not found')
 
-    stock_row = crud.stock.get_by_product_id(db=db, product_id=product_id)
-    if not stock_row:
-        raise HTTPException(status_code=409, detail='No stock found for this product')
+    variant = None
+    if variant_id is not None:
+        variant = crud.product_variants.get(db=db, id=variant_id)
+        if not variant:
+            raise HTTPException(status_code=404, detail='Variant not found')
+        if variant.product_id != product.id:
+            raise HTTPException(status_code=422, detail='Variant does not belong to this product')
+        if crud.product_variants.has_children(db=db, variant_id=variant.id):
+            raise HTTPException(
+                status_code=409,
+                detail=f'Sélectionnez une sous-variante de « {variant.name} »',
+            )
+        stock_before = variant.quantity or 0
+        if stock_before < quantity:
+            raise HTTPException(
+                status_code=409,
+                detail=f'Stock insuffisant pour la variante « {variant.name} » (disponible: {stock_before})',
+            )
+        stock_after = stock_before - quantity
+    else:
+        stock_row = crud.stock.get_by_product_id(db=db, product_id=product_id)
+        if not stock_row:
+            raise HTTPException(status_code=409, detail='No stock found for this product')
+        stock_before = stock_row.quantity or 0
+        if stock_before < quantity:
+            raise HTTPException(status_code=409, detail='Insufficient stock for this order')
+        stock_after = stock_before - quantity
 
-    stock_before = stock_row.quantity or 0
-    if stock_before < quantity:
-        raise HTTPException(status_code=409, detail='Insufficient stock for this order')
-
-    stock_after = stock_before - quantity
     total_another_price = float(another_price or 0)
     normalized_other_price_reason = (other_price_reason or '').strip()
     if total_another_price > 0 and not normalized_other_price_reason:
@@ -206,6 +252,7 @@ def _apply_order_stock_out(
     available_by_lot = _compute_available_quantities_by_lot(
         db=db,
         product_id=product_id,
+        variant_id=variant_id,
     )
 
     allocations: list[tuple[int | None, int]] = []
@@ -239,6 +286,7 @@ def _apply_order_stock_out(
                 product_id=product_id,
                 user_id=movement_user_id,
                 lot_id=movement_lot_id,
+                variant_id=variant_id,
                 commande_id=order.id,
                 type=TypeEnum.out_stock,
                 quantity=movement_qty,
@@ -255,13 +303,21 @@ def _apply_order_stock_out(
         )
         running_before = movement_stock_after
 
-    crud.stock.update(
-        db=db,
-        db_obj=stock_row,
-        obj_in={'quantity': stock_after},
-        commit=False,
-    )
-    print(f"Applied stock out for order {order.id}: product {product_id}, quantity {quantity}, stock before {stock_before}, stock after {stock_after}")
+    if variant is not None:
+        crud.product_variants.update(
+            db=db,
+            db_obj=variant,
+            obj_in={'quantity': stock_after},
+            commit=False,
+        )
+    else:
+        crud.stock.update(
+            db=db,
+            db_obj=stock_row,
+            obj_in={'quantity': stock_after},
+            commit=False,
+        )
+    print(f"Applied stock out for order {order.id}: product {product_id}, variant {variant_id}, quantity {quantity}, stock before {stock_before}, stock after {stock_after}")
 
 
 @router.get('/', response_model=schemas.ResponseOrders)
@@ -368,6 +424,7 @@ def create_orders(
                     unit_cost=movement.unit_cost,
                     another_price=movement.another_price,
                     other_price_reason=movement.other_price_reason,
+                    variant_id=movement.variant_id,
                 )
 
         db.commit()
@@ -452,6 +509,7 @@ def update_orders(
                 movements = [
                     OrderMovementPayload(
                         product_id=item.product_id,
+                        variant_id=item.variant_id,
                         quantity=item.quantity,
                         unit_cost=item.unit_cost,
                         another_price=item.another_price,
@@ -482,6 +540,7 @@ def update_orders(
                         unit_cost=movement.unit_cost,
                         another_price=movement.another_price,
                         other_price_reason=movement.other_price_reason,
+                        variant_id=movement.variant_id,
                     )
 
                 if len(cart_items_for_confirmation) > 0:

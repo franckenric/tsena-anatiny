@@ -12,6 +12,20 @@ import uuid
 import random
 """Tests for CRUD operations on Orders model."""
 
+CUSTOMER_PHONE = '+261 33 12 345 67'
+
+
+def _create_customer(db: Session) -> schemas.Customers:
+    customer_data = schemas.CustomersCreate(
+        name='Client Test',
+        phone=CUSTOMER_PHONE,
+        delivery_address='Antananarivo',
+    )
+    customer = crud.customers.create(db=db, obj_in=customer_data)
+    db.commit()
+    db.refresh(customer)
+    return customer
+
 
 def test_create_orders(db: Session):
     """Test create operation for Orders."""
@@ -20,6 +34,7 @@ def test_create_orders(db: Session):
         email='F8JQo@gypfi.com',
         password='10Uf4',
         is_active=False,
+        role_id=1,
         phone_numer='1gPI7R6fRT',
         address='uecDBh6FvUOcyy9QM1hguS7eGTrqMG11zF6skF85HVWN1jhAtFx31zXYGMWGfMdqzeLqizgRe1O05w5U7aC0S4WkJELzh9Xv',
     )
@@ -34,7 +49,7 @@ def test_create_orders(db: Session):
         name='SH',
         description='kPYAcW5RJXHYn',
         image='7I',
-        cost_price=45.66,
+        category_id=1,
         selling_price=66.85,
         unit='Q',
         low_stock_alert=11,
@@ -45,17 +60,16 @@ def test_create_orders(db: Session):
     db.commit()
     db.refresh(products)
 
+    # Test data for Customers
+    customers = _create_customer(db)
+
     # Test data for Orders
     orders_data = schemas.OrdersCreate(
         order_number='VaTm8D3',
         user_id=users.id,
-        customer_name='VGJCHNzTms',
-        customer_phone='b',
-        delivery_address='psRliQ2xjQPSuiCQHUbTLl8Ccl0B81VvqSW3N99pW8STAVWZXQ7vqhwZ5OKaVc9sQC1dLYqha3pFFpHgUeuPYUlVncivd45y6IJk',
-        product_id=products.id,
-        quantity=10,
-        unit_cost=15000,
+        customer_id=customers.id,
         another_price=500,
+        other_price_reason='livraison spéciale',
         status='draft',
         note='jEp5eLkOH23JUsUQW1Nzr110yUXb0vJZYcK9Mnx',
     )
@@ -68,11 +82,7 @@ def test_create_orders(db: Session):
     assert orders.id is not None
     assert orders.order_number == orders_data.order_number
     assert orders.user_id == orders_data.user_id
-    assert orders.customer_name == orders_data.customer_name
-    assert orders.customer_phone == orders_data.customer_phone
-    assert orders.delivery_address == orders_data.delivery_address
-    assert orders.product_id == orders_data.product_id
-    assert orders.quantity == orders_data.quantity
+    assert orders.customer_id == orders_data.customer_id
     assert orders.status == orders_data.status
     assert orders.note == orders_data.note
 
@@ -84,6 +94,7 @@ def test_update_orders(db: Session):
         email='LTYM4@0q1xy.com',
         password='5oUI3',
         is_active=True,
+        role_id=1,
         phone_numer='MHe3RtAeR',
         address='rGw9742wYC747IyeteG8xIzTbtvwPhe0b5BmO7vrDMLFcPlbnCpVJou6j7h0Z52vQkYoIsjkL6TgI2gSOB8Gcm7TMoAxpIYYmaP',
     )
@@ -98,7 +109,7 @@ def test_update_orders(db: Session):
         name='1',
         description='rfyHGXvvzGPLIt6iogK',
         image='JcBXm',
-        cost_price=38.81,
+        category_id=1,
         selling_price=92.82,
         unit='g5',
         low_stock_alert=12,
@@ -109,16 +120,14 @@ def test_update_orders(db: Session):
     db.commit()
     db.refresh(products)
 
+    # Test data for Customers
+    customers = _create_customer(db)
+
     # Test data for Orders
     orders_data = schemas.OrdersCreate(
         order_number='MLviG',
         user_id=users.id,
-        customer_name='Vyu',
-        customer_phone='upX5RM0Wxy',
-        delivery_address='FrYzVOHFUeWqDSjvKrRouN8BjABoN431VNA7U8DpRXwj0CufX258tDISi8iFEDBRpZ2UBbrEWNBeedbH',
-        product_id=products.id,
-        quantity=0,
-        unit_cost=12000,
+        customer_id=customers.id,
         another_price=0,
         status='draft',
         note='AZouWg0yRH8AJU77NnOlq2yy5lX94',
@@ -137,7 +146,7 @@ def test_update_orders(db: Session):
         from decimal import Decimal
 
         if v is None:
-            return 'updated_value'
+            return None
 
         if isinstance(v, bool):
             return not v
@@ -157,37 +166,23 @@ def test_update_orders(db: Session):
             except ValueError:
                 return values[0] if values else v
 
-        if k in [] and isinstance(v, str):
-            return (datetime.fromisoformat(v) + timedelta(days=1)).isoformat()
-        if k in [] and isinstance(v, datetime):
-            return v + timedelta(days=1)
-
-        if k in [] and isinstance(v, str):
-            return (date.fromisoformat(v) + timedelta(days=1)).isoformat()
-        if k in [] and isinstance(v, date):
-            return v + timedelta(days=1)
-
-        if k in [] and isinstance(v, str):
-            return (datetime.strptime(v, '%H:%M:%S') + timedelta(hours=1)).time().strftime('%H:%M:%S')
-        if k in [] and isinstance(v, time):
-            return (datetime.combine(date.today(), v) + timedelta(hours=1)).time()
-
         return f'updated_{v}'
 
     # Update data
     order_number_value = orders.order_number
-    customer_name_value = orders.customer_name
-    customer_phone_value = orders.customer_phone
-    delivery_address_value = orders.delivery_address
-    quantity_value = orders.quantity
     status_value = orders.status
     note_value = orders.note
-    # Fields to exclude from update: ['id', 'hashed_password', 'user_id', 'product_id']
-    update_data = schemas.OrdersUpdate(**{
+    # Fields to exclude from update: ['id', 'hashed_password', 'user_id']
+    # customer_id is required by OrdersUpdate, so keep it unchanged
+    _update_fields = {
         k: _updated_value(k, v)
         for k, v in orders_data.model_dump().items()
-        if k not in ['id', 'hashed_password', 'user_id', 'product_id'] and not isinstance(v, dict)
-    })
+        if k not in ['id', 'hashed_password', 'user_id']
+        and v is not None
+        and not isinstance(v, dict)
+    }
+    _update_fields['customer_id'] = customers.id
+    update_data = schemas.OrdersUpdate(**_update_fields)
     updated_orders = crud.orders.update(
         db=db, db_obj=orders, obj_in=update_data
     )
@@ -195,10 +190,6 @@ def test_update_orders(db: Session):
     # Assertions
     assert updated_orders.id == orders.id
     assert updated_orders.order_number != order_number_value
-    assert updated_orders.customer_name != customer_name_value
-    assert updated_orders.customer_phone != customer_phone_value
-    assert updated_orders.delivery_address != delivery_address_value
-    assert updated_orders.quantity != quantity_value
     assert updated_orders.status != status_value
     assert updated_orders.note != note_value
 
@@ -210,6 +201,7 @@ def test_get_orders(db: Session):
         email='X1ozD@cywej.com',
         password='Po6sy',
         is_active=True,
+        role_id=1,
         phone_numer='6agp2InY',
         address='apMrBE5SbOPmExK1D0l01X7v11',
     )
@@ -224,7 +216,7 @@ def test_get_orders(db: Session):
         name='EG',
         description='5td0E9EUvSt2mjYJyL1',
         image='mmUEssmcli',
-        cost_price=30.57,
+        category_id=1,
         selling_price=74.58,
         unit='Z6r',
         low_stock_alert=3,
@@ -235,18 +227,17 @@ def test_get_orders(db: Session):
     db.commit()
     db.refresh(products)
 
+    # Test data for Customers
+    customers = _create_customer(db)
+
     # Test data for Orders
     orders_data = schemas.OrdersCreate(
         order_number='QJwPTuK9l',
         user_id=users.id,
-        customer_name='A',
-        customer_phone='paGa',
-        delivery_address='T2kiuOXPYceu9J9Oe4UjOJVNYkBXHBECvXm07tUBGD2xEguDXe9itvO9ipQF6dQpS5soT4jjjJWZXlWed',
-        product_id=products.id,
-        quantity=3,
-        unit_cost=10000,
+        customer_id=customers.id,
         another_price=250,
-        status='confirmed',
+        other_price_reason='emballage',
+        status='draft',
         note='3Ad7Rfi985Mn82BVkgiYxobECwPQDxw3CWQMWlApWFJ1nmdTaqyFE1tu',
     )
 
@@ -261,8 +252,8 @@ def test_get_orders(db: Session):
             {'key': 'deleted_at', 'operator': 'isNull'},
             {'key': 'created_at', 'operator': 'isNotNull'}
         ],
-        relations=['user{email}', 'product{name}'],
-        where_relation=[{'key': 'user.deleted_at', 'operator': 'isNull'}, {'key': 'product.deleted_at', 'operator': 'isNull'}],
+        relations=['user{email}'],
+        where_relation=[{'key': 'user.deleted_at', 'operator': 'isNull'}],
         base_columns=['id', 'order_number']
     )
 
@@ -278,6 +269,7 @@ def test_get_by_id_orders(db: Session):
         email='r3IVd@2jv3z.com',
         password='V0k4H',
         is_active=True,
+        role_id=1,
         phone_numer='BriY',
         address='DC7ao6MfOqQClllzbbXCw75xpZXcbbXRAO2dyVQBq9YQThArUtX0Bu9FQvZIyu2YIZmtmWlEi9NHilPRXKZKavlqxyqQD7SeeEr',
     )
@@ -292,7 +284,7 @@ def test_get_by_id_orders(db: Session):
         name='0t9HAC9',
         description='dhJK5OAgWFcJdkF79Aur0lgBaA1oXO07ATEaWg36nXcw3zhzshwS6Qjicv8v',
         image='VJPNy',
-        cost_price=86.35,
+        category_id=1,
         selling_price=54.49,
         unit='kc8Zye7NwV',
         low_stock_alert=20,
@@ -303,18 +295,17 @@ def test_get_by_id_orders(db: Session):
     db.commit()
     db.refresh(products)
 
+    # Test data for Customers
+    customers = _create_customer(db)
+
     # Test data for Orders
     orders_data = schemas.OrdersCreate(
         order_number='vnyQ',
         user_id=users.id,
-        customer_name='zk',
-        customer_phone='q',
-        delivery_address='rExYKcdo7vZKBXvleszBKu2q1qsXWOYyyfRUN8K',
-        product_id=products.id,
-        quantity=15,
-        unit_cost=20000,
+        customer_id=customers.id,
         another_price=1000,
-        status='cancelled',
+        other_price_reason='frais spéciaux',
+        status='draft',
         note='gVuIjqsSjCVdOlVspW6gyEvdus0uLZb0GgzxX',
     )
 
@@ -330,8 +321,8 @@ def test_get_by_id_orders(db: Session):
             {'key': 'created_at', 'operator': 'isNotNull'},
             {'key': 'id', 'operator': '==', 'value': orders.id}
         ],
-        relations=['user{email}', 'product{name}'],
-        where_relation=[{'key': 'user.deleted_at', 'operator': 'isNull'}, {'key': 'product.deleted_at', 'operator': 'isNull'}],
+        relations=['user{email}'],
+        where_relation=[{'key': 'user.deleted_at', 'operator': 'isNull'}],
         base_columns=['id', 'order_number']
     )
 
@@ -340,11 +331,7 @@ def test_get_by_id_orders(db: Session):
     assert retrieved_orders.id == orders.id
     assert retrieved_orders.order_number == orders.order_number
     assert retrieved_orders.user_id == orders.user_id
-    assert retrieved_orders.customer_name == orders.customer_name
-    assert retrieved_orders.customer_phone == orders.customer_phone
-    assert retrieved_orders.delivery_address == orders.delivery_address
-    assert retrieved_orders.product_id == orders.product_id
-    assert retrieved_orders.quantity == orders.quantity
+    assert retrieved_orders.customer_id == orders.customer_id
     assert retrieved_orders.status == orders.status
     assert retrieved_orders.note == orders.note
 
@@ -356,6 +343,7 @@ def test_delete_orders(db: Session):
         email='LbvBB@wykyw.com',
         password='I8y3u',
         is_active=True,
+        role_id=1,
         phone_numer='FT10A0wg0D',
         address='NjcMAizHwWjydW6',
     )
@@ -370,7 +358,7 @@ def test_delete_orders(db: Session):
         name='1fQ',
         description='k11S',
         image='h1NKZ0Pt',
-        cost_price=43.92,
+        category_id=1,
         selling_price=21.81,
         unit='GKHhg',
         low_stock_alert=10,
@@ -381,18 +369,17 @@ def test_delete_orders(db: Session):
     db.commit()
     db.refresh(products)
 
+    # Test data for Customers
+    customers = _create_customer(db)
+
     # Test data for Orders
     orders_data = schemas.OrdersCreate(
         order_number='u',
         user_id=users.id,
-        customer_name='h8R',
-        customer_phone='tDyFaMwBds',
-        delivery_address='mC2VsG5WDDUzNZznFIX2bIbaFRjzFfg4AGyosHtyuadk972zg7sKkbg43Qf2z',
-        product_id=products.id,
-        quantity=15,
-        unit_cost=17500,
+        customer_id=customers.id,
         another_price=750,
-        status='delivered',
+        other_price_reason='livraison',
+        status='draft',
         note='D8WpPK7u2Tty9i44vsd8KJkE9Xwvzqwdbwn0G5L6vuOf8yEpqa26PWzIM4M0QyA',
     )
 

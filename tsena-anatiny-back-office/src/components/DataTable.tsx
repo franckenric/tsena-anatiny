@@ -18,6 +18,7 @@ interface DataTableProps<T> {
   searchable?: boolean;
   searchPlaceholder?: string;
   gridCardRender?: (row: T) => ReactNode;
+  getRowKey?: (row: T, index: number) => string | number;
   tableMaxHeight?: string;
 }
 
@@ -31,6 +32,7 @@ export function DataTable<T extends { id?: number | string }>({
   searchable = true,
   searchPlaceholder = "Rechercher...",
   gridCardRender,
+  getRowKey,
   tableMaxHeight
 }: DataTableProps<T>) {
   const rows = Array.isArray(data) ? data : [];
@@ -163,7 +165,7 @@ export function DataTable<T extends { id?: number | string }>({
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {filteredRows.map((row, rowIdx) => (
               <article
-                key={row.id || rowIdx}
+                key={getRowKey ? getRowKey(row, rowIdx) : row.id || rowIdx}
                 className="rounded-xl border border-border/60 bg-panel/70 p-4 shadow-[0_14px_28px_-22px_rgba(8,18,38,0.6)]"
               >
                 {gridCardRender ? (
@@ -227,7 +229,7 @@ export function DataTable<T extends { id?: number | string }>({
           <tbody className="bg-panel/40">
             {filteredRows.map((row, rowIdx) => (
               <tr
-                key={row.id || rowIdx}
+                key={getRowKey ? getRowKey(row, rowIdx) : row.id || rowIdx}
                 className="border-b border-border/40 transition hover:bg-brand/5"
               >
                 {columns.map((col, colIdx) => (

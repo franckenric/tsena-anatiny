@@ -50,6 +50,19 @@ from .products import (
   ProductsUpdate,  
   ResponseProducts
 )
+from .product_variants import (
+  ProductVariant,
+  ProductVariantCreate,
+  ProductVariantUpdate,
+  ProductVariantNode,
+)
+from .receipts import (
+  Receipts,
+  ReceiptsCreate,
+  ReceiptsUpdate,
+  ReceiptImportItem,
+  ReceiptImportRequest,
+)
 from .roles import ( 
   Roles,  
   RolesCreate,  

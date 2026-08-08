@@ -96,6 +96,7 @@ export interface StockMovement {
   product_id: number;
   user_id: number;
   lot_id?: number;
+  variant_id?: number | null;
   commande_id?: number;
   type: MovementType;
   quantity: number;
@@ -107,6 +108,11 @@ export interface StockMovement {
   stock_after?: number;
   reference?: string;
   product?: Product | null;
+  variant?: {
+    id: number;
+    name?: string;
+    sku?: string | null;
+  } | null;
   user?: User | null;
   created_at?: string;
 }
@@ -115,6 +121,7 @@ export interface CreateStockMovementPayload {
   product_id: number;
   user_id: number;
   lot_id?: number;
+  variant_id?: number | null;
   commande_id?: number;
   type: MovementType;
   quantity: number;
@@ -129,6 +136,7 @@ export interface CreateStockMovementPayload {
 
 export interface UpdateStockMovementPayload {
   lot_id?: number;
+  variant_id?: number | null;
   commande_id?: number;
   type?: MovementType;
   quantity?: number;
@@ -151,16 +159,25 @@ export interface CartItem {
   id: number;
   customer_id: number;
   product_id: number;
+  variant_id?: number | null;
   quantity: number;
   unit_cost?: number;
   another_price?: number;
   other_price_reason?: string;
   created_at?: string;
+  variant?: {
+    id: number;
+    name?: string;
+    sku?: string | null;
+    quantity?: number;
+    selling_price?: number | null;
+  } | null;
 }
 
 export interface CreateCartItemPayload {
   customer_id?: number;
   product_id: number;
+  variant_id?: number | null;
   quantity: number;
   unit_cost?: number;
   another_price?: number;

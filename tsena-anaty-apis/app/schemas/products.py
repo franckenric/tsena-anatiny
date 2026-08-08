@@ -7,6 +7,7 @@ from typing import Any, List, Optional
 from pydantic import BaseModel, ConfigDict, field_validator
 from app.enum.status import StatusEnum
 from .categories import Categories
+from .product_variants import ProductVariantNode
 
 
 class ProductsBase(BaseModel):
@@ -66,6 +67,7 @@ class ProductCommercialAssignmentLite(BaseModel):
 class ProductsWithRelation(ProductsInDBBase):
     categorie: Optional[Categories] = None
     stock: Optional[List[ProductStockLite]] = None
+    variants: Optional[List[ProductVariantNode]] = None
     commercial_assignment: Optional[ProductCommercialAssignmentLite] = None
 
 

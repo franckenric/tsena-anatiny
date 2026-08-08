@@ -6,6 +6,8 @@ from .crud_lot_expenses import lot_expenses
 from .crud_lots import lots
 from .crud_orders import orders
 from .crud_products import products
+from .crud_product_variants import product_variants
+from .crud_receipts import receipts
 from .crud_roles import roles
 from .crud_stock import stock
 from .crud_stock_movements import stock_movements

@@ -12,14 +12,18 @@ class CRUDCartItems(CRUDBase[CartItems, CartItemsCreate, CartItemsUpdate]):
         *,
         customer_id: int,
         product_id: int,
+        variant_id: int | None = None,
     ) -> CartItems | None:
+        query = db.query(CartItems).filter(
+            CartItems.customer_id == customer_id,
+            CartItems.product_id == product_id,
+        )
+        if variant_id is None:
+            query = query.filter(CartItems.variant_id.is_(None))
+        else:
+            query = query.filter(CartItems.variant_id == variant_id)
         return (
-            db.query(CartItems)
-            .filter(
-                CartItems.customer_id == customer_id,
-                CartItems.product_id == product_id,
-            )
-            .order_by(CartItems.created_at.asc(), CartItems.id.asc())
+            query.order_by(CartItems.created_at.asc(), CartItems.id.asc())
             .first()
         )
 

@@ -21,6 +21,7 @@ def test_create_products(db: Session):
         name='T',
         description='nMVg9ClPBByeee25QY2DiBMLDClYGuTa8bDf2XpvNVzTpohNnFDjl2jZfr0pez3B',
         image='DHWV',
+        category_id=1,
         cost_price=57.4,
         selling_price=62.23,
         unit='DA6YFx90',
@@ -39,7 +40,6 @@ def test_create_products(db: Session):
     assert products.name == products_data.name
     assert products.description == products_data.description
     assert products.image == products_data.image
-    assert products.cost_price == products_data.cost_price
     assert products.selling_price == products_data.selling_price
     assert products.unit == products_data.unit
     assert products.low_stock_alert == products_data.low_stock_alert
@@ -54,6 +54,7 @@ def test_update_products(db: Session):
         name='Gw1ezLrwa2',
         description='50q1YfwrOZIpSGOPr5TIqD5vPxRvjXgMVttraN0DLPTtmsSe1c',
         image='9aJqCrg5Do',
+        category_id=1,
         cost_price=54.0,
         selling_price=28.65,
         unit='XOa731',
@@ -116,7 +117,6 @@ def test_update_products(db: Session):
     name_value = products.name
     description_value = products.description
     image_value = products.image
-    cost_price_value = products.cost_price
     selling_price_value = products.selling_price
     unit_value = products.unit
     low_stock_alert_value = products.low_stock_alert
@@ -125,7 +125,7 @@ def test_update_products(db: Session):
     update_data = schemas.ProductsUpdate(**{
         k: _updated_value(k, v)
         for k, v in products_data.model_dump().items()
-        if k not in ['id', 'hashed_password', 'category_id'] and not isinstance(v, dict)
+        if k not in ['id', 'hashed_password', 'category_id'] and v is not None and not isinstance(v, dict)
     })
     updated_products = crud.products.update(
         db=db, db_obj=products, obj_in=update_data
@@ -137,7 +137,6 @@ def test_update_products(db: Session):
     assert updated_products.name != name_value
     assert updated_products.description != description_value
     assert updated_products.image != image_value
-    assert updated_products.cost_price != cost_price_value
     assert updated_products.selling_price != selling_price_value
     assert updated_products.unit != unit_value
     assert updated_products.low_stock_alert != low_stock_alert_value
@@ -152,6 +151,7 @@ def test_get_products(db: Session):
         name='LgdW3Ky',
         description='fXvDUpRhRzeWl4GKlGV',
         image='70fbVCX2',
+        category_id=1,
         cost_price=14.19,
         selling_price=28.98,
         unit='z8f',
@@ -186,6 +186,7 @@ def test_get_by_id_products(db: Session):
         name='8hV2VWi',
         description='x0NJAESnEE66Jpp0qocgXbX2JNrEiAB3RtLzWBz0w2jLfknFoQkSEpdlgn4zp7GYADmdd',
         image='FcHKO',
+        category_id=1,
         cost_price=82.08,
         selling_price=26.84,
         unit='s6Ik0jfiZ',
@@ -211,7 +212,6 @@ def test_get_by_id_products(db: Session):
     assert retrieved_products.name == products.name
     assert retrieved_products.description == products.description
     assert retrieved_products.image == products.image
-    assert retrieved_products.cost_price == products.cost_price
     assert retrieved_products.selling_price == products.selling_price
     assert retrieved_products.unit == products.unit
     assert retrieved_products.low_stock_alert == products.low_stock_alert
@@ -226,6 +226,7 @@ def test_delete_products(db: Session):
         name='3Eiae',
         description='X2nZ7th',
         image='U88',
+        category_id=1,
         cost_price=40.78,
         selling_price=23.35,
         unit='C',

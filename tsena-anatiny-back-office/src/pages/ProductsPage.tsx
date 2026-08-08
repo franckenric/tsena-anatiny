@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import type {
   Product,
   Category,
@@ -26,8 +26,12 @@ import {
   Button,
   DataTable,
   Select,
-  QuantityInput
+  QuantityInput,
+  ReceiptImport,
+  VariantsManager,
+  type ReceiptApplyPayload
 } from "../components/index";
+import type { DraftVariant } from "../types/product";
 import { Modal } from "../components/Modal";
 import { Input } from "../components/Input";
 import { Layout } from "../components/Layout";
@@ -39,8 +43,18 @@ import {
   UploadCloud,
   PackagePlus,
   ShoppingCart,
-  Eye
+  Eye,
+  Layers,
+  Tag,
+  Camera
 } from "lucide-react";
+
+type ProductSubmitVariant = {
+  name: string;
+  quantity: number;
+  unit_cost: number | null;
+  image: string | null;
+};
 
 type ProductCreateFormPayload = CreateProductPayload & {
   initial_stock?: number;
@@ -48,10 +62,13 @@ type ProductCreateFormPayload = CreateProductPayload & {
   initial_unit_cost?: number;
   initial_another_price?: number;
   selling_price?: number;
+  variants?: ProductSubmitVariant[];
 };
 
 type ProductSubmitPayload = ProductCreateFormPayload | UpdateProductPayload;
 const DEFAULT_PRODUCT_IMAGE = "/No_Image_Available.jpg";
+const fmtAr = (value: number) =>
+  value.toLocaleString("fr-FR", { maximumFractionDigits: 2 });
 const PHONE_FORMAT_REGEX = /^\+261\s\d{2}\s\d{2}\s\d{3}\s\d{2}$/;
 const PHONE_PREFIX = "+261 ";
 
@@ -73,6 +90,49 @@ const formatPhoneMadagascar = (value: string): string => {
 
 const isPhonePrefixOnly = (value: string): boolean =>
   value.trim() === PHONE_PREFIX.trim();
+
+type ProductVariantItem = NonNullable<Product["variants"]>[number];
+
+const variantEffectiveStock = (
+  variants: ProductVariantItem[],
+  node: ProductVariantItem
+): number => {
+  const children = variants.filter((v) => v.parent_id === node.id);
+  if (children.length > 0) {
+    return children.reduce(
+      (sum, child) => sum + variantEffectiveStock(variants, child),
+      0
+    );
+  }
+  return Number(node.quantity ?? 0);
+};
+
+const getProductTotalStock = (product: Product): number => {
+  const variants = product.variants ?? [];
+  if (variants.length > 0) {
+    const roots = variants.filter((v) => v.parent_id == null);
+    return roots.reduce(
+      (sum, root) => sum + variantEffectiveStock(variants, root),
+      0
+    );
+  }
+  return (product.stock ?? []).reduce(
+    (sum, item) => sum + Number(item.quantity ?? 0),
+    0
+  );
+};
+
+function DraftImageThumb({ file }: { file: File }) {
+  const url = useMemo(() => URL.createObjectURL(file), [file]);
+
+  useEffect(() => {
+    return () => URL.revokeObjectURL(url);
+  }, [url]);
+
+  return (
+    <img src={url} alt="" className="h-full w-full object-cover" />
+  );
+}
 
 const generateProductReference = () => {
   const now = new Date();
@@ -132,10 +192,7 @@ function ProductArrivalForm({
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const currentQty = (product.stock ?? []).reduce(
-    (sum, item) => sum + (item.quantity ?? 0),
-    0
-  );
+  const currentQty = getProductTotalStock(product);
 
   const arrivalValidation = (() => {
     const issues: string[] = [];
@@ -336,6 +393,7 @@ function ProductCartForm({
   });
   const [form, setForm] = useState({
     customer_id: 0,
+    variant_id: 0,
     quantity: 1,
     unit_cost: Number(product.selling_price || 0)
   });
@@ -370,16 +428,27 @@ function ProductCartForm({
     loadCustomers();
   }, []);
 
-  const currentQty = (product.stock ?? []).reduce(
-    (sum, item) => sum + (item.quantity ?? 0),
-    0
+  const productVariants = product.variants ?? [];
+  const hasVariants = productVariants.length > 0;
+  const leafVariants = productVariants.filter(
+    (v) => !productVariants.some((other) => other.parent_id === v.id)
   );
+  const selectableVariants =
+    leafVariants.length > 0 ? leafVariants : productVariants;
+  const selectedVariant = hasVariants
+    ? selectableVariants.find((v) => v.id === form.variant_id) ?? null
+    : null;
+  const currentQty = selectedVariant
+    ? variantEffectiveStock(productVariants, selectedVariant)
+    : getProductTotalStock(product);
 
   const cartValidation = (() => {
     const quantity = Number(form.quantity || 0);
     const unitCost = Number(form.unit_cost || 0);
     const issues: string[] = [];
     if (!form.customer_id) issues.push("Client requis");
+    if (hasVariants && !selectedVariant)
+      issues.push("Veuillez sélectionner une variante");
     if (quantity <= 0) issues.push("Quantité doit être > 0");
     if (quantity > currentQty && currentQty > 0)
       issues.push(`Quantité dépasse le stock (${currentQty})`);
@@ -441,6 +510,8 @@ function ProductCartForm({
     const unitCost = Number(form.unit_cost || 0);
 
     if (!form.customer_id) errs.customer_id = "Client requis";
+    if (hasVariants && !selectedVariant)
+      errs.variant_id = "Veuillez sélectionner une variante";
     if (quantity <= 0) errs.quantity = "Quantite doit etre > 0";
     if (quantity > currentQty) {
       errs.quantity = "Quantite superieure au stock disponible";
@@ -456,6 +527,7 @@ function ProductCartForm({
       await onSubmit({
         customer_id: form.customer_id,
         product_id: product.id,
+        variant_id: selectedVariant ? selectedVariant.id : null,
         quantity,
         unit_cost: unitCost
       });
@@ -490,6 +562,71 @@ function ProductCartForm({
             </p>
           </div>
         </div>
+
+        {/* Variante */}
+        {hasVariants && (
+          <div className="rounded-2xl border border-border/60 bg-bg/30 p-4 space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-widest text-muted">
+              Variante
+            </p>
+            <Select
+              value={String(form.variant_id || "")}
+              onValueChange={(value) => {
+                const variantId = parseInt(value, 10) || 0;
+                const variant =
+                  selectableVariants.find((v) => v.id === variantId) ?? null;
+                setForm((p) => ({
+                  ...p,
+                  variant_id: variantId,
+                  quantity: 1,
+                  unit_cost: variant?.unit_cost != null
+                    ? Number(variant.unit_cost)
+                    : Number(product.selling_price || 0)
+                }));
+                setErrors((prev) => ({ ...prev, variant_id: "" }));
+              }}
+              options={[
+                { label: "Sélectionner une variante", value: "0" },
+                ...productVariants.map((v) => {
+                  const hasChildren = productVariants.some(
+                    (other) => other.parent_id === v.id
+                  );
+                  const parent =
+                    v.parent_id != null
+                      ? productVariants.find((p) => p.id === v.parent_id)
+                      : undefined;
+                  const base = v.name || `Variante #${v.id}`;
+                  const label = hasChildren
+                    ? `${base} — ${variantEffectiveStock(productVariants, v)} pcs`
+                    : `${base}${parent?.name ? ` (${parent.name})` : ""}${
+                        v.unit_cost != null
+                          ? ` — ${Number(v.unit_cost).toLocaleString("fr-FR")} Ar`
+                          : ""
+                      }`;
+                  return {
+                    label,
+                    value: String(v.id),
+                    disabled: hasChildren
+                  };
+                })
+              ]}
+              disabled={isLoading}
+              error={errors.variant_id}
+            />
+            {selectedVariant && (
+              <div className="flex items-center justify-between rounded-lg border border-border/50 bg-panel/55 px-3 py-2 text-xs">
+                <span className="text-muted">Stock de la variante</span>
+                <span
+                  className={`font-bold ${
+                    currentQty <= 0 ? "text-warning" : "text-ink"
+                  }`}
+                >
+                  {currentQty} pcs
+                </span>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Client */}
         <div className="rounded-2xl border border-border/60 bg-bg/30 p-4 space-y-3">
@@ -852,6 +989,12 @@ function CustomerCartViewer({
                     <p className="text-sm font-semibold text-ink">
                       {product?.name || `Produit #${item.product_id}`}
                     </p>
+                    {item.variant?.name && (
+                      <p className="text-xs font-medium text-brand">
+                        {item.variant.name}
+                        {item.variant.sku ? ` · ${item.variant.sku}` : ""}
+                      </p>
+                    )}
                     <p className="text-xs text-muted">
                       Qté {item.quantity} x{" "}
                       {Number(item.unit_cost || 0).toLocaleString("fr-FR")} Ar
@@ -911,6 +1054,7 @@ function ProductForm({
   lots,
   onSubmit,
   onCancel,
+  onImported,
   isLoading
 }: {
   product?: Product;
@@ -918,9 +1062,10 @@ function ProductForm({
   lots: Lot[];
   onSubmit: (p: ProductSubmitPayload) => Promise<void>;
   onCancel: () => void;
+  onImported?: (count: number) => void;
   isLoading: boolean;
 }) {
-  const currentStockQuantity = product?.stock?.[0]?.quantity ?? 0;
+  const currentStockQuantity = product ? getProductTotalStock(product) : 0;
   const [form, setForm] = useState<ProductCreateFormPayload>({
     category_id: product?.category_id ?? (categories[0]?.id || 0),
     sku: product?.sku ?? generateProductReference(),
@@ -943,9 +1088,70 @@ function ProductForm({
     product?.image ?? DEFAULT_PRODUCT_IMAGE
   );
   const [isDragActive, setIsDragActive] = useState(false);
+  const [draftVariants, setDraftVariants] = useState<DraftVariant[]>([]);
+
+  const setVariantField = (
+    index: number,
+    field: keyof DraftVariant,
+    value: string
+  ) => {
+    setDraftVariants((prev) =>
+      prev.map((v, i) => (i === index ? { ...v, [field]: value } : v))
+    );
+  };
+
+  const addDraftVariant = () => {
+    setDraftVariants((prev) => [
+      ...prev,
+      { name: "", quantity: "0", unit_cost: "", image: null }
+    ]);
+  };
+
+  const removeDraftVariant = (index: number) => {
+    setDraftVariants((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const setDraftVariantImage = (
+    index: number,
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setErrors((prev) => ({ ...prev, variant_image: "Image non valide" }));
+      return;
+    }
+    setErrors((prev) => ({ ...prev, variant_image: "" }));
+    setDraftVariants((prev) =>
+      prev.map((v, i) => (i === index ? { ...v, image: file } : v))
+    );
+  };
+
+  const activeVariants = draftVariants.filter((v) => v.name.trim());
+  const hasDraftVariants = activeVariants.length > 0;
+  const totalVariantQty = activeVariants.reduce(
+    (sum, v) =>
+      sum + Math.max(0, parseInt(v.quantity, 10) || 0),
+    0
+  );
+  const totalVariantValue = activeVariants.reduce(
+    (sum, v) =>
+      sum +
+      Math.max(0, parseInt(v.quantity, 10) || 0) *
+        (v.unit_cost.trim() ? Math.max(0, parseFloat(v.unit_cost) || 0) : 0),
+    0
+  );
 
   const set = (field: keyof ProductCreateFormPayload, value: string | number) =>
     setForm((p) => ({ ...p, [field]: value }));
+
+  const handleReceiptApply = (payload: ReceiptApplyPayload) => {
+    set("name", payload.name);
+    set("initial_stock", payload.quantity);
+    set("initial_unit_cost", payload.unit_cost);
+    set("initial_another_price", payload.another_price);
+  };
 
   const applySelectedImage = (file: File) => {
     if (!file.type.startsWith("image/")) {
@@ -993,18 +1199,19 @@ function ProductForm({
     if (!form.name.trim()) errs.name = "Nom requis";
     if (!form.sku.trim()) errs.sku = "SKU requis";
     if (!form.category_id) errs.category_id = "Catégorie requise";
-    if (!product && (Number(form.initial_stock) || 0) <= 0) {
+    if (!product && !hasDraftVariants && (Number(form.initial_stock) || 0) <= 0) {
       errs.initial_stock = "Stock initial doit être supérieur à 0";
     }
     if (
       !product &&
+      !hasDraftVariants &&
       (Number(form.initial_stock) || 0) > 0 &&
       (Number(form.initial_unit_cost) || 0) <= 0
     ) {
       errs.initial_unit_cost =
         "Prix unitaire initial requis si stock initial > 0";
     }
-    if (!product && !form.lot_id) {
+    if (!product && !hasDraftVariants && !form.lot_id) {
       errs.lot_id = "Lot requis";
     }
     if (Object.keys(errs).length) {
@@ -1022,21 +1229,38 @@ function ProductForm({
       }
 
       if (product) {
-        const {
-          initial_stock: _initialStock,
-          lot_id: _lotId,
-          image: _image,
-          ...updatePayload
-        } = form;
+        const updatePayload: ProductCreateFormPayload = { ...form };
+        delete updatePayload.initial_stock;
+        delete updatePayload.lot_id;
+        delete (updatePayload as { image?: string }).image;
         await onSubmit({
           ...updatePayload,
           image: imageUrl || undefined
         });
       } else {
+        const validVariants: ProductSubmitVariant[] = [];
+        for (const v of draftVariants) {
+          const name = v.name.trim();
+          if (!name) continue;
+          let variantImage: string | null = null;
+          if (v.image) {
+            const uploaded = await productsService.uploadProductImage(v.image);
+            variantImage = uploaded.image_url;
+          }
+          validVariants.push({
+            name,
+            quantity: Math.max(0, parseInt(v.quantity, 10) || 0),
+            unit_cost: v.unit_cost.trim()
+              ? Math.max(0, parseFloat(v.unit_cost) || 0)
+              : null,
+            image: variantImage
+          });
+        }
         await onSubmit({
           ...form,
           image: imageUrl,
-          initial_stock: Math.max(0, Number(form.initial_stock) || 0)
+          initial_stock: Math.max(0, Number(form.initial_stock) || 0),
+          variants: validVariants
         });
       }
     } catch (err) {
@@ -1061,11 +1285,198 @@ function ProductForm({
         <div className="grid gap-6 lg:grid-cols-3">
           {/* ── Colonne principale ── */}
           <div className="space-y-5 lg:col-span-2">
+            {!product && (
+              <ReceiptImport
+                onApply={handleReceiptApply}
+                disabled={isLoading || isUploadingImage}
+                categories={categories}
+                lots={lots}
+                onImported={onImported}
+              />
+            )}
+
+            {product && (
+              <VariantsManager
+                productId={product.id}
+                disabled={isLoading || isUploadingImage}
+              />
+            )}
+
+            {!product && (
+              <div className="overflow-hidden rounded-2xl border border-border/60 bg-bg/30">
+                <div className="flex items-center justify-between gap-3 border-b border-border/60 bg-panel/40 px-4 py-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand/10 text-brand">
+                      <Layers className="h-5 w-5" />
+                    </div>
+                    <div className="space-y-0.5">
+                      <p className="text-sm font-bold text-ink">Variantes</p>
+                      <p className="text-xs text-muted">
+                        Stock et prix par couleur, taille...
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={addDraftVariant}
+                    disabled={isLoading}
+                  >
+                    <Plus className="mr-1 h-4 w-4" />
+                    Ajouter une variante
+                  </Button>
+                </div>
+
+                {activeVariants.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 border-b border-border/40 bg-brand/5 px-4 py-2.5 text-[11px]">
+                    <span className="inline-flex items-center gap-1 rounded-md bg-panel px-2 py-1 font-semibold text-ink ring-1 ring-border/60">
+                      {activeVariants.length} variante
+                      {activeVariants.length > 1 ? "s" : ""}
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-md bg-panel px-2 py-1 font-semibold text-ink ring-1 ring-border/60">
+                      {fmtAr(totalVariantQty)} pcs au total
+                    </span>
+                    <span className="inline-flex items-center gap-1 rounded-md bg-panel px-2 py-1 font-semibold text-brand ring-1 ring-brand/25">
+                      {fmtAr(totalVariantValue)} Ar valeur estimée
+                    </span>
+                  </div>
+                )}
+
+                <div className="p-4">
+                  {activeVariants.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-border/70 bg-bg/40 px-4 py-8 text-center">
+                      <Layers className="h-6 w-6 text-muted" />
+                      <p className="text-sm font-semibold text-ink">
+                        Aucune variante définie
+                      </p>
+                      <p className="text-xs text-muted">
+                        Le produit aura un stock et un prix uniques. Ajoutez une
+                        variante pour gérer plusieurs couleurs ou tailles.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="hidden grid-cols-[2rem_2.5rem_1fr_5rem_7rem_2rem] items-center gap-2 px-2 sm:grid">
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-muted">
+                          #
+                        </span>
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-muted">
+                          Img
+                        </span>
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-muted">
+                          Nom
+                        </span>
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-muted">
+                          Qté
+                        </span>
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-muted">
+                          Prix (Ar)
+                        </span>
+                        <span />
+                      </div>
+
+                      {draftVariants.map((variant, index) => (
+                        <div
+                          key={index}
+                          className="grid items-end gap-2 rounded-xl border border-border/50 bg-bg/40 p-2.5 transition hover:border-brand/30 sm:grid-cols-[2rem_2.5rem_1fr_5rem_7rem_2rem]"
+                        >
+                          <div className="hidden h-8 items-center justify-center rounded-lg bg-panel text-xs font-bold text-muted sm:flex">
+                            {index + 1}
+                          </div>
+                          <label
+                            className="relative flex h-8 w-10 cursor-pointer items-center justify-center overflow-hidden rounded-lg border border-dashed border-border/70 bg-bg/40 text-muted transition hover:border-brand/40"
+                            title={
+                              variant.image
+                                ? "Remplacer l'image"
+                                : "Ajouter une image (optionnel)"
+                            }
+                          >
+                            {variant.image ? (
+                              <DraftImageThumb file={variant.image} />
+                            ) : (
+                              <Camera className="h-4 w-4" />
+                            )}
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) =>
+                                setDraftVariantImage(index, e)
+                              }
+                              disabled={isLoading}
+                              className="sr-only"
+                            />
+                          </label>
+                          <Input
+                            label="Nom"
+                            value={variant.name}
+                            onChange={(e) =>
+                              setVariantField(index, "name", e.target.value)
+                            }
+                            placeholder="Ex : Noir"
+                            disabled={isLoading}
+                          />
+                          <Input
+                            label="Qté"
+                            type="number"
+                            min={0}
+                            value={variant.quantity}
+                            onChange={(e) =>
+                              setVariantField(index, "quantity", e.target.value)
+                            }
+                            placeholder="0"
+                            disabled={isLoading}
+                          />
+                          <Input
+                            label="Prix d'achat (Ar)"
+                            type="number"
+                            min={0}
+                            step="any"
+                            value={variant.unit_cost}
+                            onChange={(e) =>
+                              setVariantField(
+                                index,
+                                "unit_cost",
+                                e.target.value
+                              )
+                            }
+                            placeholder="0"
+                            disabled={isLoading}
+                          />
+                          <div className="flex h-8 items-end justify-end pb-1">
+                            <button
+                              type="button"
+                              onClick={() => removeDraftVariant(index)}
+                              className="rounded-md p-1.5 text-muted transition hover:bg-warning/10 hover:text-warning"
+                              title="Retirer"
+                              disabled={isLoading}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                      {errors.variant_image && (
+                        <p className="text-xs text-warning">
+                          {errors.variant_image}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Section: Informations générales */}
             <div className="rounded-2xl border border-border/60 bg-bg/30 p-4 space-y-4">
-              <p className="text-xs font-semibold uppercase tracking-widest text-muted">
-                Informations générales
-              </p>
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand/10 text-brand">
+                  <PackagePlus className="h-4 w-4" />
+                </div>
+                <p className="text-xs font-bold uppercase tracking-widest text-ink">
+                  Informations générales
+                </p>
+              </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <Input
                   label="Nom"
@@ -1107,9 +1518,14 @@ function ProductForm({
 
             {/* Section: Prix & unité */}
             <div className="rounded-2xl border border-border/60 bg-bg/30 p-4 space-y-4">
-              <p className="text-xs font-semibold uppercase tracking-widest text-muted">
-                Prix & unité
-              </p>
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand/10 text-brand">
+                  <Tag className="h-4 w-4" />
+                </div>
+                <p className="text-xs font-bold uppercase tracking-widest text-ink">
+                  Prix & unité
+                </p>
+              </div>
               <div className="grid gap-4 sm:grid-cols-3">
                 <Input
                   label="Prix de vente (Ar)"
@@ -1153,17 +1569,58 @@ function ProductForm({
 
             {/* Section: Stock initial (création uniquement) */}
             {!product && (
-              <div className="rounded-2xl border border-brand/30 bg-brand/5 p-4 space-y-4">
-                <p className="text-xs font-semibold uppercase tracking-widest text-brand">
-                  Stock initial
-                </p>
-                <div className="grid gap-4 sm:grid-cols-2">
+              <div
+                className={`rounded-2xl border p-4 space-y-4 transition ${
+                  hasDraftVariants
+                    ? "border-border/50 bg-panel/30"
+                    : "border-brand/30 bg-brand/5"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <div
+                      className={`flex h-8 w-8 items-center justify-center rounded-lg ${
+                        hasDraftVariants
+                          ? "bg-panel text-muted ring-1 ring-border/60"
+                          : "bg-brand/10 text-brand"
+                      }`}
+                    >
+                      <Boxes className="h-4 w-4" />
+                    </div>
+                    <p
+                      className={`text-xs font-bold uppercase tracking-widest ${
+                        hasDraftVariants ? "text-muted" : "text-brand"
+                      }`}
+                    >
+                      Stock initial
+                    </p>
+                  </div>
+                  {hasDraftVariants && (
+                    <span className="inline-flex items-center gap-1.5 rounded-md bg-warning/10 px-2 py-1 text-[11px] font-semibold text-warning ring-1 ring-warning/30">
+                      <Layers className="h-3.5 w-3.5" />
+                      Géré par les variantes
+                    </span>
+                  )}
+                </div>
+
+                {hasDraftVariants && (
+                  <p className="rounded-lg bg-panel px-3 py-2 text-xs text-muted ring-1 ring-border/50">
+                    Les variantes définies portent chacune leur stock. Le stock
+                    initial unique ne sera pas créé.
+                  </p>
+                )}
+
+                <div
+                  className={`grid gap-4 sm:grid-cols-2 transition ${
+                    hasDraftVariants ? "opacity-45" : ""
+                  }`}
+                >
                   <QuantityInput
                     label="Quantité initiale"
                     value={form.initial_stock ?? 0}
                     onChange={(value) => set("initial_stock", value)}
                     placeholder="0"
-                    disabled={isLoading}
+                    disabled={isLoading || hasDraftVariants}
                     error={errors.initial_stock}
                     min={0}
                   />
@@ -1174,7 +1631,7 @@ function ProductForm({
                       set("lot_id", parseInt(value) || 0)
                     }
                     options={getLotOptions(lots)}
-                    disabled={isLoading}
+                    disabled={isLoading || hasDraftVariants}
                     error={errors.lot_id}
                   />
                   <Input
@@ -1185,7 +1642,7 @@ function ProductForm({
                       set("initial_unit_cost", parseFloat(e.target.value) || 0)
                     }
                     placeholder="0"
-                    disabled={isLoading}
+                    disabled={isLoading || hasDraftVariants}
                     error={errors.initial_unit_cost}
                   />
                   <Input
@@ -1199,7 +1656,7 @@ function ProductForm({
                       )
                     }
                     placeholder="0"
-                    disabled={isLoading}
+                    disabled={isLoading || hasDraftVariants}
                   />
                 </div>
               </div>
@@ -1209,9 +1666,14 @@ function ProductForm({
           {/* ── Colonne image ── */}
           <div className="lg:col-span-1">
             <div className="rounded-2xl border border-border/60 bg-bg/30 p-4 flex flex-col gap-3">
-              <p className="text-xs font-semibold uppercase tracking-widest text-muted">
-                Image produit
-              </p>
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand/10 text-brand">
+                  <UploadCloud className="h-4 w-4" />
+                </div>
+                <p className="text-xs font-bold uppercase tracking-widest text-ink">
+                  Image produit
+                </p>
+              </div>
 
               {!localImagePreview ? (
                 <label
@@ -1340,25 +1802,26 @@ export function ProductsPage() {
       .then((r) => setLots(r.items))
       .catch(() => {});
   }, []);
-  useEffect(() => {
-    loadProducts();
-  }, [page, pageSize]);
-
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
-
-  const loadProducts = async () => {
+  const loadProducts = useCallback(async () => {
     try {
-      setIsLoading(true);
-      setError(null);
       const res = await productsService.getProducts(page, pageSize);
       setProducts(res.items);
       setTotal(res.total);
+      setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur chargement");
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [page, pageSize]);
+
+  useEffect(() => {
+    void (async () => {
+      await loadProducts();
+    })();
+  }, [loadProducts]);
+
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   const handleDelete = async (p: Product) => {
     if (!confirm(`Supprimer « ${p.name} » ?`)) return;
@@ -1375,8 +1838,8 @@ export function ProductsPage() {
   };
 
   const handleSubmit = async (payload: ProductSubmitPayload) => {
+    setIsFormLoading(true);
     try {
-      setIsFormLoading(true);
       if (selected) {
         const updated = await productsService.updateProduct(
           selected.id,
@@ -1391,21 +1854,34 @@ export function ProductsPage() {
           lot_id,
           initial_unit_cost = 0,
           initial_another_price = 0,
+          variants,
           ...createPayload
         } = payload as ProductCreateFormPayload;
         const created = await productsService.createProduct(createPayload);
 
         try {
-          const qty = Math.max(0, Number(initial_stock) || 0);
-          if (qty > 0 && lot_id) {
-            await stockService.registerArrival({
-              product_id: created.id,
-              quantity: qty,
-              lot_id: lot_id,
-              unit_cost: Number(initial_unit_cost) || 0,
-              another_price: Number(initial_another_price) || 0,
-              reference: undefined
-            });
+          if (variants && variants.length > 0) {
+            for (const variant of variants) {
+              await productsService.createVariant(created.id, {
+                name: variant.name,
+                quantity: variant.quantity,
+                parent_id: null,
+                unit_cost: variant.unit_cost,
+                image: variant.image
+              });
+            }
+          } else {
+            const qty = Math.max(0, Number(initial_stock) || 0);
+            if (qty > 0 && lot_id) {
+              await stockService.registerArrival({
+                product_id: created.id,
+                quantity: qty,
+                lot_id: lot_id,
+                unit_cost: Number(initial_unit_cost) || 0,
+                another_price: Number(initial_another_price) || 0,
+                reference: undefined
+              });
+            }
           }
         } catch (stockErr) {
           setError(
@@ -1421,8 +1897,6 @@ export function ProductsPage() {
       await loadProducts();
       setIsModalOpen(false);
       setSelected(null);
-    } catch (err) {
-      throw err;
     } finally {
       setIsFormLoading(false);
     }
@@ -1456,11 +1930,7 @@ export function ProductsPage() {
     }
   };
 
-  const getProductStock = (product: Product) =>
-    (product.stock ?? []).reduce(
-      (sum, item) => sum + Number(item.quantity ?? 0),
-      0
-    );
+  const getProductStock = (product: Product) => getProductTotalStock(product);
 
   const columns: Column<Product>[] = [
     {
@@ -1779,6 +2249,12 @@ export function ProductsPage() {
             onCancel={() => {
               setIsModalOpen(false);
               setSelected(null);
+            }}
+            onImported={(count) => {
+              setNotice(`${count} produits importés depuis le reçu`);
+              setIsModalOpen(false);
+              setSelected(null);
+              void loadProducts();
             }}
             isLoading={isFormLoading}
           />

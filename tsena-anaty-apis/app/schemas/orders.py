@@ -17,6 +17,7 @@ class OrderMovementPayload(BaseModel):
     unit_cost: Optional[float] = None
     another_price: Optional[float] = 0
     other_price_reason: Optional[str] = None
+    variant_id: Optional[int] = None
 
 
 class OrdersBase(BaseModel):

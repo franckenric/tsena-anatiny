@@ -16,6 +16,7 @@ class StockMovements(Base):
     product_id = Column(Integer, ForeignKey('products.id'))
     user_id = Column(Integer, ForeignKey('users.id'))
     lot_id = Column(Integer, ForeignKey('lots.id'), nullable=True)
+    variant_id = Column(Integer, ForeignKey('product_variants.id'), nullable=True, index=True)
     commande_id = Column(Integer, ForeignKey('orders.id'), nullable=True)
     type = Column(Enum(TypeEnum), nullable=False)
     quantity = Column(Integer, nullable=False)
@@ -36,6 +37,7 @@ class StockMovements(Base):
     product = relationship('Products', foreign_keys=[product_id])
     user = relationship('Users', foreign_keys=[user_id])
     lot = relationship('Lots', foreign_keys=[lot_id])
+    variant = relationship('ProductVariants', foreign_keys=[variant_id])
     order = relationship('Orders', foreign_keys=[commande_id], back_populates='stock_movements')
 
 

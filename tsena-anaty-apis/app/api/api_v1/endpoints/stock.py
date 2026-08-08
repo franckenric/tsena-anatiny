@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Union
 
 import ast
 from fastapi import APIRouter, Depends, HTTPException
@@ -31,6 +31,7 @@ def _create_stock_movement(
     stock_after: int,
     reference: str,
     lot_id: int | None = None,
+    variant_id: int | None = None,
     unit_cost: float | None = None,
     another_price: float | None = None,
 ) -> None:
@@ -44,6 +45,7 @@ def _create_stock_movement(
         product_id=product_id,
         user_id=user_id,
         lot_id=lot_id,
+        variant_id=variant_id,
         type=movement_type,
         quantity=quantity,
         unit_cost=unit_cost,
@@ -153,7 +155,7 @@ def create_stock(
         )
 
 
-@router.post("/arrivals", response_model=schemas.Stock)
+@router.post("/arrivals", response_model=Union[schemas.ProductVariant, schemas.Stock])
 def register_stock_arrival(
     *,
     db: Session = Depends(deps.get_db),
@@ -177,30 +179,45 @@ def register_stock_arrival(
     if not lot:
         raise HTTPException(status_code=404, detail="Lot introuvable")
 
-    existing_stock = crud.stock.get_by_product_id(db=db, product_id=arrival_in.product_id)
+    variant = None
+    if arrival_in.variant_id is not None:
+        variant = crud.product_variants.get(db=db, id=arrival_in.variant_id)
+        if not variant or variant.product_id != arrival_in.product_id:
+            raise HTTPException(status_code=404, detail="Variante introuvable")
 
     try:
-        if existing_stock:
-            stock_before = existing_stock.quantity or 0
+        if variant is not None:
+            stock_before = variant.quantity or 0
             stock_after = stock_before + arrival_in.quantity
-            stock_row = crud.stock.update(
+            variant = crud.product_variants.update(
                 db=db,
-                db_obj=existing_stock,
+                db_obj=variant,
                 obj_in={"quantity": stock_after},
                 commit=False,
             )
         else:
-            stock_before = 0
-            stock_after = arrival_in.quantity
-            stock_row = crud.stock.create(
-                db=db,
-                obj_in=schemas.StockCreate(
-                    product_id=arrival_in.product_id,
-                    quantity=arrival_in.quantity,
-                ),
-                commit=False,
-                refresh=False,
-            )
+            existing_stock = crud.stock.get_by_product_id(db=db, product_id=arrival_in.product_id)
+            if existing_stock:
+                stock_before = existing_stock.quantity or 0
+                stock_after = stock_before + arrival_in.quantity
+                stock_row = crud.stock.update(
+                    db=db,
+                    db_obj=existing_stock,
+                    obj_in={"quantity": stock_after},
+                    commit=False,
+                )
+            else:
+                stock_before = 0
+                stock_after = arrival_in.quantity
+                stock_row = crud.stock.create(
+                    db=db,
+                    obj_in=schemas.StockCreate(
+                        product_id=arrival_in.product_id,
+                        quantity=arrival_in.quantity,
+                    ),
+                    commit=False,
+                    refresh=False,
+                )
 
         lot_reference = arrival_in.reference or lot.reference or f"Lot #{arrival_in.lot_id}"
         movement_reference = f"LOT#{arrival_in.lot_id} - {lot_reference}"
@@ -215,11 +232,15 @@ def register_stock_arrival(
             stock_after=stock_after,
             reference=movement_reference,
             lot_id=arrival_in.lot_id,
+            variant_id=variant.id if variant is not None else None,
             unit_cost=arrival_in.unit_cost,
             another_price=float(arrival_in.another_price or 0),
         )
 
         db.commit()
+        if variant is not None:
+            db.refresh(variant)
+            return variant
         db.refresh(stock_row)
         return stock_row
     except IntegrityError:

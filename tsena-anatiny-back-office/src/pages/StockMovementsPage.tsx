@@ -431,10 +431,21 @@ export function StockMovementsPage() {
     {
       header: "Produit",
       accessor: "product_id",
-      render: (_, r) =>
-        r.product?.name ??
-        products.find((p) => p.id === r.product_id)?.name ??
-        `#${r.product_id}`,
+      render: (_, r) => (
+        <div>
+          <span>
+            {r.product?.name ??
+              products.find((p) => p.id === r.product_id)?.name ??
+              `#${r.product_id}`}
+          </span>
+          {r.variant?.name && (
+            <div className="text-xs font-medium text-brand">
+              {r.variant.name}
+              {r.variant.sku ? ` · ${r.variant.sku}` : ""}
+            </div>
+          )}
+        </div>
+      ),
       width: "25%"
     },
     {

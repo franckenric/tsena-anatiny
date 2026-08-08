@@ -4,6 +4,7 @@ from typing import List, Optional
 from pydantic import BaseModel, ConfigDict
 
 from app.enum.product_status import ProductStatusEnum
+from .product_variants import ProductVariant
 
 
 class CartItemsBase(BaseModel):
@@ -12,6 +13,7 @@ class CartItemsBase(BaseModel):
     customer_phone: Optional[str] = None
     delivery_address: Optional[str] = None
     product_id: int
+    variant_id: Optional[int] = None
     quantity: int
     unit_cost: Optional[float] = None
     another_price: Optional[float] = 0
@@ -23,6 +25,7 @@ class CartItemsCreate(CartItemsBase):
 
 
 class CartItemsUpdate(BaseModel):
+    variant_id: Optional[int] = None
     quantity: Optional[int] = None
     unit_cost: Optional[float] = None
     another_price: Optional[float] = None
@@ -33,11 +36,13 @@ class CartItemsInDBBase(BaseModel):
     id: Optional[int] = None
     customer_id: int
     product_id: int
+    variant_id: Optional[int] = None
     quantity: int
     unit_cost: Optional[float] = None
     another_price: Optional[float] = 0
     other_price_reason: Optional[str] = None
     created_at: Optional[datetime] = None
+    variant: Optional[ProductVariant] = None
 
     model_config = ConfigDict(from_attributes=True)
 

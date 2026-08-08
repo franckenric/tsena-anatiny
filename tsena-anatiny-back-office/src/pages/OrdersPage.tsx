@@ -356,7 +356,9 @@ const buildOrderReceiptHtml = ({
 type CartItem = {
   cart_item_id?: number;
   product_id: number;
+  variant_id?: number | null;
   product_name: string;
+  variant_name?: string;
   quantity: number;
   unit_cost: number;
   another_price: number;
@@ -745,6 +747,11 @@ function OrderForm({
                         <p className="text-sm font-semibold text-ink">
                           {item.product_name}
                         </p>
+                        {item.variant_name && (
+                          <p className="text-xs font-medium text-brand">
+                            {item.variant_name}
+                          </p>
+                        )}
                         <p className="text-xs text-muted">
                           Qté {item.quantity} × {formatAr(item.unit_cost)}
                           {item.another_price > 0
@@ -1011,7 +1018,9 @@ export function OrdersPage() {
     return items.map((item) => ({
       cart_item_id: item.id,
       product_id: item.product_id,
+      variant_id: item.variant_id ?? null,
       product_name: `Produit #${item.product_id}`,
+      variant_name: item.variant?.name || undefined,
       quantity: Number(item.quantity || 0),
       unit_cost: Number(item.unit_cost || 0),
       another_price: Number(item.another_price || 0),
@@ -1040,16 +1049,20 @@ export function OrdersPage() {
       ];
     }
 
-    const aggregated = new Map<number, CartItem>();
+    const aggregated = new Map<string, CartItem>();
     for (const movement of outMovements) {
       const productId = Number(movement.product_id || 0);
       if (!productId) continue;
 
-      const existing = aggregated.get(productId);
+      const variantId = movement.variant_id ?? null;
+      const key = `${productId}:${variantId ?? ""}`;
+      const existing = aggregated.get(key);
       if (!existing) {
-        aggregated.set(productId, {
+        aggregated.set(key, {
           product_id: productId,
+          variant_id: variantId,
           product_name: movement.product?.name || `Produit #${productId}`,
+          variant_name: movement.variant?.name || undefined,
           quantity: Number(movement.quantity || 0),
           unit_cost: Number(movement.unit_cost || 0),
           another_price: Number(movement.another_price || 0),

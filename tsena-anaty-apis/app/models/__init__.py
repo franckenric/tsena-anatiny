@@ -6,6 +6,8 @@ from .lot_expenses import LotExpenses
 from .lots import Lots
 from .orders import Orders
 from .products import Products
+from .product_variants import ProductVariants
+from .receipts import Receipts
 from .roles import Roles
 from .stock import Stock
 from .stock_movements import StockMovements

@@ -1,5 +1,4 @@
 from typing import Any
-from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
@@ -65,7 +64,7 @@ def create_commercial_assignments(
 def update_commercial_assignments(
         *,
         db: Session = Depends(deps.get_db),
-        commercial_assignments_id: UUID,
+        commercial_assignments_id: int,
         commercial_assignments_in: schemas.CommercialAssignmentsUpdate,
         current_user: models.Users = Depends(deps.get_current_active_user),
 ) -> Any:
@@ -87,7 +86,7 @@ def read_commercial_assignments(
         where_relation: str = "[]",
         base_columns: str = "[]",
         db: Session = Depends(deps.get_db),
-        commercial_assignments_id: UUID,
+        commercial_assignments_id: int,
         current_user: models.Users = Depends(deps.get_current_active_user),
 ) -> Any:
     """
@@ -120,7 +119,7 @@ def read_commercial_assignments(
 def delete_commercial_assignments(
         *,
         db: Session = Depends(deps.get_db),
-        commercial_assignments_id: UUID,
+        commercial_assignments_id: int,
         current_user: models.Users = Depends(deps.get_current_active_user),
 ) -> Any:
     """

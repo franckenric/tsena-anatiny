@@ -12,6 +12,7 @@ export interface SelectOption {
   label: string;
   value: string;
   searchText?: string;
+  disabled?: boolean;
 }
 
 interface SelectProps {
@@ -74,7 +75,11 @@ export function Select({
           )}
 
           {visibleOptions.map((option) => (
-            <SelectItem key={option.value} value={option.value}>
+            <SelectItem
+              key={option.value}
+              value={option.value}
+              disabled={option.disabled}
+            >
               {option.label}
             </SelectItem>
           ))}

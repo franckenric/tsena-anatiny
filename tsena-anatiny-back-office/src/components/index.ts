@@ -5,4 +5,7 @@ export { Select } from "./Select";
 export { Card } from "./Card";
 export { DataTable } from "./DataTable";
 export { Layout } from "./Layout";
+export { ReceiptImport } from "./ReceiptImport";
+export type { ReceiptApplyPayload } from "./ReceiptImport";
+export { VariantsManager } from "./VariantsManager";
 export type { Column } from "./DataTable";

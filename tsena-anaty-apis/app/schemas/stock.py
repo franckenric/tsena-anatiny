@@ -26,6 +26,7 @@ class StockArrival(BaseModel):
     unit_cost: float
     another_price: float = 0.0
     reference: Optional[str] = None
+    variant_id: Optional[int] = None
 
 
 class StockUpdate(StockBase):

@@ -29,6 +29,7 @@ import {
   PopoverContent,
   PopoverTrigger
 } from "../components/ui/popover";
+import { roundToNearestThousand } from "../lib/utils";
 
 function generateRef(date?: string): string {
   const d = date ? new Date(date) : new Date();
@@ -37,12 +38,6 @@ function generateRef(date?: string): string {
   const day = String(d.getDate()).padStart(2, "0");
   return `ACHAT-${y}${m}${day}`;
 }
-
-const roundToNearestThousand = (value: number) => {
-  if (!Number.isFinite(value) || value <= 0) return 0;
-  if (value < 500) return Math.round(value * 100) / 100;
-  return Math.max(1000, Math.round(value / 1000) * 1000);
-};
 
 function CreateLotForm({
   onSubmit,
@@ -302,7 +297,7 @@ export function LotsPage() {
     null
   );
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [estimatedMargin, setEstimatedMargin] = useState(100);
+  const [estimatedMargin, setEstimatedMargin] = useState(25);
 
   const load = async () => {
     try {

@@ -11,6 +11,10 @@ pydantic-settings==2.2.1
 watchfiles==0.21.0
 regex
 
+# Database
+pymysql
+cryptography==38.0.3
+
 # Optional authentication
 python-multipart==0.0.9
 passlib[bcrypt]==1.7.4

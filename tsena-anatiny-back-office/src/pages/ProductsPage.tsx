@@ -7,6 +7,8 @@ import type {
 } from "../types/product";
 import type {
   Lot,
+  LotExpense,
+  StockMovement,
   StockArrivalPayload,
   CreateCartItemPayload,
   CartItem
@@ -17,7 +19,9 @@ import { productsService } from "../services/products.service";
 import { categoriesService } from "../services/categories.service";
 import {
   lotsService,
+  lotExpensesService,
   stockService,
+  stockMovementsService,
   cartItemsService
 } from "../services/operations.service";
 import { customersService } from "../services/customers.service";
@@ -35,6 +39,8 @@ import type { DraftVariant } from "../types/product";
 import { Modal } from "../components/Modal";
 import { Input } from "../components/Input";
 import { Layout } from "../components/Layout";
+import { roundToNearestThousand } from "../lib/utils";
+import { computeEffectiveUnitCost } from "../lib/utils";
 import {
   Pencil,
   Plus,
@@ -372,12 +378,14 @@ function ProductCartForm({
   product,
   onSubmit,
   onCancel,
-  isLoading
+  isLoading,
+  getEffectiveUnitCost
 }: {
   product: Product;
   onSubmit: (payload: CreateCartItemPayload) => Promise<void>;
   onCancel: () => void;
   isLoading: boolean;
+  getEffectiveUnitCost: (productId: number, variantId: number | null) => number;
 }) {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [phoneFilter, setPhoneFilter] = useState("");
@@ -395,7 +403,13 @@ function ProductCartForm({
     customer_id: 0,
     variant_id: 0,
     quantity: 1,
-    unit_cost: Number(product.selling_price || 0)
+    unit_cost: Number(
+      product.selling_price ||
+        (() => {
+          const base = getEffectiveUnitCost(product.id, null);
+          return base > 0 ? roundToNearestThousand(base * 1.25) : 0;
+        })()
+    )
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loadingCustomers, setLoadingCustomers] = useState(false);
@@ -441,6 +455,17 @@ function ProductCartForm({
   const currentQty = selectedVariant
     ? variantEffectiveStock(productVariants, selectedVariant)
     : getProductTotalStock(product);
+
+  const costPrice =
+    hasVariants && selectedVariant
+      ? getEffectiveUnitCost(product.id, selectedVariant.id) ||
+        Number(selectedVariant.unit_cost ?? 0)
+      : getEffectiveUnitCost(product.id, null) ||
+        Number(product.unit_cost ?? product.selling_price ?? 0);
+  const currentPrice = Number(form.unit_cost || 0);
+  const estimateMargin =
+    costPrice > 0 ? Math.round((currentPrice / costPrice - 1) * 100) : 0;
+  const estimateMarginClamped = Math.min(500, Math.max(25, estimateMargin));
 
   const cartValidation = (() => {
     const quantity = Number(form.quantity || 0);
@@ -579,9 +604,14 @@ function ProductCartForm({
                   ...p,
                   variant_id: variantId,
                   quantity: 1,
-                  unit_cost: variant?.unit_cost != null
-                    ? Number(variant.unit_cost)
-                    : Number(product.selling_price || 0)
+                  unit_cost:
+                    variant != null
+                      ? roundToNearestThousand(
+                          (getEffectiveUnitCost(product.id, variant.id) ||
+                            Number(variant.unit_cost ?? 0)) *
+                            1.25
+                        )
+                      : Number(product.selling_price || 0)
                 }));
                 setErrors((prev) => ({ ...prev, variant_id: "" }));
               }}
@@ -677,6 +707,39 @@ function ProductCartForm({
           <p className="text-xs font-semibold uppercase tracking-widest text-muted">
             Commande
           </p>
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border/60 bg-bg/30 px-4 py-3">
+            <p className="shrink-0 text-xs font-semibold uppercase tracking-wide text-muted">
+              PV estime
+            </p>
+            <span className="shrink-0 text-xs font-semibold text-muted">
+              25%
+            </span>
+            <input
+              type="range"
+              min={25}
+              max={500}
+              step={25}
+              value={estimateMarginClamped}
+              onChange={(e) => {
+                const margin = Number(e.target.value);
+                setForm((p) => ({
+                  ...p,
+                  unit_cost:
+                    costPrice > 0
+                      ? roundToNearestThousand(costPrice * (1 + margin / 100))
+                      : p.unit_cost
+                }));
+              }}
+              className="min-w-40 flex-1 accent-brand"
+              disabled={isLoading || costPrice <= 0}
+            />
+            <span className="shrink-0 text-xs font-semibold text-muted">
+              500%
+            </span>
+            <span className="w-14 shrink-0 text-right text-sm font-bold text-brand">
+              {estimateMarginClamped}%
+            </span>
+          </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <QuantityInput
               label="Quantité"
@@ -1771,6 +1834,8 @@ export function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [lots, setLots] = useState<Lot[]>([]);
+  const [lotExpenses, setLotExpenses] = useState<LotExpense[]>([]);
+  const [stockMovements, setStockMovements] = useState<StockMovement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isFormLoading, setIsFormLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1799,9 +1864,64 @@ export function ProductsPage() {
       .catch(() => {});
     lotsService
       .getLots(1, 200)
-      .then((r) => setLots(r.items))
+      .then(async (r) => {
+        setLots(r.items);
+        const expenses = await Promise.all(
+          r.items.map((lot) =>
+            lotExpensesService
+              .getLotExpenses(lot.id, 1, 200)
+              .then((e) => e.items)
+              .catch(() => [] as LotExpense[])
+          )
+        );
+        setLotExpenses(expenses.flat());
+      })
+      .catch(() => {});
+    stockMovementsService
+      .getMovements(1, 500)
+      .then((r) => setStockMovements(r.items))
       .catch(() => {});
   }, []);
+
+  const getEffectiveUnitCost = useCallback(
+    (productId: number, variantId: number | null): number => {
+      const relevant = stockMovements
+        .filter(
+          (m) =>
+            m.type === "in_stock" &&
+            m.lot_id != null &&
+            m.product_id === productId &&
+            (variantId == null
+              ? !m.variant_id
+              : m.variant_id === variantId)
+        )
+        .sort((a, b) => (b.id ?? 0) - (a.id ?? 0))[0];
+      if (!relevant) return 0;
+      const lotId = relevant.lot_id as number;
+      const lotLines = stockMovements.filter(
+        (m) => m.type === "in_stock" && m.lot_id === lotId
+      );
+      const totalExpenses = lotExpenses
+        .filter((e) => e.lot_id === lotId)
+        .reduce((sum, e) => sum + Number(e.amount || 0), 0);
+      return computeEffectiveUnitCost({
+        lotLines: lotLines.map((l) => ({
+          quantity: Number(l.quantity || 0),
+          unit_cost: Number(l.unit_cost || 0),
+          another_price: Number(l.another_price || 0)
+        })),
+        totalExpenses,
+        totalQuantity: lotLines.reduce(
+          (sum, l) => sum + Number(l.quantity || 0),
+          0
+        ),
+        targetQuantity: Number(relevant.quantity || 0),
+        targetUnitCost: Number(relevant.unit_cost || 0),
+        targetAnotherPrice: Number(relevant.another_price || 0)
+      });
+    },
+    [stockMovements, lotExpenses]
+  );
   const loadProducts = useCallback(async () => {
     try {
       const res = await productsService.getProducts(page, pageSize);
@@ -2297,6 +2417,7 @@ export function ProductsPage() {
               onSubmit={handleAddToCart}
               onCancel={() => setSelectedForCart(null)}
               isLoading={isFormLoading}
+              getEffectiveUnitCost={getEffectiveUnitCost}
             />
           )}
         </Modal>

@@ -69,6 +69,7 @@ class ProductsWithRelation(ProductsInDBBase):
     stock: Optional[List[ProductStockLite]] = None
     variants: Optional[List[ProductVariantNode]] = None
     commercial_assignment: Optional[ProductCommercialAssignmentLite] = None
+    unit_cost: Optional[float] = None
 
 
 class ProductsInDB(ProductsInDBBase):

@@ -30,9 +30,8 @@ target_metadata = Base.metadata
 
 
 def get_url():
-
-    db_path = os.getenv("SQLITE_DATABASE", "app.db")
-    return f"sqlite:///{os.path.abspath(db_path)}"
+    from app.core.config import settings
+    return settings.SQLALCHEMY_DATABASE_URI
 
 
 def include_object(object, name, type_, reflected, compare_to):

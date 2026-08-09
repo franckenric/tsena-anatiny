@@ -31,7 +31,18 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = os.getenv("PROJECT_NAME", "FastAPI Project")
 
     SQLITE_DATABASE: str = os.getenv("SQLITE_DATABASE", "app.db")
-    SQLALCHEMY_DATABASE_URI: str = f"sqlite:///./{SQLITE_DATABASE}"
+
+    # MySQL configuration
+    MYSQL_SERVER: str = os.getenv("MYSQL_SERVER", "localhost")
+    MYSQL_PORT: int = int(os.getenv("MYSQL_PORT", "3306"))
+    MYSQL_USER: str = os.getenv("MYSQL_USER", "root")
+    MYSQL_PASSWORD: str = os.getenv("MYSQL_PASSWORD", "")
+    MYSQL_DATABASE: str = os.getenv("MYSQL_DATABASE", "")
+
+    SQLALCHEMY_DATABASE_URI: str = os.getenv(
+        "SQLALCHEMY_DATABASE_URI",
+        f"mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_SERVER}:{MYSQL_PORT}/{MYSQL_DATABASE}?charset=utf8mb4",
+    )
 
     # Authentication settings
     SECRET_KEY: str = secrets.token_urlsafe(32)

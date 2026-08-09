@@ -22,7 +22,11 @@ def upgrade() -> None:
 
     if "selling_price" in cols and "another_price" not in cols:
         with op.batch_alter_table("products") as batch_op:
-            batch_op.alter_column("selling_price", new_column_name="another_price")
+            batch_op.alter_column(
+                "selling_price",
+                new_column_name="another_price",
+                existing_type=sa.Float(),
+            )
 
 
 def downgrade() -> None:
@@ -32,4 +36,8 @@ def downgrade() -> None:
 
     if "another_price" in cols and "selling_price" not in cols:
         with op.batch_alter_table("products") as batch_op:
-            batch_op.alter_column("another_price", new_column_name="selling_price")
+            batch_op.alter_column(
+                "another_price",
+                new_column_name="selling_price",
+                existing_type=sa.Float(),
+            )

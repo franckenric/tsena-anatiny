@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import type {
   StockMovement,
   CreateStockMovementPayload,
@@ -372,6 +372,83 @@ export function StockMovementsPage() {
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
+  const productById = useMemo(() => {
+    const map = new Map<number, Product>();
+    for (const p of products) map.set(p.id, p);
+    return map;
+  }, [products]);
+
+  const variantById = useMemo(() => {
+    const map = new Map<number, NonNullable<Product["variants"]>[number]>();
+    for (const p of products) {
+      for (const v of p.variants ?? []) map.set(v.id, v);
+    }
+    return map;
+  }, [products]);
+
+  const getEffectiveVariantUnitCost = (variantId: number): number | null => {
+    let current = variantById.get(variantId);
+    while (current) {
+      if (current.unit_cost != null) return Number(current.unit_cost);
+      if (current.parent_id == null) break;
+      current = variantById.get(current.parent_id);
+    }
+    return null;
+  };
+
+  type MovementRow = StockMovement & { stock_ids?: number[] };
+
+  const displayMovements = useMemo(() => {
+    const leafById = new Map<number, NonNullable<Product["variants"]>[number]>();
+    for (const p of products) {
+      const variants = p.variants ?? [];
+      for (const v of variants) {
+        if (!variants.some((c) => c.parent_id === v.id)) leafById.set(v.id, v);
+      }
+    }
+
+    const aggregated = new Map<number, MovementRow>();
+    const singles: MovementRow[] = [];
+
+    for (const m of movements) {
+      const variants = productById.get(m.product_id)?.variants ?? [];
+      const hasLeaves = variants.some(
+        (v) => !variants.some((c) => c.parent_id === v.id)
+      );
+
+      if (m.variant_id != null) {
+        const leaf = leafById.get(m.variant_id);
+        if (leaf) {
+          const existing = aggregated.get(m.variant_id);
+          if (existing) {
+            existing.quantity =
+              Number(existing.quantity || 0) + Number(m.quantity || 0);
+            existing.another_price =
+              Number(existing.another_price || 0) +
+              Number(m.another_price || 0);
+            existing.stock_ids = [
+              ...(existing.stock_ids ?? []),
+              m.id
+            ];
+          } else {
+            aggregated.set(m.variant_id, {
+              ...m,
+              quantity: Number(m.quantity || 0),
+              unit_cost: m.unit_cost ?? leaf.unit_cost ?? undefined,
+              stock_ids: [m.id]
+            });
+          }
+        }
+        continue;
+      }
+
+      if (hasLeaves) continue;
+      singles.push(m);
+    }
+
+    return [...singles, ...Array.from(aggregated.values())];
+  }, [movements, products, productById]);
+
   const load = async () => {
     try {
       setIsLoading(true);
@@ -427,7 +504,20 @@ export function StockMovementsPage() {
     }
   };
 
-  const columns: Column<StockMovement>[] = [
+  const columns: Column<MovementRow>[] = [
+    {
+      header: "Stock ID",
+      accessor: "id",
+      width: "8%",
+      render: (_, r) => {
+        const ids = r.stock_ids?.length ? r.stock_ids : [r.id];
+        return (
+          <span className="text-muted">
+            {ids.map((id) => `#${id}`).join(" ")}
+          </span>
+        );
+      }
+    },
     {
       header: "Produit",
       accessor: "product_id",
@@ -473,11 +563,17 @@ export function StockMovementsPage() {
       render: (v) => <span className="font-semibold">{v}</span>
     },
     {
-      header: "PU",
+      header: "Prix unitaire",
       accessor: "unit_cost",
-      width: "10%",
-      render: (v) =>
-        v != null ? `${Number(v).toLocaleString("fr-FR")} Ar` : "-"
+      width: "12%",
+      render: (v, r) => {
+        const variantCost =
+          r.variant_id != null
+            ? getEffectiveVariantUnitCost(r.variant_id)
+            : null;
+        const value = variantCost ?? Number(v ?? 0);
+        return value > 0 ? `${Number(value).toLocaleString("fr-FR")} Ar` : "-";
+      }
     },
     {
       header: "Other",
@@ -542,7 +638,7 @@ export function StockMovementsPage() {
         >
           <DataTable
             columns={columns}
-            data={movements}
+            data={displayMovements}
             isLoading={isLoading}
             emptyMessage="Aucun mouvement"
             actions={(m) => (

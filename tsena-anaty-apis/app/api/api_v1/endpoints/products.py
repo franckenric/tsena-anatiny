@@ -4,6 +4,7 @@ from uuid import uuid4
 import re
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from fastapi.encoders import jsonable_encoder
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from app.api import deps
@@ -319,7 +320,30 @@ def read_products(
     products = crud.products.get_multi_where_array(
       db=db, relations=relations, skip=offset, limit=limit, where=wheres, where_relation=where_relations, base_columns=bases_columns)
     count = crud.products.get_count_where_array(db=db, where=wheres)
-    response = schemas.ResponseProducts(**{'count': count, 'data': jsonable_encoder(products)})
+    encoded_products = jsonable_encoder(products)
+
+    unit_cost_rows = db.execute(
+        select(
+            models.StockMovements.product_id,
+            models.StockMovements.unit_cost,
+        )
+        .where(
+            models.StockMovements.type == TypeEnum.in_stoct,
+            models.StockMovements.variant_id.is_(None),
+            models.StockMovements.deleted_at.is_(None),
+            models.StockMovements.unit_cost.isnot(None),
+        )
+        .order_by(models.StockMovements.id.desc())
+    ).all()
+    unit_cost_by_product: dict = {}
+    for product_id, unit_cost in unit_cost_rows:
+        if product_id is not None and product_id not in unit_cost_by_product:
+            unit_cost_by_product[product_id] = float(unit_cost)
+
+    for item in encoded_products:
+        item['unit_cost'] = unit_cost_by_product.get(item.get('id'))
+
+    response = schemas.ResponseProducts(**{'count': count, 'data': encoded_products})
     return response
 
 

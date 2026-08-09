@@ -16,6 +16,7 @@ export interface Product {
   image?: string;
   unit?: string;
   selling_price?: number;
+  unit_cost?: number | null;
   low_stock_alert?: number;
   status?: ProductStatus;
   categorie?: Category | null;

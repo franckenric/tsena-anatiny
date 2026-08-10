@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import type {
   Product,
   Category,
@@ -382,11 +383,28 @@ function ProductCartForm({
   getEffectiveUnitCost
 }: {
   product: Product;
-  onSubmit: (payload: CreateCartItemPayload) => Promise<void>;
+  onSubmit: (
+    payloads: CreateCartItemPayload[],
+    customer?: Customer
+  ) => Promise<void>;
   onCancel: () => void;
   isLoading: boolean;
   getEffectiveUnitCost: (productId: number, variantId: number | null) => number;
 }) {
+  const productVariants = product.variants ?? [];
+  const hasVariants = productVariants.length > 0;
+  const leafVariants = productVariants.filter(
+    (v) => !productVariants.some((other) => other.parent_id === v.id)
+  );
+  const selectableVariants =
+    leafVariants.length > 0 ? leafVariants : productVariants;
+
+  type VariantCartLine = {
+    variant: ProductVariantItem;
+    quantity: number;
+    unit_cost: number;
+  };
+
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [phoneFilter, setPhoneFilter] = useState("");
   const [isCreateCustomerOpen, setIsCreateCustomerOpen] = useState(false);
@@ -401,7 +419,6 @@ function ProductCartForm({
   });
   const [form, setForm] = useState({
     customer_id: 0,
-    variant_id: 0,
     quantity: 1,
     unit_cost: Number(
       product.selling_price ||
@@ -411,6 +428,22 @@ function ProductCartForm({
         })()
     )
   });
+  const [lines, setLines] = useState<VariantCartLine[]>(() =>
+    selectableVariants.map((v) => {
+      const cost =
+        getEffectiveUnitCost(product.id, v.id) || Number(v.unit_cost ?? 0);
+      return {
+        variant: v,
+        quantity: 0,
+        unit_cost:
+          Number(v.selling_price ?? 0) > 0
+            ? Number(v.selling_price)
+            : cost > 0
+              ? roundToNearestThousand(cost * 1.25)
+              : 0
+      };
+    })
+  );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loadingCustomers, setLoadingCustomers] = useState(false);
 
@@ -442,43 +475,63 @@ function ProductCartForm({
     loadCustomers();
   }, []);
 
-  const productVariants = product.variants ?? [];
-  const hasVariants = productVariants.length > 0;
-  const leafVariants = productVariants.filter(
-    (v) => !productVariants.some((other) => other.parent_id === v.id)
-  );
-  const selectableVariants =
-    leafVariants.length > 0 ? leafVariants : productVariants;
-  const selectedVariant = hasVariants
-    ? selectableVariants.find((v) => v.id === form.variant_id) ?? null
-    : null;
-  const currentQty = selectedVariant
-    ? variantEffectiveStock(productVariants, selectedVariant)
-    : getProductTotalStock(product);
+  const currentQty = getProductTotalStock(product);
 
   const costPrice =
-    hasVariants && selectedVariant
-      ? getEffectiveUnitCost(product.id, selectedVariant.id) ||
-        Number(selectedVariant.unit_cost ?? 0)
-      : getEffectiveUnitCost(product.id, null) ||
-        Number(product.unit_cost ?? product.selling_price ?? 0);
+    getEffectiveUnitCost(product.id, null) ||
+    Number(product.unit_cost ?? product.selling_price ?? 0);
   const currentPrice = Number(form.unit_cost || 0);
   const estimateMargin =
     costPrice > 0 ? Math.round((currentPrice / costPrice - 1) * 100) : 0;
   const estimateMarginClamped = Math.min(500, Math.max(25, estimateMargin));
 
+  const updateLine = (index: number, patch: Partial<VariantCartLine>) =>
+    setLines((prev) =>
+      prev.map((line, i) => (i === index ? { ...line, ...patch } : line))
+    );
+
+  const variantLabel = (v: ProductVariantItem): string => {
+    const base = v.name || `Variante #${v.id}`;
+    const parent =
+      v.parent_id != null
+        ? productVariants.find((p) => p.id === v.parent_id)
+        : undefined;
+    return parent?.name ? `${base} (${parent.name})` : base;
+  };
+
+  const activeLines = hasVariants ? lines.filter((l) => l.quantity > 0) : [];
+
   const cartValidation = (() => {
-    const quantity = Number(form.quantity || 0);
-    const unitCost = Number(form.unit_cost || 0);
     const issues: string[] = [];
     if (!form.customer_id) issues.push("Client requis");
-    if (hasVariants && !selectedVariant)
-      issues.push("Veuillez sélectionner une variante");
-    if (quantity <= 0) issues.push("Quantité doit être > 0");
-    if (quantity > currentQty && currentQty > 0)
-      issues.push(`Quantité dépasse le stock (${currentQty})`);
-    if (currentQty <= 0) issues.push("Stock épuisé");
-    if (unitCost <= 0) issues.push("Prix de vente invalide (doit être > 0)");
+
+    if (hasVariants) {
+      if (activeLines.length === 0)
+        issues.push("Sélectionnez au moins une variante");
+      for (const line of activeLines) {
+        const stock = variantEffectiveStock(productVariants, line.variant);
+        if (line.quantity <= 0)
+          issues.push(`« ${variantLabel(line.variant)} »: quantité doit être > 0`);
+        if (stock <= 0)
+          issues.push(`« ${variantLabel(line.variant)} »: stock épuisé`);
+        if (line.quantity > stock)
+          issues.push(
+            `« ${variantLabel(line.variant)} »: quantité dépasse le stock (${stock})`
+          );
+        if (line.unit_cost <= 0)
+          issues.push(
+            `« ${variantLabel(line.variant)} »: prix de vente invalide`
+          );
+      }
+    } else {
+      const quantity = Number(form.quantity || 0);
+      if (quantity <= 0) issues.push("Quantité doit être > 0");
+      if (quantity > currentQty && currentQty > 0)
+        issues.push(`Quantité dépasse le stock (${currentQty})`);
+      if (currentQty <= 0) issues.push("Stock épuisé");
+      if (currentPrice <= 0)
+        issues.push("Prix de vente invalide (doit être > 0)");
+    }
     return issues;
   })();
   const isSubmitDisabled = isLoading || cartValidation.length > 0;
@@ -531,17 +584,46 @@ function ProductCartForm({
     e.preventDefault();
 
     const errs: Record<string, string> = {};
-    const quantity = Number(form.quantity || 0);
     const unitCost = Number(form.unit_cost || 0);
 
     if (!form.customer_id) errs.customer_id = "Client requis";
-    if (hasVariants && !selectedVariant)
-      errs.variant_id = "Veuillez sélectionner une variante";
-    if (quantity <= 0) errs.quantity = "Quantite doit etre > 0";
-    if (quantity > currentQty) {
-      errs.quantity = "Quantite superieure au stock disponible";
+
+    let payloads: CreateCartItemPayload[] = [];
+
+    if (hasVariants) {
+      if (activeLines.length === 0) {
+        errs.variant_id = "Sélectionnez au moins une variante";
+      }
+      for (const line of activeLines) {
+        const stock = variantEffectiveStock(productVariants, line.variant);
+        if (line.quantity <= 0) errs.variant_id = "Quantite doit etre > 0";
+        if (line.quantity > stock)
+          errs.variant_id = "Quantite superieure au stock disponible";
+        if (line.unit_cost < 0) errs.variant_id = "Prix invalide";
+        payloads.push({
+          customer_id: form.customer_id,
+          product_id: product.id,
+          variant_id: line.variant.id,
+          quantity: line.quantity,
+          unit_cost: line.unit_cost
+        });
+      }
+    } else {
+      const quantity = Number(form.quantity || 0);
+      if (quantity <= 0) errs.quantity = "Quantite doit etre > 0";
+      if (quantity > currentQty)
+        errs.quantity = "Quantite superieure au stock disponible";
+      if (unitCost < 0) errs.unit_cost = "Prix invalide";
+      payloads = [
+        {
+          customer_id: form.customer_id,
+          product_id: product.id,
+          variant_id: null,
+          quantity,
+          unit_cost: unitCost
+        }
+      ];
     }
-    if (unitCost < 0) errs.unit_cost = "Prix invalide";
 
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
@@ -549,13 +631,10 @@ function ProductCartForm({
     }
 
     try {
-      await onSubmit({
-        customer_id: form.customer_id,
-        product_id: product.id,
-        variant_id: selectedVariant ? selectedVariant.id : null,
-        quantity,
-        unit_cost: unitCost
-      });
+      await onSubmit(
+        payloads,
+        customers.find((c) => c.id === form.customer_id)
+      );
     } catch (err) {
       setErrors({
         submit: err instanceof Error ? err.message : "Erreur ajout panier"
@@ -588,73 +667,84 @@ function ProductCartForm({
           </div>
         </div>
 
-        {/* Variante */}
+        {/* Variantes */}
         {hasVariants && (
           <div className="rounded-2xl border border-border/60 bg-bg/30 p-4 space-y-3">
-            <p className="text-xs font-semibold uppercase tracking-widest text-muted">
-              Variante
-            </p>
-            <Select
-              value={String(form.variant_id || "")}
-              onValueChange={(value) => {
-                const variantId = parseInt(value, 10) || 0;
-                const variant =
-                  selectableVariants.find((v) => v.id === variantId) ?? null;
-                setForm((p) => ({
-                  ...p,
-                  variant_id: variantId,
-                  quantity: 1,
-                  unit_cost:
-                    variant != null
-                      ? roundToNearestThousand(
-                          (getEffectiveUnitCost(product.id, variant.id) ||
-                            Number(variant.unit_cost ?? 0)) *
-                            1.25
-                        )
-                      : Number(product.selling_price || 0)
-                }));
-                setErrors((prev) => ({ ...prev, variant_id: "" }));
-              }}
-              options={[
-                { label: "Sélectionner une variante", value: "0" },
-                ...productVariants.map((v) => {
-                  const hasChildren = productVariants.some(
-                    (other) => other.parent_id === v.id
-                  );
-                  const parent =
-                    v.parent_id != null
-                      ? productVariants.find((p) => p.id === v.parent_id)
-                      : undefined;
-                  const base = v.name || `Variante #${v.id}`;
-                  const label = hasChildren
-                    ? `${base} — ${variantEffectiveStock(productVariants, v)} pcs`
-                    : `${base}${parent?.name ? ` (${parent.name})` : ""}${
-                        v.unit_cost != null
-                          ? ` — ${Number(v.unit_cost).toLocaleString("fr-FR")} Ar`
-                          : ""
-                      }`;
-                  return {
-                    label,
-                    value: String(v.id),
-                    disabled: hasChildren
-                  };
-                })
-              ]}
-              disabled={isLoading}
-              error={errors.variant_id}
-            />
-            {selectedVariant && (
-              <div className="flex items-center justify-between rounded-lg border border-border/50 bg-panel/55 px-3 py-2 text-xs">
-                <span className="text-muted">Stock de la variante</span>
-                <span
-                  className={`font-bold ${
-                    currentQty <= 0 ? "text-warning" : "text-ink"
-                  }`}
-                >
-                  {currentQty} pcs
-                </span>
-              </div>
-            )}
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs font-semibold uppercase tracking-widest text-muted">
+                Variantes
+              </p>
+              <span className="text-xs text-muted">
+                {activeLines.length} sélectionnée
+                {activeLines.length > 1 ? "s" : ""}
+              </span>
+            </div>
+            <div className="space-y-2">
+              {lines.map((line, index) => {
+                const stock = variantEffectiveStock(
+                  productVariants,
+                  line.variant
+                );
+                const cost =
+                  getEffectiveUnitCost(product.id, line.variant.id) ||
+                  Number(line.variant.unit_cost ?? 0);
+                const margin =
+                  cost > 0
+                    ? Math.round((line.unit_cost / cost - 1) * 100)
+                    : 0;
+                return (
+                  <div
+                    key={line.variant.id}
+                    className="rounded-xl border border-border/50 bg-panel/55 p-3 space-y-2"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-ink">
+                          {variantLabel(line.variant)}
+                        </p>
+                        <p className="text-xs text-muted">
+                          Stock dispo: {stock} pcs
+                        </p>
+                      </div>
+                      <span
+                        className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${
+                          line.quantity > 0
+                            ? "bg-brand/15 text-brand"
+                            : "bg-bg text-muted"
+                        }`}
+                      >
+                        {margin}%
+                      </span>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <QuantityInput
+                        label="Quantité"
+                        value={line.quantity}
+                        onChange={(value) =>
+                          updateLine(index, { quantity: value })
+                        }
+                        min={0}
+                        placeholder="0"
+                        disabled={isLoading}
+                      />
+                      <Input
+                        label="Prix unitaire (Ar)"
+                        type="number"
+                        value={line.unit_cost}
+                        onChange={(e) =>
+                          updateLine(index, {
+                            unit_cost: parseFloat(e.target.value) || 0
+                          })
+                        }
+                        error={errors.variant_id}
+                        placeholder="0"
+                        disabled={isLoading}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 
@@ -703,69 +793,113 @@ function ProductCartForm({
         </div>
 
         {/* Quantité & prix */}
-        <div className="rounded-2xl border border-border/60 bg-bg/30 p-4 space-y-4">
-          <p className="text-xs font-semibold uppercase tracking-widest text-muted">
-            Commande
-          </p>
-          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border/60 bg-bg/30 px-4 py-3">
-            <p className="shrink-0 text-xs font-semibold uppercase tracking-wide text-muted">
-              PV estime
+        {hasVariants ? (
+          <div className="rounded-2xl border border-border/60 bg-bg/30 p-4 space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-widest text-muted">
+              Résumé
             </p>
-            <span className="shrink-0 text-xs font-semibold text-muted">
-              25%
-            </span>
-            <input
-              type="range"
-              min={25}
-              max={500}
-              step={25}
-              value={estimateMarginClamped}
-              onChange={(e) => {
-                const margin = Number(e.target.value);
-                setForm((p) => ({
-                  ...p,
-                  unit_cost:
-                    costPrice > 0
-                      ? roundToNearestThousand(costPrice * (1 + margin / 100))
-                      : p.unit_cost
-                }));
-              }}
-              className="min-w-40 flex-1 accent-brand"
-              disabled={isLoading || costPrice <= 0}
-            />
-            <span className="shrink-0 text-xs font-semibold text-muted">
-              500%
-            </span>
-            <span className="w-14 shrink-0 text-right text-sm font-bold text-brand">
-              {estimateMarginClamped}%
-            </span>
+            {activeLines.length === 0 ? (
+              <p className="text-sm text-muted">Aucune variante sélectionnée.</p>
+            ) : (
+              <>
+                <ul className="space-y-1">
+                  {activeLines.map((line) => (
+                    <li
+                      key={line.variant.id}
+                      className="flex items-center justify-between gap-3 text-sm"
+                    >
+                      <span className="truncate text-ink">
+                        {variantLabel(line.variant)} × {line.quantity}
+                      </span>
+                      <span className="shrink-0 font-semibold text-ink">
+                        {(line.quantity * line.unit_cost).toLocaleString(
+                          "fr-FR"
+                        )}{" "}
+                        Ar
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="flex items-center justify-between gap-3 border-t border-border/50 pt-2 text-sm">
+                  <span className="font-semibold text-ink">Total</span>
+                  <span className="font-bold text-brand">
+                    {activeLines
+                      .reduce(
+                        (sum, line) => sum + line.quantity * line.unit_cost,
+                        0
+                      )
+                      .toLocaleString("fr-FR")}{" "}
+                    Ar
+                  </span>
+                </div>
+              </>
+            )}
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <QuantityInput
-              label="Quantité"
-              value={form.quantity}
-              onChange={(value) => setForm((p) => ({ ...p, quantity: value }))}
-              error={errors.quantity}
-              placeholder="1"
-              disabled={isLoading}
-              min={0}
-            />
-            <Input
-              label="Prix unitaire (Ar)"
-              type="number"
-              value={form.unit_cost}
-              onChange={(e) =>
-                setForm((p) => ({
-                  ...p,
-                  unit_cost: parseFloat(e.target.value) || 0
-                }))
-              }
-              error={errors.unit_cost}
-              placeholder="0"
-              disabled={isLoading}
-            />
+        ) : (
+          <div className="rounded-2xl border border-border/60 bg-bg/30 p-4 space-y-4">
+            <p className="text-xs font-semibold uppercase tracking-widest text-muted">
+              Commande
+            </p>
+            <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border/60 bg-bg/30 px-4 py-3">
+              <p className="shrink-0 text-xs font-semibold uppercase tracking-wide text-muted">
+                PV estime
+              </p>
+              <span className="shrink-0 text-xs font-semibold text-muted">
+                25%
+              </span>
+              <input
+                type="range"
+                min={25}
+                max={500}
+                step={25}
+                value={estimateMarginClamped}
+                onChange={(e) => {
+                  const margin = Number(e.target.value);
+                  setForm((p) => ({
+                    ...p,
+                    unit_cost:
+                      costPrice > 0
+                        ? roundToNearestThousand(costPrice * (1 + margin / 100))
+                        : p.unit_cost
+                  }));
+                }}
+                className="min-w-40 flex-1 accent-brand"
+                disabled={isLoading || costPrice <= 0}
+              />
+              <span className="shrink-0 text-xs font-semibold text-muted">
+                500%
+              </span>
+              <span className="w-14 shrink-0 text-right text-sm font-bold text-brand">
+                {estimateMarginClamped}%
+              </span>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <QuantityInput
+                label="Quantité"
+                value={form.quantity}
+                onChange={(value) => setForm((p) => ({ ...p, quantity: value }))}
+                error={errors.quantity}
+                placeholder="1"
+                disabled={isLoading}
+                min={0}
+              />
+              <Input
+                label="Prix unitaire (Ar)"
+                type="number"
+                value={form.unit_cost}
+                onChange={(e) =>
+                  setForm((p) => ({
+                    ...p,
+                    unit_cost: parseFloat(e.target.value) || 0
+                  }))
+                }
+                error={errors.unit_cost}
+                placeholder="0"
+                disabled={isLoading}
+              />
+            </div>
           </div>
-        </div>
+        )}
 
         {cartValidation.length > 0 && (
           <ul className="space-y-0.5 rounded-xl border border-warning/40 bg-warning/8 px-3 py-2">
@@ -1051,11 +1185,11 @@ function CustomerCartViewer({
                   <div>
                     <p className="text-sm font-semibold text-ink">
                       {product?.name || `Produit #${item.product_id}`}
+                      {item.variant?.name ? ` — ${item.variant.name}` : ""}
                     </p>
-                    {item.variant?.name && (
+                    {item.variant?.sku && (
                       <p className="text-xs font-medium text-brand">
-                        {item.variant.name}
-                        {item.variant.sku ? ` · ${item.variant.sku}` : ""}
+                        {item.variant.sku}
                       </p>
                     )}
                     <p className="text-xs text-muted">
@@ -1846,6 +1980,7 @@ export function ProductsPage() {
   );
   const [selectedForCart, setSelectedForCart] = useState<Product | null>(null);
   const [isCartViewerOpen, setIsCartViewerOpen] = useState(false);
+  const navigate = useNavigate();
   const [notice, setNotice] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -2036,12 +2171,68 @@ export function ProductsPage() {
     }
   };
 
-  const handleAddToCart = async (payload: CreateCartItemPayload) => {
+  const handleAddToCart = async (
+    payloads: CreateCartItemPayload[],
+    customer?: Customer
+  ) => {
     try {
       setIsFormLoading(true);
-      await cartItemsService.createCartItem(payload);
+      for (const payload of payloads) {
+        await cartItemsService.createCartItem(payload);
+
+        if (Number(payload.unit_cost || 0) > 0) {
+          try {
+            if (payload.variant_id) {
+              await productsService.updateVariant(
+                payload.product_id,
+                payload.variant_id,
+                { selling_price: Number(payload.unit_cost) }
+              );
+            } else {
+              await productsService.updateProduct(payload.product_id, {
+                selling_price: Number(payload.unit_cost)
+              });
+            }
+            setProducts((prev) =>
+              prev.map((p) => {
+                if (p.id !== payload.product_id) return p;
+                if (payload.variant_id) {
+                  return {
+                    ...p,
+                    variants: (p.variants ?? []).map((v) =>
+                      v.id === payload.variant_id
+                        ? { ...v, selling_price: Number(payload.unit_cost) }
+                        : v
+                    )
+                  };
+                }
+                return { ...p, selling_price: Number(payload.unit_cost) };
+              })
+            );
+          } catch {
+            // le prix de vente reste inchange si la mise a jour echoue
+          }
+        }
+      }
+
       setSelectedForCart(null);
-      setNotice("Produit ajoute au panier client avec succes");
+      setNotice(
+        payloads.length > 1
+          ? `${payloads.length} variantes ajoutees au panier client avec succes`
+          : "Produit ajoute au panier client avec succes"
+      );
+      navigate("/customers", {
+        state: {
+          openCartCustomer: customer
+            ? {
+                id: customer.id,
+                name: customer.name,
+                phone: customer.phone,
+                delivery_address: customer.delivery_address
+              }
+            : { id: payloads[0].customer_id, name: "", phone: "" }
+        }
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur ajout panier");
       throw err;

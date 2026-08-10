@@ -1,0 +1,167 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+    --bg: 40 33% 97%;
+    --panel: 0 0% 100%;
+    --ink: 20 14% 8%;
+    --muted: 25 6% 44%;
+    --border: 30 8% 88%;
+    --brand: 161 94% 26%;
+    --brand-soft: 153 60% 92%;
+    --accent: 24 92% 52%;
+    --success: 161 94% 26%;
+    --warning: 38 92% 50%;
+    --danger: 0 72% 51%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply m-0 bg-bg text-ink font-sans antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-display;
+  }
+
+  #root {
+    @apply min-h-screen;
+  }
+}
+
+@layer utilities {
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes slide-in-right {
+    from {
+      transform: translateX(100%);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes toast-in {
+    from {
+      opacity: 0;
+      transform: translateY(12px) scale(0.97);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .animate-fade-up {
+    animation: fade-up 0.45s ease-out both;
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.25s ease-out both;
+  }
+
+  .animate-slide-in-right {
+    animation: slide-in-right 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .animate-toast-in {
+    animation: toast-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .animate-spin-slow {
+    animation: spin 0.8s linear infinite;
+  }
+
+  .scrollbar-hide {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .skeleton {
+    @apply animate-pulse rounded-2xl bg-border/60;
+  }
+}
+
+:root {
+  --ion-color-primary: hsl(var(--brand));
+  --ion-color-primary-rgb: 4, 129, 89;
+  --ion-color-primary-contrast: #ffffff;
+  --ion-color-primary-contrast-rgb: 255, 255, 255;
+  --ion-color-primary-shade: hsl(var(--brand) / 0.88);
+  --ion-color-primary-tint: hsl(var(--brand) / 0.12);
+  --ion-background-color: hsl(var(--bg));
+  --ion-background-color-rgb: 245, 247, 246;
+  --ion-text-color: hsl(var(--ink));
+  --ion-text-color-rgb: 34, 30, 27;
+  --ion-border-color: hsl(var(--border));
+  --ion-toolbar-background: hsl(var(--panel));
+  --ion-toolbar-color: hsl(var(--ink));
+  --ion-tab-bar-background: hsl(var(--panel));
+  --ion-tab-bar-color: hsl(var(--muted));
+  --ion-tab-bar-color-selected: hsl(var(--brand));
+  --ion-item-background: hsl(var(--panel));
+  --ion-font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+ion-content {
+  --background: hsl(var(--bg));
+}
+
+ion-toolbar {
+  --border-width: 0;
+}
+
+ion-tab-bar {
+  --border: 1px solid hsl(var(--border));
+  padding-bottom: env(safe-area-inset-bottom);
+  height: calc(56px + env(safe-area-inset-bottom));
+}
+
+ion-tab-button {
+  --color: hsl(var(--muted));
+  --color-selected: hsl(var(--brand));
+  --padding-top: 8px;
+}

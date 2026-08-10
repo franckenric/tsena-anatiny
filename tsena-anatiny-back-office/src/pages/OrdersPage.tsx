@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Pencil, Printer, Trash2 } from "lucide-react";
 import type {
   Order,
@@ -8,12 +9,14 @@ import type {
 } from "../types/operations";
 import type { Customer } from "../types/customer";
 import type { User } from "../types/user";
+import type { Product } from "../types/product";
 import type { Column } from "../components/index";
 import {
   ordersService,
   cartItemsService
 } from "../services/operations.service";
 import { customersService } from "../services/customers.service";
+import { productsService } from "../services/products.service";
 import {
   Layout,
   Card,
@@ -359,6 +362,7 @@ type CartItem = {
   variant_id?: number | null;
   product_name: string;
   variant_name?: string;
+  variant_sku?: string;
   quantity: number;
   unit_cost: number;
   another_price: number;
@@ -369,6 +373,7 @@ function OrderForm({
   order,
   users,
   customers,
+  products,
   initialCartItems,
   onSubmit,
   onConfirm,
@@ -378,9 +383,13 @@ function OrderForm({
   order?: Order;
   users: User[];
   customers: Customer[];
+  products: Product[];
   initialCartItems?: CartItem[];
   onSubmit: (p: CreateOrderPayload | UpdateOrderPayload) => Promise<void>;
-  onConfirm: () => Promise<void>;
+  onConfirm: (extra: {
+    another_price: number;
+    other_price_reason?: string;
+  }) => Promise<void>;
   onCancel: () => void;
   isLoading: boolean;
 }) {
@@ -482,15 +491,23 @@ function OrderForm({
         1,
         500
       );
-      const mappedItems: CartItem[] = cartResponse.items.map((item) => ({
-        cart_item_id: item.id,
-        product_id: item.product_id,
-        product_name: `Produit #${item.product_id}`,
-        quantity: Number(item.quantity || 0),
-        unit_cost: Number(item.unit_cost || 0),
-        another_price: Number(item.another_price || 0),
-        other_price_reason: item.other_price_reason || undefined
-      }));
+      const mappedItems: CartItem[] = cartResponse.items.map((item) => {
+        const product = products.find((p) => p.id === item.product_id);
+        const variant =
+          product?.variants?.find((v) => v.id === item.variant_id) ?? null;
+        return {
+          cart_item_id: item.id,
+          product_id: item.product_id,
+          variant_id: item.variant_id ?? null,
+          product_name: product?.name || `Produit #${item.product_id}`,
+          variant_name: item.variant?.name || variant?.name || undefined,
+          variant_sku: item.variant?.sku || variant?.sku || undefined,
+          quantity: Number(item.quantity || 0),
+          unit_cost: Number(item.unit_cost || 0),
+          another_price: Number(item.another_price || 0),
+          other_price_reason: item.other_price_reason || undefined
+        };
+      });
 
       setCartItems(mappedItems);
     } catch (err) {
@@ -746,10 +763,13 @@ function OrderForm({
                       <div>
                         <p className="text-sm font-semibold text-ink">
                           {item.product_name}
+                          {item.variant_name
+                            ? ` — ${item.variant_name}`
+                            : ""}
                         </p>
-                        {item.variant_name && (
+                        {item.variant_sku && (
                           <p className="text-xs font-medium text-brand">
-                            {item.variant_name}
+                            {item.variant_sku}
                           </p>
                         )}
                         <p className="text-xs text-muted">
@@ -820,7 +840,15 @@ function OrderForm({
         {order && order.status === "draft" && (
           <Button
             type="button"
-            onClick={() => void onConfirm()}
+            onClick={() =>
+              void onConfirm({
+                another_price: Number(form.another_price || 0),
+                other_price_reason:
+                  Number(form.another_price || 0) > 0
+                    ? form.other_price_reason.trim() || undefined
+                    : undefined
+              })
+            }
             variant="primary"
             className="flex-1"
             disabled={isLoading}
@@ -843,16 +871,24 @@ function OrderForm({
 }
 
 export function OrdersPage() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [orders, setOrders] = useState<Order[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isFormLoading, setIsFormLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<{
     type: "info" | "success";
     message: string;
-  } | null>(null);
+  } | null>(() => {
+    const state = location.state as { notice?: string } | null;
+    return state?.notice
+      ? { type: "success", message: state.notice }
+      : null;
+  });
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selected, setSelected] = useState<Order | null>(null);
   const [selectedCartItems, setSelectedCartItems] = useState<CartItem[]>([]);
@@ -863,6 +899,23 @@ export function OrdersPage() {
   useEffect(() => {
     load();
   }, [page, pageSize]);
+
+  useEffect(() => {
+    productsService
+      .getProducts(1, 200)
+      .then((r) => setProducts(r.items))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const state = location.state as { openOrderId?: number } | null;
+    if (!state?.openOrderId) return;
+    const order = orders.find((o) => o.id === state.openOrderId);
+    if (order) {
+      void openEditOrderModal(order);
+    }
+    navigate(location.pathname, { replace: true, state: null });
+  }, [orders]);
 
   useEffect(() => {
     if (!notice) return;
@@ -978,7 +1031,10 @@ export function OrdersPage() {
     }
   };
 
-  const handleConfirmSelectedOrder = async () => {
+  const handleConfirmSelectedOrder = async (extra: {
+    another_price: number;
+    other_price_reason?: string;
+  }) => {
     if (!selected) return;
 
     try {
@@ -992,7 +1048,9 @@ export function OrdersPage() {
 
       const updated = await ordersService.updateOrder(selected.id, {
         customer_id: customerId,
-        status: "confirmed"
+        status: "confirmed",
+        another_price: Number(extra.another_price || 0),
+        other_price_reason: extra.other_price_reason
       });
       setOrders((prev) =>
         prev.map((item) => (item.id === selected.id ? updated : item))
@@ -1015,17 +1073,23 @@ export function OrdersPage() {
   const mapCartItemsFromApi = (
     items: Awaited<ReturnType<typeof cartItemsService.getCartItems>>["items"]
   ): CartItem[] => {
-    return items.map((item) => ({
-      cart_item_id: item.id,
-      product_id: item.product_id,
-      variant_id: item.variant_id ?? null,
-      product_name: `Produit #${item.product_id}`,
-      variant_name: item.variant?.name || undefined,
-      quantity: Number(item.quantity || 0),
-      unit_cost: Number(item.unit_cost || 0),
-      another_price: Number(item.another_price || 0),
-      other_price_reason: item.other_price_reason || undefined
-    }));
+    return items.map((item) => {
+      const product = products.find((p) => p.id === item.product_id);
+      const variant =
+        product?.variants?.find((v) => v.id === item.variant_id) ?? null;
+      return {
+        cart_item_id: item.id,
+        product_id: item.product_id,
+        variant_id: item.variant_id ?? null,
+        product_name: product?.name || `Produit #${item.product_id}`,
+        variant_name: item.variant?.name || variant?.name || undefined,
+        variant_sku: item.variant?.sku || variant?.sku || undefined,
+        quantity: Number(item.quantity || 0),
+        unit_cost: Number(item.unit_cost || 0),
+        another_price: Number(item.another_price || 0),
+        other_price_reason: item.other_price_reason || undefined
+      };
+    });
   };
 
   const getOrderOutMovements = (order: Order) =>
@@ -1063,6 +1127,7 @@ export function OrdersPage() {
           variant_id: variantId,
           product_name: movement.product?.name || `Produit #${productId}`,
           variant_name: movement.variant?.name || undefined,
+          variant_sku: movement.variant?.sku || undefined,
           quantity: Number(movement.quantity || 0),
           unit_cost: Number(movement.unit_cost || 0),
           another_price: Number(movement.another_price || 0),
@@ -1133,17 +1198,21 @@ export function OrdersPage() {
       (order.order_number || "").trim() || (order.id ? `CMD-${order.id}` : "-");
 
     const outMovements = getOrderOutMovements(order);
-    const movementLines = outMovements.map((movement) => ({
-      product_id: Number(movement.product_id || 0),
-      name:
+    const movementLines = outMovements.map((movement) => {
+      const baseName =
         movement.product?.name ||
-        `Produit #${Number(movement.product_id || 0)}`,
-      quantity: Number(movement.quantity || 0),
-      unitPrice: Number(movement.unit_cost || 0),
-      total: Number(movement.quantity || 0) * Number(movement.unit_cost || 0),
-      another_price: Number(movement.another_price || 0),
-      other_price_reason: movement.other_price_reason || undefined
-    }));
+        `Produit #${Number(movement.product_id || 0)}`;
+      const variantName = movement.variant?.name?.trim();
+      return {
+        product_id: Number(movement.product_id || 0),
+        name: variantName ? `${baseName} — ${variantName}` : baseName,
+        quantity: Number(movement.quantity || 0),
+        unitPrice: Number(movement.unit_cost || 0),
+        total: Number(movement.quantity || 0) * Number(movement.unit_cost || 0),
+        another_price: Number(movement.another_price || 0),
+        other_price_reason: movement.other_price_reason || undefined
+      };
+    });
 
     const fallbackLines =
       movementLines.length > 0
@@ -1444,6 +1513,7 @@ export function OrdersPage() {
             order={selected ?? undefined}
             users={users}
             customers={customers}
+            products={products}
             initialCartItems={selectedCartItems}
             onSubmit={handleSubmit}
             onConfirm={handleConfirmSelectedOrder}

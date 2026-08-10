@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Eye,
   Pencil,
@@ -14,10 +15,12 @@ import type {
   CreateCustomerPayload,
   UpdateCustomerPayload
 } from "../types/customer";
-import type { CartItem } from "../types/operations";
+import type { CartItem, Order } from "../types/operations";
 import type { Column } from "../components/index";
+import type { Product } from "../types/product";
 import { customersService } from "../services/customers.service";
 import { cartItemsService } from "../services/operations.service";
+import { productsService } from "../services/products.service";
 import { useAuth } from "../contexts/AuthContext";
 
 const PHONE_FORMAT_REGEX = /^\+261\s\d{2}\s\d{2}\s\d{3}\s\d{2}$/;
@@ -51,12 +54,20 @@ function CustomerCartViewer({
   customer: Customer;
   currentUserId?: number;
   onClose: () => void;
-  onOrderCreated: (message: string) => void;
+  onOrderCreated: (order: Order) => void;
 }) {
   const [items, setItems] = useState<CartItem[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    productsService
+      .getProducts(1, 200)
+      .then((r) => setProducts(r.items))
+      .catch(() => {});
+  }, []);
 
   const loadCart = async () => {
     try {
@@ -109,9 +120,7 @@ function CustomerCartViewer({
       });
 
       setItems([]);
-      onOrderCreated(
-        `Commande ${order.order_number ?? `#${order.id}`} créée depuis le panier client`
-      );
+      onOrderCreated(order);
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur création commande");
@@ -151,6 +160,7 @@ function CustomerCartViewer({
           <p className="text-sm text-muted">Aucun article dans ce panier.</p>
         ) : (
           items.map((item) => {
+            const product = products.find((p) => p.id === item.product_id);
             const lineTotal =
               Number(item.quantity || 0) * Number(item.unit_cost || 0) +
               Number(item.another_price || 0);
@@ -162,8 +172,14 @@ function CustomerCartViewer({
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-sm font-semibold text-ink">
-                      Produit #{item.product_id}
+                      {product?.name || `Produit #${item.product_id}`}
+                      {item.variant?.name ? ` — ${item.variant.name}` : ""}
                     </p>
+                    {item.variant?.sku && (
+                      <p className="text-xs font-medium text-brand">
+                        {item.variant.sku}
+                      </p>
+                    )}
                     <p className="text-xs text-muted">
                       Qté {item.quantity} x{" "}
                       {Number(item.unit_cost || 0).toLocaleString("fr-FR")} Ar
@@ -403,6 +419,8 @@ function CustomerForm({
 
 export function CustomersPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isFormLoading, setIsFormLoading] = useState(false);
@@ -431,6 +449,14 @@ export function CustomersPage() {
   useEffect(() => {
     loadCustomers();
   }, [page, pageSize]);
+
+  useEffect(() => {
+    const openCart = (location.state as { openCartCustomer?: Customer } | null)
+      ?.openCartCustomer;
+    if (!openCart) return;
+    setSelectedForCart(openCart);
+    navigate(location.pathname, { replace: true, state: null });
+  }, []);
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
@@ -678,9 +704,13 @@ export function CustomersPage() {
                   : undefined
               }
               onClose={() => setSelectedForCart(null)}
-              onOrderCreated={(message) => {
-                setNotice(message);
-                setError(null);
+              onOrderCreated={(order) => {
+                navigate("/orders", {
+                  state: {
+                    notice: `Commande ${order.order_number ?? `#${order.id}`} créée depuis le panier client`,
+                    openOrderId: order.id
+                  }
+                });
               }}
             />
           )}

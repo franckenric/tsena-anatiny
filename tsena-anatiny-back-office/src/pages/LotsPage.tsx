@@ -19,7 +19,7 @@ import {
 import { productsService } from "../services/products.service";
 import { Layout, Card, Button, DataTable, Input } from "../components/index";
 import { Modal } from "../components/Modal";
-import { ChevronLeft, ChevronRight, Pencil, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pencil, Trash2, Loader2 } from "lucide-react";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -289,6 +289,7 @@ export function LotsPage() {
   const [showCreateLot, setShowCreateLot] = useState(false);
   const [selectedLotForDetails, setSelectedLotForDetails] =
     useState<Lot | null>(null);
+  const [isModalLoading, setIsModalLoading] = useState(false);
   const [lotDetailsTab, setLotDetailsTab] = useState<"products" | "expenses">(
     "products"
   );
@@ -360,6 +361,33 @@ export function LotsPage() {
     setSelectedLotForDetails(updatedLot);
   };
 
+  const openLotDetails = async (lot: Lot) => {
+    setIsModalLoading(true);
+    setSelectedLotForDetails(lot);
+    try {
+      const [lotsResp, movementsResp, ordersResp, productsResp, expensesResp] =
+        await Promise.all([
+          lotsService.getLots(1, 200),
+          stockMovementsService.getMovements(1, 5000),
+          ordersService.getOrders(1, 5000),
+          productsService.getProducts(1, 200),
+          lotExpensesService.getLotExpenses(lot.id, 1, 500)
+        ]);
+      setLots(lotsResp.items);
+      setAllStockMovements(movementsResp.items);
+      setAllOrders(ordersResp.items);
+      setProducts(productsResp.items);
+      setLotExpenses(expensesResp.items);
+      const updatedLot =
+        lotsResp.items.find((l) => l.id === lot.id) || lot;
+      setSelectedLotForDetails(updatedLot);
+    } catch {
+      // keep previously loaded data if the refresh fails
+    } finally {
+      setIsModalLoading(false);
+    }
+  };
+
   const handleSubmitExpense = async (
     payload: CreateLotExpensePayload | UpdateLotExpensePayload
   ) => {
@@ -419,6 +447,19 @@ export function LotsPage() {
   const calendarDays: (number | null)[] = [];
   for (let i = 0; i < firstDay; i++) calendarDays.push(null);
   for (let i = 1; i <= daysInMonth; i++) calendarDays.push(i);
+
+  const daysWithLots = calendarDays.flatMap((day) => {
+    if (day === null) return [];
+    const dateStr = new Date(
+      currentMonth.getFullYear(),
+      currentMonth.getMonth(),
+      day
+    )
+      .toISOString()
+      .split("T")[0];
+    const dayLots = lotsGroupedByDate[dateStr] ?? [];
+    return dayLots.length > 0 ? [{ day, dateStr, dayLots }] : [];
+  });
 
   const productById = products.reduce(
     (acc, product) => {
@@ -967,7 +1008,7 @@ export function LotsPage() {
                     return (
                       <div
                         key={`e-${idx}`}
-                        className="h-24 rounded-lg md:h-28"
+                        className="h-10 rounded-lg sm:h-24 md:h-28"
                       />
                     );
                   }
@@ -992,14 +1033,14 @@ export function LotsPage() {
                   return (
                     <div
                       key={day}
-                      className={`flex min-h-24 flex-col items-center justify-center rounded-xl border-2 px-2 py-2 transition md:min-h-28 ${
+                      className={`flex min-h-10 flex-col items-center justify-center rounded-xl border-2 px-1 py-1 transition sm:min-h-24 sm:px-2 sm:py-2 md:min-h-28 ${
                         dayLots.length > 0
                           ? "border-warning/50 bg-panel"
                           : "border-border/40 bg-bg/30"
                       }`}
                     >
                       <span
-                        className={`text-base font-bold ${
+                        className={`text-sm font-bold sm:text-base ${
                           dayLots.length > 0 ? "text-ink" : "text-muted"
                         }`}
                       >
@@ -1007,17 +1048,18 @@ export function LotsPage() {
                       </span>
                       {dayLots.length > 0 && (
                         <>
-                          <span className="text-xs font-semibold text-warning">
+                          <span className="mt-0.5 h-2 w-2 rounded-full bg-warning sm:hidden" />
+                          <span className="hidden text-xs font-semibold text-warning sm:block">
                             {dayLots.length} lot{dayLots.length > 1 ? "s" : ""}
                           </span>
-                          <span className="text-xs leading-tight text-muted">
+                          <span className="hidden text-xs leading-tight text-muted sm:block">
                             {totalExpense.toLocaleString("fr-FR", {
                               maximumFractionDigits: 0
                             })}{" "}
                             Ar
                           </span>
                           <span
-                            className={`text-xs font-semibold leading-tight ${
+                            className={`hidden text-xs font-semibold leading-tight sm:block ${
                               totalProfit >= 0 ? "text-success" : "text-warning"
                             }`}
                           >
@@ -1026,14 +1068,14 @@ export function LotsPage() {
                             })}{" "}
                             Ar
                           </span>
-                          <div className="mt-1 flex w-full flex-wrap justify-center gap-1">
+                          <div className="mt-1 hidden w-full flex-wrap justify-center gap-1 sm:flex">
                             {dayLots.slice(0, 2).map((lot) => (
                               <button
                                 key={lot.id}
                                 type="button"
                                 className="rounded-full border border-brand/30 bg-brand/10 px-2 py-0.5 text-[11px] font-semibold text-brand hover:bg-brand/20"
                                 onClick={() => {
-                                  setSelectedLotForDetails(lot);
+                                  void openLotDetails(lot);
                                   setLotDetailsTab("products");
                                   setShowExpenseForm(false);
                                   setSelectedExpense(null);
@@ -1054,6 +1096,49 @@ export function LotsPage() {
                     </div>
                   );
                 })}
+              </div>
+
+              <div className="mt-4 space-y-2 sm:hidden">
+                {daysWithLots.length > 0 ? (
+                  daysWithLots.map(({ day, dateStr, dayLots }) => (
+                    <div
+                      key={dateStr}
+                      className="rounded-xl border border-border/50 bg-bg/30 px-3 py-2.5"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-bold text-ink">
+                          {day} {monthName}
+                        </span>
+                        <span className="text-xs font-semibold text-warning">
+                          {dayLots.length} lot{dayLots.length > 1 ? "s" : ""}
+                        </span>
+                      </div>
+                      <div className="mt-1.5 flex flex-wrap gap-1.5">
+                        {dayLots.map((lot) => (
+                          <button
+                            key={lot.id}
+                            type="button"
+                            className="rounded-full border border-brand/30 bg-brand/10 px-2.5 py-1 text-[11px] font-semibold text-brand hover:bg-brand/20"
+                            onClick={() => {
+                              void openLotDetails(lot);
+                              setLotDetailsTab("products");
+                              setShowExpenseForm(false);
+                              setSelectedExpense(null);
+                            }}
+                            disabled={isLoading}
+                          >
+                            Lot #{lot.id}
+                            {lot.reference ? ` · ${lot.reference}` : ""}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="py-2 text-center text-sm text-muted">
+                    Aucun lot ce mois-ci
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -1090,6 +1175,12 @@ export function LotsPage() {
       >
         {selectedLotForDetails && (
           <div className="space-y-4">
+            {isModalLoading && (
+              <div className="flex items-center justify-center gap-2 rounded-xl border border-brand/30 bg-brand-soft/20 px-4 py-2.5 text-sm font-semibold text-brand">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Actualisation des donnees...
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
               <div className="rounded-xl border border-border/60 bg-bg/30 p-3 text-center">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted">

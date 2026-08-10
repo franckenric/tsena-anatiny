@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { LayoutGrid, Search, Table2 } from "lucide-react";
 
 export interface Column<T> {
@@ -38,7 +38,22 @@ export function DataTable<T extends { id?: number | string }>({
   const rows = Array.isArray(data) ? data : [];
   const [view, setView] = useState<"table" | "grid">(defaultView);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== "undefined"
+      ? window.matchMedia("(max-width: 767px)").matches
+      : false
+  );
   const resolvedTableMaxHeight = tableMaxHeight ?? "100%";
+
+  useEffect(() => {
+    const mql = window.matchMedia("(max-width: 767px)");
+    const handleChange = (event: MediaQueryListEvent) =>
+      setIsMobile(event.matches);
+    mql.addEventListener("change", handleChange);
+    return () => mql.removeEventListener("change", handleChange);
+  }, []);
+
+  const effectiveView = isMobile ? "grid" : view;
 
   const renderCellValue = (row: T, col: Column<T>) => {
     const value = row[col.accessor as keyof T];
@@ -115,7 +130,7 @@ export function DataTable<T extends { id?: number | string }>({
         <div />
       )}
 
-      <div className="flex items-center justify-end gap-1 rounded-xl border border-border/60 bg-panel/60 p-1">
+      <div className="hidden items-center justify-end gap-1 rounded-xl border border-border/60 bg-panel/60 p-1 md:flex">
         <button
           type="button"
           onClick={() => setView("table")}
@@ -138,7 +153,7 @@ export function DataTable<T extends { id?: number | string }>({
           }`}
         >
           <LayoutGrid className="h-3.5 w-3.5" />
-          Grille
+          Modules
         </button>
       </div>
     </div>
@@ -157,12 +172,12 @@ export function DataTable<T extends { id?: number | string }>({
     );
   }
 
-  if (view === "grid") {
+  if (effectiveView === "grid") {
     return (
       <div className="flex h-full min-h-0 flex-col">
         {controls}
         <div className="min-h-0 flex-1 overflow-auto">
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {filteredRows.map((row, rowIdx) => (
               <article
                 key={getRowKey ? getRowKey(row, rowIdx) : row.id || rowIdx}
@@ -172,7 +187,15 @@ export function DataTable<T extends { id?: number | string }>({
                   gridCardRender(row)
                 ) : (
                   <div className="space-y-2.5">
-                    {columns.map((col, colIdx) => (
+                    <div className="mb-2 flex items-center gap-2.5 border-b border-border/40 pb-3">
+                      <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-brand/15 text-brand">
+                        <LayoutGrid className="h-4 w-4" />
+                      </div>
+                      <span className="min-w-0 truncate text-sm font-semibold text-ink">
+                        {renderCellValue(row, columns[0])}
+                      </span>
+                    </div>
+                    {columns.slice(1).map((col, colIdx) => (
                       <div
                         key={colIdx}
                         className="flex items-start justify-between gap-3 border-b border-border/40 pb-2 last:border-b-0 last:pb-0"

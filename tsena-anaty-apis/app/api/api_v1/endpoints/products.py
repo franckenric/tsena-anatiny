@@ -296,7 +296,6 @@ def read_products(
         where_relation: str = "[]",
         base_columns: str = "[]",
         db: Session = Depends(deps.get_db),
-        current_user: models.Users = Depends(deps.get_current_active_user),
 ) -> Any:
     """
     Retrieve products.
@@ -388,7 +387,6 @@ def read_products(
         base_columns: str = "[]",
         db: Session = Depends(deps.get_db),
       products_id: int,
-        current_user: models.Users = Depends(deps.get_current_active_user),
 ) -> Any:
     """
     Get products by ID.

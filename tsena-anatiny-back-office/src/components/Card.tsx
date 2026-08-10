@@ -23,8 +23,8 @@ export function Card({
     >
       {(title || description) && (
         <div className="border-b border-border/50 bg-bg/40 px-6 py-4">
-          <div className="flex items-start justify-between gap-4">
-            <div>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+            <div className="min-w-0">
               {title && (
                 <h3 className="font-display text-lg font-semibold text-ink">
                   {title}
@@ -34,7 +34,11 @@ export function Card({
                 <p className="mt-1 text-sm text-muted">{description}</p>
               )}
             </div>
-            {headerAction && <div className="shrink-0">{headerAction}</div>}
+            {headerAction && (
+              <div className="flex shrink-0 flex-wrap items-center gap-2">
+                {headerAction}
+              </div>
+            )}
           </div>
         </div>
       )}

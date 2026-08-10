@@ -21,7 +21,6 @@ def read_categories(
     where_relation: str = "[]",
     base_columns: str = "[]",
     db: Session = Depends(deps.get_db),
-    current_user: models.Users = Depends(deps.get_current_active_user),
 ) -> Any:
     """Retrieve categories."""
     relations = []

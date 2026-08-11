@@ -13,6 +13,10 @@ export function getStoredApiToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
 }
 
+export function setApiToken(token: string): void {
+  localStorage.setItem(TOKEN_KEY, token);
+}
+
 export function clearApiToken(): void {
   localStorage.removeItem(TOKEN_KEY);
 }

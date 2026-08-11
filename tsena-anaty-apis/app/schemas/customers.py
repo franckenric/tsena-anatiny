@@ -3,14 +3,17 @@ import re
 from typing import List, Optional
 from pydantic import BaseModel, ConfigDict, field_validator
 
+from .users import Users
 
-PHONE_FORMAT_PATTERN = re.compile(r"^\+261 \d{2} \d{2} \d{3} \d{2}$")
+
+PHONE_FORMAT_PATTERN = re.compile(r"^\+261\d{9}$")
 
 
 class CustomersBase(BaseModel):
     name: Optional[str] = None
     phone: Optional[str] = None
     delivery_address: Optional[str] = None
+    users_id: Optional[int] = None
 
     @field_validator('phone')
     @classmethod
@@ -18,7 +21,7 @@ class CustomersBase(BaseModel):
         if value is None:
             return value
 
-        cleaned = value.strip()
+        cleaned = value.replace(' ', '').strip()
         if cleaned == '':
             return cleaned
 
@@ -48,7 +51,7 @@ class Customers(CustomersInDBBase):
 
 
 class CustomersWithRelation(CustomersInDBBase):
-    pass
+    user: Optional[Users] = None
 
 
 class CustomersInDB(CustomersInDBBase):

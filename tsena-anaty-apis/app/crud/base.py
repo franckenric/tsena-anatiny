@@ -648,6 +648,11 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         # Convert to dict and ensure datetime objects are properly handled
         obj_in_data = self._normalize_model_values(obj_in.model_dump())
 
+        # Keep only keys that map to actual model columns so schemas can carry
+        # extra (non-column) fields such as gallery_images.
+        valid_keys = {col.name for col in self.model.__table__.columns}
+        obj_in_data = {k: v for k, v in obj_in_data.items() if k in valid_keys}
+
         # Create the database object
         db_obj = (
             self.model(**obj_in_data)

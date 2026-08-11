@@ -5,6 +5,8 @@ from pydantic import BaseModel, ConfigDict
 
 from app.enum.product_status import ProductStatusEnum
 from .product_variants import ProductVariant
+from .products import Products
+from .customers import Customers
 
 
 class CartItemsBase(BaseModel):
@@ -43,6 +45,8 @@ class CartItemsInDBBase(BaseModel):
     other_price_reason: Optional[str] = None
     created_at: Optional[datetime] = None
     variant: Optional[ProductVariant] = None
+    product: Optional[Products] = None
+    customer: Optional[Customers] = None
 
     model_config = ConfigDict(from_attributes=True)
 

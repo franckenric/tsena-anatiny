@@ -36,6 +36,7 @@ from .lot_expenses import (
   ResponseLotExpenses
 )
 from .msg import Msg
+from .register import RegisterRequest, RegisterResponse
 from .orders import ( 
   Orders,  
   OrdersCreate,  
@@ -55,6 +56,12 @@ from .product_variants import (
   ProductVariantCreate,
   ProductVariantUpdate,
   ProductVariantNode,
+)
+from .product_images import (
+  ProductImages,
+  ProductImagesCreate,
+  ProductImagesUpdate,
+  ResponseProductImages,
 )
 from .receipts import (
   Receipts,

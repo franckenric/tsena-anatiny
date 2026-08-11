@@ -8,6 +8,13 @@ export interface ProductVariant {
   selling_price?: number | null;
 }
 
+export interface ProductImage {
+  id: number;
+  product_id?: number;
+  image: string;
+  position?: number;
+}
+
 export interface Product {
   id: number;
   category_id: number;
@@ -22,6 +29,7 @@ export interface Product {
   categorie?: { id: number; name?: string } | null;
   stock?: Array<{ quantity?: number }>;
   variants?: ProductVariant[];
+  images?: ProductImage[];
   created_at?: string;
 }
 

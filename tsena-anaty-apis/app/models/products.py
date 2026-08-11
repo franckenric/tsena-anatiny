@@ -31,6 +31,7 @@ class Products(Base):
     # Relations
     categorie = relationship('Categories', foreign_keys=[category_id])
     stock = relationship('Stock', foreign_keys='Stock.product_id', back_populates='product')
+    images = relationship('ProductImages', foreign_keys='ProductImages.product_id', back_populates='product')
     variants = relationship('ProductVariants', foreign_keys='ProductVariants.product_id', back_populates='product')
     commercial_assignment = relationship(
         'CommercialAssignments',

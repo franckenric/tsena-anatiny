@@ -23,7 +23,7 @@ export function formatPhoneMadagascar(value: string): string {
   const p3 = limited.slice(4, 7);
   const p4 = limited.slice(7, 9);
 
-  const parts = [PHONE_PREFIX];
+  const parts = [PHONE_PREFIX.trim()];
   if (p1) parts.push(p1);
   if (p2) parts.push(p2);
   if (p3) parts.push(p3);
@@ -51,6 +51,33 @@ export function formatDate(value?: string): string {
     month: "long",
     year: "numeric"
   });
+}
+
+const API_ORIGIN = (() => {
+  const base = (import.meta.env.VITE_API_BASE_URL ?? "").trim();
+  if (!base.startsWith("http")) return null;
+  try {
+    return new URL(base).origin;
+  } catch {
+    return null;
+  }
+})();
+
+export function resolveImageUrl(
+  url: string | null | undefined
+): string | null {
+  if (!url) return null;
+  if (url.startsWith("/")) return url;
+  if (!API_ORIGIN) return url;
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1") {
+      return `${API_ORIGIN}${parsed.pathname}${parsed.search}`;
+    }
+  } catch {
+    // URL invalide: on renvoie telle quelle
+  }
+  return url;
 }
 
 const RECENT_KEY = "fo.recent.products";

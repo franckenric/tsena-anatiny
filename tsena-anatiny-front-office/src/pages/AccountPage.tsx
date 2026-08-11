@@ -13,7 +13,7 @@ import type { Order } from "../types/operations";
 import { PageLoader } from "../components/Spinner";
 import { StatusBadge } from "../components/StatusBadge";
 import { Page } from "../components/Page";
-import { formatAr, formatDate } from "../lib/utils";
+import { formatAr, formatDate, formatPhoneMadagascar } from "../lib/utils";
 
 export function AccountPage() {
   const { customer, isBooting, logout } = useAuth();
@@ -98,7 +98,7 @@ export function AccountPage() {
                 <h1 className="truncate text-lg font-bold text-ink">
                   {customer.name}
                 </h1>
-                <p className="text-sm text-muted">{customer.phone}</p>
+                <p className="text-sm text-muted">{formatPhoneMadagascar(customer.phone)}</p>
               </div>
             </div>
             {customer.delivery_address && (
@@ -120,11 +120,11 @@ export function AccountPage() {
           <section className="rounded-3xl border border-border bg-panel p-6 shadow-card">
             <h2 className="text-lg font-bold text-ink">Mes statistiques</h2>
             <dl className="mt-4 space-y-3 text-sm">
-              <div className="flex justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
                 <dt className="text-muted">Commandes</dt>
                 <dd className="font-semibold text-ink">{orders.length}</dd>
               </div>
-              <div className="flex justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
                 <dt className="text-muted">Total dépensé</dt>
                 <dd className="font-semibold text-brand">{formatAr(totalSpent)}</dd>
               </div>
@@ -133,9 +133,9 @@ export function AccountPage() {
         </div>
 
         <section className="rounded-3xl border border-border bg-panel p-6 shadow-card lg:col-span-2">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
             <h2 className="flex items-center gap-2 text-lg font-bold text-ink">
-              <PackageCheck className="h-5 w-5 text-brand" />
+              <PackageCheck className="h-5 w-5 shrink-0 text-brand" />
               Mes commandes
             </h2>
             <Link
@@ -186,7 +186,7 @@ export function AccountPage() {
                       to={`/succes/${order.id}`}
                       className="block rounded-2xl p-2 transition hover:bg-bg"
                     >
-                      <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
                         <div className="min-w-0">
                           <p className="text-sm font-bold text-ink">
                             {order.order_number ?? `#${order.id}`}
@@ -196,7 +196,7 @@ export function AccountPage() {
                             {extraCount > 0 && ` +${extraCount} autre(s)`}
                           </p>
                         </div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex min-w-0 flex-wrap items-center justify-end gap-x-3 gap-y-1">
                           <span className="text-xs text-muted">
                             {formatDate(order.created_at)}
                           </span>

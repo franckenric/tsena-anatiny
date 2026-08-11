@@ -26,10 +26,12 @@
 
   html {
     scroll-behavior: smooth;
+    overflow-x: hidden;
   }
 
   body {
     @apply m-0 bg-bg text-ink font-sans antialiased;
+    overflow-x: hidden;
   }
 
   h1,
@@ -155,9 +157,11 @@ ion-toolbar {
 }
 
 ion-tab-bar {
+  --background: hsl(var(--panel));
   --border: 1px solid hsl(var(--border));
-  padding-bottom: env(safe-area-inset-bottom);
-  height: calc(56px + env(safe-area-inset-bottom));
+  --color: hsl(var(--muted));
+  --color-selected: hsl(var(--brand));
+  --ion-tab-bar-padding-bottom: env(safe-area-inset-bottom);
 }
 
 ion-tab-button {

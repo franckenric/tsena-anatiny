@@ -7,6 +7,7 @@ from app.models.commercial_assignments import CommercialAssignments # noqa
 from app.models.lot_expenses import LotExpenses # noqa
 from app.models.lots import Lots # noqa
 from app.models.products import Products # noqa
+from app.models.product_images import ProductImages # noqa
 from app.models.product_variants import ProductVariants # noqa
 from app.models.receipts import Receipts # noqa
 from app.models.stock import Stock # noqa

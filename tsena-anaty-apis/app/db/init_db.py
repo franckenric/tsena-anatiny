@@ -13,6 +13,7 @@ ADMIN_PHONE = "0381759193"
 ADMIN_PASSWORD = "Azerty123"
 ADMIN_EMAIL = "admin@tsena.mg"
 ADMIN_ROLE_ID = 1
+CLIENT_ROLE_ID = 2
 
 
 def init_db(db: Session) -> None:
@@ -32,6 +33,16 @@ def init_db(db: Session) -> None:
         logger.info("Role 'super_admin' créé (id=%s)", role.id)
     else:
         logger.info("Role 'super_admin' déjà existant")
+
+    client_role = db.query(Roles).filter(Roles.id == CLIENT_ROLE_ID).first()
+    if not client_role:
+        client_role = Roles(id=CLIENT_ROLE_ID, name="client")
+        db.add(client_role)
+        db.commit()
+        db.refresh(client_role)
+        logger.info("Role 'client' créé (id=%s)", client_role.id)
+    else:
+        logger.info("Role 'client' déjà existant")
 
     # --- Admin user ---
     user = crud.users.get_by_phone(db, phone=ADMIN_PHONE)

@@ -13,7 +13,7 @@ import { useAuth } from "./AuthContext";
 import { useCart } from "./CartContext";
 import { cartItemsService } from "../services/operations.service";
 import type { CartItem } from "../types/operations";
-import { formatAr } from "../lib/utils";
+import { formatAr, resolveImageUrl } from "../lib/utils";
 
 interface CartDrawerContextValue {
   isOpen: boolean;
@@ -167,16 +167,20 @@ export function CartDrawerProvider({ children }: { children: ReactNode }) {
               ) : (
                 <ul className="space-y-4">
                   {items.map((item) => {
-                    const name = item.product?.name ?? `Produit #${item.product_id}`;
+                    const name =
+                      item.product?.name ?? item.variant?.name ?? `Produit #${item.product_id}`;
                     const unitPrice = Number(item.unit_cost || 0);
+                    const imageUrl = resolveImageUrl(
+                      item.variant?.image || item.product?.image || null
+                    );
                     return (
                       <li
                         key={item.id}
                         className="flex items-center gap-3 rounded-2xl border border-border bg-bg p-3"
                       >
-                        {item.product?.image ? (
+                        {imageUrl ? (
                           <img
-                            src={item.product.image}
+                            src={imageUrl}
                             alt={name}
                             className="h-16 w-16 shrink-0 rounded-xl border border-border object-cover"
                           />

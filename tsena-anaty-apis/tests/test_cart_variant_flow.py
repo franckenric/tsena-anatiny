@@ -261,6 +261,20 @@ def test_cart_item_variant_roundtrip_and_checkout(client, db):
     assert resp3.json()['id'] == item['id']
     assert resp3.json()['quantity'] == 3
 
+    # 3bis. Cart listing exposes product and variant name/image for display
+    listing = client.get(
+        f'/api/v1/cart_items/?limit=50&customer_id={customer_id}',
+        headers=headers,
+    )
+    assert listing.status_code == status.HTTP_200_OK, listing.text
+    listed = listing.json()['data']
+    by_variant = {i['variant_id']: i for i in listed}
+    black_item = by_variant[black_id]
+    assert black_item['product']['name'] == 'Coque Variante'
+    assert black_item['product']['image'] == '/No_Image_Available.jpg'
+    assert black_item['variant']['name'] == 'Noir'
+    assert black_item['variant']['sku'] is None
+
     # 4. Stock validation: quantity exceeds variant stock -> 409
     resp4 = client.post(
         '/api/v1/cart_items/',

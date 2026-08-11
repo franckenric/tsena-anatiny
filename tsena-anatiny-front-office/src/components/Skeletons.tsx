@@ -2,8 +2,8 @@ export function ProductCardSkeleton() {
   return (
     <div className="overflow-hidden rounded-3xl border border-border bg-panel shadow-card">
       <div className="skeleton m-1 aspect-square rounded-[1.25rem]" />
-      <div className="space-y-2 p-4">
-        <div className="skeleton h-4 w-4/5" />
+      <div className="space-y-2 p-3 sm:p-4">
+        <div className="skeleton h-3.5 w-4/5" />
         <div className="skeleton h-3 w-1/3" />
         <div className="flex items-center justify-between pt-2">
           <div className="skeleton h-5 w-16" />

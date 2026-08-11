@@ -1,5 +1,12 @@
 export type ProductStatus = "active" | "inactive";
 
+export interface ProductImage {
+  id: number;
+  product_id?: number;
+  image: string;
+  position?: number;
+}
+
 export interface Category {
   id: number;
   name: string;
@@ -39,6 +46,7 @@ export interface Product {
       email?: string;
     };
   } | null;
+  images?: ProductImage[];
   created_at?: string;
   updated_at?: string;
 }
@@ -48,6 +56,7 @@ export interface CreateProductPayload {
   sku: string;
   name: string;
   image: string;
+  gallery_images?: string[];
   description?: string;
   unit?: string;
   selling_price?: number;
@@ -60,6 +69,7 @@ export interface UpdateProductPayload {
   sku?: string;
   name?: string;
   image?: string;
+  gallery_images?: string[];
   description?: string;
   unit?: string;
   selling_price?: number;
@@ -189,5 +199,6 @@ export interface DraftVariant {
   name: string;
   quantity: string;
   unit_cost: string;
+  selling_price: string;
   image?: File | null;
 }

@@ -20,6 +20,7 @@ export function RegisterPage() {
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
   const [address, setAddress] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -36,12 +37,17 @@ export function RegisterPage() {
       setError("Numéro de téléphone invalide.");
       return;
     }
+    if (password.length < 6) {
+      setError("Le mot de passe doit contenir au moins 6 caractères.");
+      return;
+    }
 
     setIsSubmitting(true);
     try {
       await register({
         name: name.trim(),
         phone: normalizePhone(phone),
+        password,
         delivery_address: address.trim() || undefined
       });
       history.replace(from);
@@ -106,6 +112,24 @@ export function RegisterPage() {
                 autoComplete="tel"
               />
             </div>
+          </div>
+
+          <div>
+            <label
+              htmlFor="password"
+              className="text-xs font-semibold uppercase tracking-widest text-muted"
+            >
+              Mot de passe
+            </label>
+            <input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Au moins 6 caractères"
+              autoComplete="new-password"
+              className="mt-2 h-11 w-full rounded-xl border border-border bg-bg px-3 text-sm text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
+            />
           </div>
 
           <div>

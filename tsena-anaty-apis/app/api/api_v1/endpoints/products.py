@@ -286,6 +286,113 @@ async def upload_product_image(
    }
 
 
+@router.get('/{products_id}/images', response_model=schemas.ResponseProductImages)
+def read_product_images(
+        *,
+        db: Session = Depends(deps.get_db),
+        products_id: int,
+        current_user: models.Users = Depends(deps.get_current_active_user),
+) -> Any:
+    """Retrieve all images of a product."""
+    product = crud.products.get(db=db, id=products_id)
+    if not product:
+        raise HTTPException(status_code=404, detail='Products not found')
+    images = crud.product_images.get_multi_by_product(db=db, product_id=products_id)
+    return schemas.ResponseProductImages(**{'count': len(images), 'data': jsonable_encoder(images)})
+
+
+@router.post('/{products_id}/images', response_model=List[schemas.ProductImages])
+async def upload_product_images(
+        *,
+        request: Request,
+        db: Session = Depends(deps.get_db),
+        products_id: int,
+        images: List[UploadFile] = File(...),
+        current_user: models.Users = Depends(deps.get_current_active_user),
+) -> Any:
+    """Upload multiple images for a product in one request."""
+    product = crud.products.get(db=db, id=products_id)
+    if not product:
+        raise HTTPException(status_code=404, detail='Products not found')
+
+    if not images:
+        raise HTTPException(status_code=422, detail='Aucune image fournie')
+
+    allowed_types = {"image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"}
+    uploads_dir = Path('files/products')
+    uploads_dir.mkdir(parents=True, exist_ok=True)
+
+    position = crud.product_images.count_by_product(db=db, product_id=products_id)
+    created: List[models.ProductImages] = []
+
+    try:
+        for image in images:
+            if image.content_type not in allowed_types:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f'Format image non supporté: {image.filename}',
+                )
+            ext = Path(image.filename or '').suffix.lower() or '.jpg'
+            if ext not in {'.jpg', '.jpeg', '.png', '.webp', '.gif'}:
+                ext = '.jpg'
+            filename = f"{uuid4().hex}{ext}"
+            content = await image.read()
+            if len(content) > 5 * 1024 * 1024:
+                raise HTTPException(status_code=400, detail='Image trop volumineuse (max 5MB)')
+            (uploads_dir / filename).write_bytes(content)
+            public_path = f"/files/products/{filename}"
+            public_url = f"{str(request.base_url).rstrip('/')}{public_path}"
+
+            row = crud.product_images.create(
+                db=db,
+                obj_in=schemas.ProductImagesCreate(
+                    product_id=products_id,
+                    image=public_url,
+                    position=position,
+                ),
+                commit=False,
+                refresh=False,
+            )
+            db.flush()
+            position += 1
+            created.append(row)
+
+        if product.image in (None, '', '/No_Image_Available.jpg') and created:
+            product.image = created[0].image
+            db.flush()
+
+        db.commit()
+        for row in created:
+            db.refresh(row)
+        return created
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail='Erreur lors de l’enregistrement des images')
+
+
+@router.delete('/{products_id}/images/{image_id}', response_model=schemas.Msg)
+def delete_product_image(
+        *,
+        db: Session = Depends(deps.get_db),
+        products_id: int,
+        image_id: int,
+        current_user: models.Users = Depends(deps.get_current_active_user),
+) -> Any:
+    """Delete an image of a product."""
+    image = crud.product_images.get(db=db, id=image_id)
+    if not image or image.product_id != products_id:
+        raise HTTPException(status_code=404, detail='Image introuvable')
+
+    crud.product_images.remove(db=db, id=image_id)
+    try:
+        file_path = Path('files/products') / Path(image.image or '').name
+        if file_path.exists():
+            file_path.unlink()
+    except OSError:
+        pass
+    return schemas.Msg(msg='Image supprimée')
+
+
 @router.get('/', response_model=schemas.ResponseProducts)
 def read_products(
         *,
@@ -356,7 +463,25 @@ def create_products(
     """
     Create new products.
     """
-    products = crud.products.create(db=db, obj_in=products_in)
+    products_in_data = products_in.model_dump()
+    gallery_images = products_in_data.pop("gallery_images", None) or []
+    products = crud.products.create(
+        db=db, obj_in=schemas.ProductsCreate(**products_in_data)
+    )
+    for index, image in enumerate(gallery_images):
+        crud.product_images.create(
+            db=db,
+            obj_in=schemas.ProductImagesCreate(
+                product_id=products.id,
+                image=image,
+                position=index,
+            ),
+        )
+    if gallery_images and (not products.image or products.image == '/No_Image_Available.jpg'):
+        products.image = gallery_images[0]
+        db.add(products)
+        db.commit()
+        db.refresh(products)
     return products
 
 
@@ -375,6 +500,23 @@ def update_products(
     if not products:
         raise HTTPException(status_code=404, detail='Products not found')
     products = crud.products.update(db=db, db_obj=products, obj_in=products_in)
+    gallery_images = products_in.gallery_images or []
+    if gallery_images:
+        position = crud.product_images.count_by_product(db=db, product_id=products.id)
+        for index, image in enumerate(gallery_images):
+            crud.product_images.create(
+                db=db,
+                obj_in=schemas.ProductImagesCreate(
+                    product_id=products.id,
+                    image=image,
+                    position=position + index,
+                ),
+            )
+        if not products.image or products.image == '/No_Image_Available.jpg':
+            products.image = gallery_images[0]
+            db.add(products)
+            db.commit()
+            db.refresh(products)
     return products
 
 

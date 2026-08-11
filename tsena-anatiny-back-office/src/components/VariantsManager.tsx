@@ -41,6 +41,7 @@ interface VariantFormState {
   name: string;
   quantity: string;
   unit_cost: string;
+  selling_price: string;
   imageFile: File | null;
   removeExistingImage: boolean;
 }
@@ -121,9 +122,14 @@ function VariantRow({
         <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">
           {node.name}
         </span>
+        {node.selling_price != null && (
+          <span className="shrink-0 text-xs font-bold text-brand">
+            {node.selling_price.toLocaleString("fr-FR")} Ar
+          </span>
+        )}
         {node.unit_cost != null && (
-          <span className="shrink-0 text-xs font-semibold text-brand">
-            {node.unit_cost.toLocaleString("fr-FR")} Ar
+          <span className="shrink-0 text-[11px] text-muted">
+            PA {node.unit_cost.toLocaleString("fr-FR")} Ar
           </span>
         )}
         <span
@@ -237,6 +243,7 @@ export function VariantsManager({
       name: "",
       quantity: "",
       unit_cost: "",
+      selling_price: "",
       imageFile: null,
       removeExistingImage: false
     });
@@ -253,6 +260,8 @@ export function VariantsManager({
       quantity: String(variant.quantity),
       unit_cost:
         variant.unit_cost != null ? String(variant.unit_cost) : "",
+      selling_price:
+        variant.selling_price != null ? String(variant.selling_price) : "",
       imageFile: null,
       removeExistingImage: false
     });
@@ -293,6 +302,9 @@ export function VariantsManager({
     const costValue = form.unit_cost.trim();
     const unit_cost =
       costValue === "" ? null : Math.max(0, parseFloat(costValue) || 0);
+    const priceValue = form.selling_price.trim();
+    const selling_price =
+      priceValue === "" ? null : Math.max(0, parseFloat(priceValue) || 0);
 
     setSaving(true);
     setUploadingImage(Boolean(form.imageFile));
@@ -312,7 +324,8 @@ export function VariantsManager({
           name,
           quantity,
           parent_id: form.parentId,
-          unit_cost
+          unit_cost,
+          selling_price
         };
         if (image) payload.image = image;
         await productsService.createVariant(productId, payload);
@@ -320,7 +333,8 @@ export function VariantsManager({
         const payload: UpdateVariantPayload = {
           name,
           quantity,
-          unit_cost
+          unit_cost,
+          selling_price
         };
         if (form.imageFile) {
           payload.image = image ?? null;
@@ -470,7 +484,7 @@ export function VariantsManager({
               placeholder="Ex : Noir, Pointure 40..."
               autoFocus
             />
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-3">
               <Input
                 label="Quantité"
                 type="number"
@@ -489,6 +503,17 @@ export function VariantsManager({
                 value={form.unit_cost}
                 onChange={(e) =>
                   setForm({ ...form, unit_cost: e.target.value })
+                }
+                placeholder="0"
+              />
+              <Input
+                label="Prix de vente (Ar)"
+                type="number"
+                min={0}
+                step="any"
+                value={form.selling_price}
+                onChange={(e) =>
+                  setForm({ ...form, selling_price: e.target.value })
                 }
                 placeholder="0"
               />

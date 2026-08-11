@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import type {
   Product,
   Category,
+  ProductImage,
   CreateProductPayload,
   UpdateProductPayload
 } from "../types/product";
@@ -53,13 +54,15 @@ import {
   Eye,
   Layers,
   Tag,
-  Camera
+  Camera,
+  Images
 } from "lucide-react";
 
 type ProductSubmitVariant = {
   name: string;
   quantity: number;
   unit_cost: number | null;
+  selling_price: number | null;
   image: string | null;
 };
 
@@ -1053,7 +1056,10 @@ function CustomerCartViewer({
       setCustomerId(null);
 
       const customers = await customersService.getCustomers(1, 1000);
-      const customer = customers.items.find((c) => c.phone === normalized);
+      const normalizedDigits = normalized.replace(/\D/g, "");
+      const customer = customers.items.find(
+        (c) => c.phone.replace(/\D/g, "") === normalizedDigits
+      );
       if (!customer) {
         setError("Client introuvable pour ce numero");
         return;
@@ -1286,6 +1292,12 @@ function ProductForm({
   );
   const [isDragActive, setIsDragActive] = useState(false);
   const [draftVariants, setDraftVariants] = useState<DraftVariant[]>([]);
+  const [existingImages, setExistingImages] = useState<ProductImage[]>(
+    product?.images ?? []
+  );
+  const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
+  const [galleryPreviews, setGalleryPreviews] = useState<string[]>([]);
+  const [isDeletingImage, setIsDeletingImage] = useState(false);
 
   const setVariantField = (
     index: number,
@@ -1300,7 +1312,7 @@ function ProductForm({
   const addDraftVariant = () => {
     setDraftVariants((prev) => [
       ...prev,
-      { name: "", quantity: "0", unit_cost: "", image: null }
+      { name: "", quantity: "0", unit_cost: "", selling_price: "", image: null }
     ]);
   };
 
@@ -1390,6 +1402,56 @@ function ProductForm({
     applySelectedImage(file);
   };
 
+  const handleGallerySelection = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const files = Array.from(event.target.files ?? []);
+    event.target.value = "";
+    if (!files.length) return;
+
+    const valid = files.filter((f) => f.type.startsWith("image/"));
+    if (valid.length !== files.length) {
+      setErrors((prev) => ({
+        ...prev,
+        gallery: "Seules les images sont acceptées"
+      }));
+    } else {
+      setErrors((prev) => ({ ...prev, gallery: "" }));
+    }
+    if (!valid.length) return;
+
+    setGalleryFiles((prev) => [...prev, ...valid]);
+    setGalleryPreviews((prev) => [
+      ...prev,
+      ...valid.map((f) => URL.createObjectURL(f))
+    ]);
+  };
+
+  const removeGalleryFile = (index: number) => {
+    setGalleryFiles((prev) => prev.filter((_, i) => i !== index));
+    setGalleryPreviews((prev) => {
+      const next = prev.filter((_, i) => i !== index);
+      if (prev[index]) URL.revokeObjectURL(prev[index]);
+      return next;
+    });
+  };
+
+  const removeExistingImage = async (image: ProductImage) => {
+    if (!product || isDeletingImage) return;
+    setIsDeletingImage(true);
+    try {
+      await productsService.deleteProductImage(product.id, image.id);
+      setExistingImages((prev) => prev.filter((img) => img.id !== image.id));
+      setErrors((prev) => ({ ...prev, gallery: "" }));
+    } catch (err) {
+      setErrors({
+        gallery: err instanceof Error ? err.message : "Erreur suppression image"
+      });
+    } finally {
+      setIsDeletingImage(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const errs: Record<string, string> = {};
@@ -1425,6 +1487,12 @@ function ProductForm({
         imageUrl = uploaded.image_url;
       }
 
+      const galleryImages: string[] = [];
+      for (const file of galleryFiles) {
+        const uploaded = await productsService.uploadProductImage(file);
+        galleryImages.push(uploaded.image_url);
+      }
+
       if (product) {
         const updatePayload: ProductCreateFormPayload = { ...form };
         delete updatePayload.initial_stock;
@@ -1432,7 +1500,8 @@ function ProductForm({
         delete (updatePayload as { image?: string }).image;
         await onSubmit({
           ...updatePayload,
-          image: imageUrl || undefined
+          image: imageUrl || undefined,
+          gallery_images: galleryImages.length ? galleryImages : undefined
         });
       } else {
         const validVariants: ProductSubmitVariant[] = [];
@@ -1450,6 +1519,9 @@ function ProductForm({
             unit_cost: v.unit_cost.trim()
               ? Math.max(0, parseFloat(v.unit_cost) || 0)
               : null,
+            selling_price: v.selling_price.trim()
+              ? Math.max(0, parseFloat(v.selling_price) || 0)
+              : null,
             image: variantImage
           });
         }
@@ -1457,7 +1529,8 @@ function ProductForm({
           ...form,
           image: imageUrl,
           initial_stock: Math.max(0, Number(form.initial_stock) || 0),
-          variants: validVariants
+          variants: validVariants,
+          gallery_images: galleryImages.length ? galleryImages : undefined
         });
       }
     } catch (err) {
@@ -1554,7 +1627,7 @@ function ProductForm({
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      <div className="hidden grid-cols-[2rem_2.5rem_1fr_5rem_7rem_2rem] items-center gap-2 px-2 sm:grid">
+                      <div className="hidden grid-cols-[2rem_2.5rem_1fr_5rem_6rem_6rem_2rem] items-center gap-2 px-2 sm:grid">
                         <span className="text-[10px] font-bold uppercase tracking-widest text-muted">
                           #
                         </span>
@@ -1568,7 +1641,10 @@ function ProductForm({
                           Qté
                         </span>
                         <span className="text-[10px] font-bold uppercase tracking-widest text-muted">
-                          Prix (Ar)
+                          PA (Ar)
+                        </span>
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-muted">
+                          PV (Ar)
                         </span>
                         <span />
                       </div>
@@ -1576,7 +1652,7 @@ function ProductForm({
                       {draftVariants.map((variant, index) => (
                         <div
                           key={index}
-                          className="grid items-end gap-2 rounded-xl border border-border/50 bg-bg/40 p-2.5 transition hover:border-brand/30 sm:grid-cols-[2rem_2.5rem_1fr_5rem_7rem_2rem]"
+                          className="grid items-end gap-2 rounded-xl border border-border/50 bg-bg/40 p-2.5 transition hover:border-brand/30 sm:grid-cols-[2rem_2.5rem_1fr_5rem_6rem_6rem_2rem]"
                         >
                           <div className="hidden h-8 items-center justify-center rounded-lg bg-panel text-xs font-bold text-muted sm:flex">
                             {index + 1}
@@ -1634,6 +1710,22 @@ function ProductForm({
                               setVariantField(
                                 index,
                                 "unit_cost",
+                                e.target.value
+                              )
+                            }
+                            placeholder="0"
+                            disabled={isLoading}
+                          />
+                          <Input
+                            label="Prix de vente (Ar)"
+                            type="number"
+                            min={0}
+                            step="any"
+                            value={variant.selling_price}
+                            onChange={(e) =>
+                              setVariantField(
+                                index,
+                                "selling_price",
                                 e.target.value
                               )
                             }
@@ -1935,6 +2027,86 @@ function ProductForm({
                   Upload en cours...
                 </p>
               )}
+
+              {/* ── Galerie d'images ── */}
+              <div className="mt-1 border-t border-border/60 pt-3">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand/10 text-brand">
+                      <Images className="h-3.5 w-3.5" />
+                    </div>
+                    <p className="text-xs font-bold uppercase tracking-widest text-ink">
+                      Galerie
+                    </p>
+                  </div>
+                  <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-panel px-2 py-1 text-[11px] font-semibold text-ink transition hover:border-brand/40">
+                    <Plus className="h-3.5 w-3.5" />
+                    Ajouter
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleGallerySelection}
+                      disabled={isLoading || isUploadingImage || isDeletingImage}
+                      className="sr-only"
+                    />
+                  </label>
+                </div>
+
+                {existingImages.length === 0 && galleryPreviews.length === 0 ? (
+                  <p className="rounded-lg border border-dashed border-border/70 bg-bg/40 px-3 py-2.5 text-center text-[11px] text-muted">
+                    Aucune image secondaire. Ajoutez plusieurs photos du produit.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-3 gap-2">
+                    {existingImages.map((img) => (
+                      <div
+                        key={`existing-${img.id}`}
+                        className="group relative aspect-square overflow-hidden rounded-lg border border-border bg-panel"
+                      >
+                        <img
+                          src={img.image}
+                          alt="Image produit"
+                          className="h-full w-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => void removeExistingImage(img)}
+                          disabled={isDeletingImage}
+                          title="Supprimer cette image"
+                          className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white opacity-0 transition group-hover:opacity-100"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                    {galleryPreviews.map((src, index) => (
+                      <div
+                        key={`new-${index}`}
+                        className="group relative aspect-square overflow-hidden rounded-lg border border-brand/40 bg-panel"
+                      >
+                        <img
+                          src={src}
+                          alt={`Nouvelle image ${index + 1}`}
+                          className="h-full w-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeGalleryFile(index)}
+                          title="Retirer cette image"
+                          className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white opacity-0 transition group-hover:opacity-100"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {errors.gallery && (
+                  <p className="mt-1 text-xs text-warning">{errors.gallery}</p>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -2122,6 +2294,7 @@ export function ProductsPage() {
                 quantity: variant.quantity,
                 parent_id: null,
                 unit_cost: variant.unit_cost,
+                selling_price: variant.selling_price,
                 image: variant.image
               });
             }
@@ -2553,6 +2726,7 @@ export function ProductsPage() {
           scrollBody={true}
         >
           <ProductForm
+            key={selected?.id ?? "new"}
             product={selected ?? undefined}
             categories={categories}
             lots={lots}

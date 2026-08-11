@@ -94,7 +94,11 @@ def read_cart_items(
 
     cart_items = crud.cart_items.get_multi_where_array(
         db=db,
-        relations=['customer', 'product', 'variant'],
+        relations=[
+            'customer{id,name,phone,delivery_address}',
+            'product{id,name,sku,image}',
+            'variant{id,name,sku,image}',
+        ],
         skip=offset,
         limit=limit,
         where=where,

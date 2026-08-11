@@ -7,7 +7,8 @@ import type {
 const PRODUCT_RELATION = JSON.stringify([
   "categorie{id,name}",
   "stock{quantity}",
-  "variants{id,parent_id,name,sku,quantity,unit_cost,selling_price}"
+  "variants{id,parent_id,name,sku,quantity,unit_cost,selling_price}",
+  "images{image,position}"
 ]);
 
 export const productsService = {
@@ -61,6 +62,19 @@ export function selectableVariants(
     (v) => !variants.some((other) => other.parent_id === v.id)
   );
   return leaves.length > 0 ? leaves : variants;
+}
+
+export function getProductDisplayPrice(product: Product): number {
+  const variants = product.variants ?? [];
+  if (variants.length > 0) {
+    const prices = selectableVariants(product)
+      .map((v) => v.selling_price)
+      .filter((p): p is number => typeof p === "number" && p > 0);
+    if (prices.length > 0) {
+      return Math.min(...prices);
+    }
+  }
+  return product.selling_price ?? 0;
 }
 
 export function variantLabel(

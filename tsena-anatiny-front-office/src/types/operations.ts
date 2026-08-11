@@ -20,6 +20,7 @@ export interface CartItem {
     id: number;
     name?: string;
     sku?: string | null;
+    image?: string;
   } | null;
 }
 

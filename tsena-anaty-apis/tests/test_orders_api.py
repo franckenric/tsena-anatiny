@@ -27,6 +27,68 @@ def _create_customer(db) -> schemas.Customers:
     return customer
 
 
+def test_get_orders_with_nested_product_variant_relations(client, db):
+    """Front-office relation format (dot-separated) must not crash."""
+    user_data = {
+        'email': 'nested-relations@test.com',
+        'password': 'test123',
+        'is_active': True,
+        'role_id': 2,
+        'phone_numer': 'nested-rel',
+    }
+    user = crud.users.create(db, obj_in=schemas.UsersCreate(**user_data))
+    db.commit()
+    token = security.create_access_token(sub={'id': str(user.id), 'email': user.email})
+    headers = {'Authorization': f'Bearer {token}'}
+
+    products = crud.products.create(
+        db,
+        obj_in=schemas.ProductsCreate(
+            category_id=1,
+            sku='SKU-NESTED',
+            name='Produit Nested',
+            image='/No_Image_Available.jpg',
+            status='active',
+        ),
+    )
+    db.commit()
+    db.refresh(products)
+
+    customer = _create_customer(db)
+    customer_id = customer.id
+
+    crud.stock.create(db, obj_in=schemas.StockCreate(product_id=products.id, quantity=10))
+    db.commit()
+
+    client.post(
+        '/api/v1/orders/',
+        headers=headers,
+        json={
+            'user_id': user.id,
+            'customer_id': customer_id,
+            'movements': [{'product_id': products.id, 'quantity': 2}],
+            'status': 'confirmed',
+        },
+    )
+
+    relation = json.dumps([
+        'customer{id,name,phone,delivery_address}',
+        'stock_movements{id,product_id,variant_id,type,quantity,unit_cost,another_price}',
+        'stock_movements.product{id,name,sku}',
+        'stock_movements.variant{id,name,sku}',
+    ])
+    resp = client.get(
+        f'/api/v1/orders/?relation={relation}',
+        headers=headers,
+    )
+    assert resp.status_code == status.HTTP_200_OK, resp.text
+    items = resp.json()['data']
+    assert items, 'expected at least one order'
+    order = next(o for o in items if o['customer_id'] == customer_id)
+    movement = order['stock_movements'][0]
+    assert movement['product']['name'] == 'Produit Nested'
+
+
 def test_create_orders_api(client, db):
     """Create Orders via API."""
     # Auth setup

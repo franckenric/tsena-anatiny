@@ -28,7 +28,7 @@ class Orders(Base):
 
     # Relations
     user = relationship('Users', foreign_keys=[user_id])
-    customer = relationship('Customers', foreign_keys=[customer_id])
+    customer = relationship('Customers', foreign_keys=[customer_id], overlaps='orders')
     stock_movements = relationship('StockMovements', back_populates='order')
 
 

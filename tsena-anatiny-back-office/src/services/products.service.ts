@@ -9,7 +9,8 @@ import type {
   ProductVariantNode,
   ProductVariant,
   CreateVariantPayload,
-  UpdateVariantPayload
+  UpdateVariantPayload,
+  ProductImage
 } from "../types/product";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api/v1";
@@ -32,7 +33,7 @@ export const productsService = {
   async getProducts(
     page = 1,
     pageSize = 20,
-    relation = '["categorie{id,name}","stock{quantity}","variants{id,parent_id,name,sku,quantity,unit_cost,selling_price}","commercial_assignment{user_id}","commercial_assignment.user{full_name,email}"]'
+    relation = '["categorie{id,name}","stock{quantity}","variants{id,parent_id,name,sku,quantity,unit_cost,selling_price}","commercial_assignment{user_id}","commercial_assignment.user{full_name,email}","images{id,image,position}"]'
   ): Promise<ProductListResponse> {
     const skip = (page - 1) * pageSize;
     const token = getToken() || "";
@@ -274,5 +275,44 @@ export const productsService = {
       const err = await response.json().catch(() => ({}));
       throw new Error(err.detail || "Erreur suppression variante");
     }
+  },
+
+  async getProductImages(productId: number): Promise<ProductImage[]> {
+    const response = await fetch(
+      `${API_BASE_URL}/products/${productId}/images`,
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${getToken()}`
+        }
+      }
+    );
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.detail || "Erreur chargement images produit");
+    }
+    const payload = await response.json();
+    return Array.isArray(payload?.data) ? payload.data : [];
+  },
+
+  async deleteProductImage(
+    productId: number,
+    imageId: number
+  ): Promise<void> {
+    const response = await fetch(
+      `${API_BASE_URL}/products/${productId}/images/${imageId}`,
+      {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${getToken()}`
+        }
+      }
+    );
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.detail || "Erreur suppression image produit");
+    }
+    clearProductsCache();
   }
 };

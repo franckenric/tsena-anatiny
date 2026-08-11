@@ -27,6 +27,7 @@ class Users(Base):
 
     # Relations
     role = relationship('Roles', foreign_keys=[role_id])
+    customer = relationship('Customers', foreign_keys='Customers.users_id', uselist=False, overlaps='user')
 
 
 # begin #

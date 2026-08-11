@@ -60,7 +60,9 @@ export const ordersService = {
     ]);
     const relation = JSON.stringify([
       "customer{id,name,phone,delivery_address}",
-      "stock_movements{id,product_id,variant_id,type,quantity,unit_cost,another_price,product{id,name,sku},variant{id,name,sku}}"
+      "stock_movements{id,product_id,variant_id,type,quantity,unit_cost,another_price}",
+      "stock_movements.product{id,name,sku}",
+      "stock_movements.variant{id,name,sku}"
     ]);
     const payload = await apiFetch<{ count: number; data?: Order[] }>(
       `/orders/?offset=${skip}&limit=${pageSize}&where=${encodeURIComponent(
@@ -79,7 +81,9 @@ export const ordersService = {
     ]);
     const relation = JSON.stringify([
       "customer{id,name,phone,delivery_address}",
-      "stock_movements{id,product_id,variant_id,type,quantity,unit_cost,another_price,product{id,name,sku},variant{id,name,sku}}"
+      "stock_movements{id,product_id,variant_id,type,quantity,unit_cost,another_price}",
+      "stock_movements.product{id,name,sku}",
+      "stock_movements.variant{id,name,sku}"
     ]);
     const payload = await apiFetch<{ count: number; data?: Order[] }>(
       `/orders/?limit=1&where=${encodeURIComponent(

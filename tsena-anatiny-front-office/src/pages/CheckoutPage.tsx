@@ -6,7 +6,7 @@ import { useCart } from "../contexts/CartContext";
 import { cartItemsService } from "../services/operations.service";
 import { PageLoader, Spinner } from "../components/Spinner";
 import { Page } from "../components/Page";
-import { formatAr } from "../lib/utils";
+import { formatAr, formatPhoneMadagascar } from "../lib/utils";
 
 export function CheckoutPage() {
   const { customer, isBooting, apiUser } = useAuth();
@@ -141,7 +141,9 @@ export function CheckoutPage() {
                 <p className="mt-1 text-sm font-semibold text-ink">
                   {customer.name}
                 </p>
-                <p className="text-sm text-muted">{customer.phone}</p>
+                <p className="text-sm text-muted">
+                  {formatPhoneMadagascar(customer.phone)}
+                </p>
               </div>
               <div>
                 <label

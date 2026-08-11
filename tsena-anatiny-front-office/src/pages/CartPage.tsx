@@ -8,7 +8,7 @@ import type { CartItem } from "../types/operations";
 import { PageLoader } from "../components/Spinner";
 import { Page } from "../components/Page";
 import { QuantityInput } from "../components/QuantityInput";
-import { formatAr } from "../lib/utils";
+import { formatAr, resolveImageUrl } from "../lib/utils";
 
 export function CartPage() {
   const { customer, isBooting } = useAuth();
@@ -166,17 +166,21 @@ export function CartPage() {
       <div className="mt-6 grid gap-8 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
           {items.map((item) => {
-            const name = item.product?.name ?? `Produit #${item.product_id}`;
+            const name =
+              item.product?.name ?? item.variant?.name ?? `Produit #${item.product_id}`;
             const variantName = item.variant?.name;
             const unitPrice = Number(item.unit_cost || 0);
+            const imageUrl = resolveImageUrl(
+              item.variant?.image || item.product?.image || null
+            );
             return (
               <div
                 key={item.id}
                 className="flex flex-wrap items-center gap-4 rounded-3xl border border-border bg-panel p-4 shadow-card"
               >
-                {item.product?.image ? (
+                {imageUrl ? (
                   <img
-                    src={item.product.image}
+                    src={imageUrl}
                     alt={name}
                     className="h-20 w-20 shrink-0 rounded-2xl border border-border object-cover"
                   />

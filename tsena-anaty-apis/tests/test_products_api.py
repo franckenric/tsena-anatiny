@@ -308,6 +308,98 @@ def test_delete_products_api(client, db):
     resp_chk = client.get(f'/api/v1/products/{created["id"]}', headers={"Authorization": f"Bearer {token}"})
     assert resp_chk.status_code == status.HTTP_404_NOT_FOUND
 
+
+def _auth_headers(client, db, phone='IMG0001'):
+    user_data = {
+        'email': f'{phone}@example.com',
+        'password': 'pass123',
+        'is_active': True,
+        'role_id': 2,
+        'phone_numer': phone,
+    }
+    user = crud.users.create(db, obj_in=schemas.UsersCreate(**user_data))
+    db.commit()
+    token = security.create_access_token(sub={'id': str(user.id), 'email': user.email})
+    return {"Authorization": f"Bearer {token}"}
+
+
+def test_upload_multiple_product_images(client, db):
+    """Upload multiple images for a product."""
+    headers = _auth_headers(client, db)
+
+    category = crud.categories.create(db, obj_in=schemas.CategoriesCreate(name='Images'))
+    db.commit()
+
+    resp_c = client.post('/api/v1/products/', json={
+        'category_id': category.id,
+        'sku': 'IMG-SKU-1',
+        'name': 'Produit avec images',
+        'image': '/No_Image_Available.jpg',
+    }, headers=headers)
+    assert resp_c.status_code == status.HTTP_200_OK, resp_c.text
+    product = resp_c.json()
+
+    files = [
+        ('images', ('a.png', b'\x89PNG\r\n\x1a\nfake-a', 'image/png')),
+        ('images', ('b.png', b'\x89PNG\r\n\x1a\nfake-b', 'image/png')),
+    ]
+    resp = client.post(f'/api/v1/products/{product["id"]}/images', files=files, headers=headers)
+    assert resp.status_code == status.HTTP_200_OK, resp.text
+    images = resp.json()
+    assert len(images) == 2
+    assert images[0]['position'] == 0
+    assert images[1]['position'] == 1
+    assert all('/files/products/' in img['image'] for img in images)
+
+    # Main image is set from the first gallery image
+    resp_g = client.get(f'/api/v1/products/{product["id"]}', headers=headers)
+    assert resp_g.status_code == status.HTTP_200_OK
+    assert resp_g.json()['image'] == images[0]['image']
+
+    # List images
+    resp_l = client.get(f'/api/v1/products/{product["id"]}/images', headers=headers)
+    assert resp_l.status_code == status.HTTP_200_OK
+    assert resp_l.json()['count'] == 2
+
+
+def test_delete_product_image(client, db):
+    """Delete a single product image."""
+    headers = _auth_headers(client, db, phone='IMG0002')
+
+    category = crud.categories.create(db, obj_in=schemas.CategoriesCreate(name='Images2'))
+    db.commit()
+
+    resp_c = client.post('/api/v1/products/', json={
+        'category_id': category.id,
+        'sku': 'IMG-SKU-2',
+        'name': 'Produit à nettoyer',
+        'image': '/No_Image_Available.jpg',
+    }, headers=headers)
+    product = resp_c.json()
+
+    files = [
+        ('images', ('a.png', b'\x89PNG\r\n\x1a\nfake-a', 'image/png')),
+        ('images', ('b.png', b'\x89PNG\r\n\x1a\nfake-b', 'image/png')),
+    ]
+    resp = client.post(f'/api/v1/products/{product["id"]}/images', files=files, headers=headers)
+    images = resp.json()
+
+    resp_d = client.delete(
+        f'/api/v1/products/{product["id"]}/images/{images[0]["id"]}',
+        headers=headers,
+    )
+    assert resp_d.status_code == status.HTTP_200_OK, resp_d.text
+    assert resp_d.json()['msg'] == 'Image supprimée'
+
+    resp_l = client.get(f'/api/v1/products/{product["id"]}/images', headers=headers)
+    assert resp_l.json()['count'] == 1
+
+
+def test_upload_product_images_requires_auth(client, db):
+    """Uploading images without a token is rejected."""
+    resp = client.post('/api/v1/products/1/images', files=[('images', ('a.png', b'x', 'image/png'))])
+    assert resp.status_code in (status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN)
+
 # begin #
 # ---write your code here--- #
 # end #

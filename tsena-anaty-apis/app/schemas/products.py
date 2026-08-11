@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, field_validator
 from app.enum.status import StatusEnum
 from .categories import Categories
 from .product_variants import ProductVariantNode
+from .product_images import ProductImages
 
 
 class ProductsBase(BaseModel):
@@ -27,10 +28,11 @@ class ProductsCreate(ProductsBase):
     sku: str
     name: str
     image: str
+    gallery_images: Optional[List[str]] = None
 
 
 class ProductsUpdate(ProductsBase):
-    pass
+    gallery_images: Optional[List[str]] = None
 
 
 class ProductsInDBBase(ProductsBase):
@@ -69,6 +71,7 @@ class ProductsWithRelation(ProductsInDBBase):
     stock: Optional[List[ProductStockLite]] = None
     variants: Optional[List[ProductVariantNode]] = None
     commercial_assignment: Optional[ProductCommercialAssignmentLite] = None
+    images: Optional[List[ProductImages]] = None
     unit_cost: Optional[float] = None
 
 

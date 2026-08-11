@@ -8,8 +8,8 @@ import {
   type ReactNode
 } from "react";
 import { customersService } from "../services/customers.service";
-import { getApiUser, type ApiUser } from "../services/api";
-import type { CreateCustomerPayload } from "../types/customer";
+import { getApiUser, setApiToken, type ApiUser } from "../services/api";
+import type { RegisterPayload } from "../types/customer";
 
 export interface CustomerSession {
   id: number;
@@ -44,7 +44,7 @@ interface AuthContextValue {
   apiUser: ApiUser | null;
   customer: CustomerSession | null;
   login: (phone: string) => Promise<CustomerSession>;
-  register: (payload: CreateCustomerPayload) => Promise<CustomerSession>;
+  register: (payload: RegisterPayload) => Promise<CustomerSession>;
   logout: () => void;
 }
 
@@ -105,8 +105,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const register = useCallback(
-    async (payload: CreateCustomerPayload): Promise<CustomerSession> => {
-      const created = await customersService.findOrCreate(payload);
+    async (payload: RegisterPayload): Promise<CustomerSession> => {
+      const result = await customersService.register(payload);
+      setApiToken(result.access_token);
+      const created = result.customer;
       const session: CustomerSession = {
         id: created.id,
         name: created.name,

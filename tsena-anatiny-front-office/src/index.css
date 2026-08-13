@@ -12,9 +12,9 @@
     --ink: 20 14% 8%;
     --muted: 25 6% 44%;
     --border: 30 8% 88%;
-    --brand: 161 94% 26%;
-    --brand-soft: 153 60% 92%;
-    --accent: 24 92% 52%;
+    --brand: 16 82% 45%;
+    --brand-soft: 22 95% 92%;
+    --accent: 6 78% 45%;
     --success: 161 94% 26%;
     --warning: 38 92% 50%;
     --danger: 0 72% 51%;
@@ -129,7 +129,7 @@
 
 :root {
   --ion-color-primary: hsl(var(--brand));
-  --ion-color-primary-rgb: 4, 129, 89;
+  --ion-color-primary-rgb: 209, 71, 21;
   --ion-color-primary-contrast: #ffffff;
   --ion-color-primary-contrast-rgb: 255, 255, 255;
   --ion-color-primary-shade: hsl(var(--brand) / 0.88);
@@ -162,10 +162,22 @@ ion-tab-bar {
   --color: hsl(var(--muted));
   --color-selected: hsl(var(--brand));
   --ion-tab-bar-padding-bottom: env(safe-area-inset-bottom);
+  height: 44px;
 }
 
 ion-tab-button {
   --color: hsl(var(--muted));
   --color-selected: hsl(var(--brand));
-  --padding-top: 8px;
+  --padding-top: 4px;
+  --padding-bottom: 2px;
+  --min-height: 44px;
+}
+
+ion-tab-button ion-icon {
+  font-size: 20px;
+}
+
+ion-tab-button ion-label {
+  font-size: 10px;
+  font-weight: 600;
 }

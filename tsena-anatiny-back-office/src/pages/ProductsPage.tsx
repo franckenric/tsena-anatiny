@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useHistory } from "react-router-dom";
 import type {
   Product,
   Category,
@@ -35,6 +35,7 @@ import {
   QuantityInput,
   ReceiptImport,
   VariantsManager,
+  Pagination,
   type ReceiptApplyPayload
 } from "../components/index";
 import type { DraftVariant } from "../types/product";
@@ -139,9 +140,7 @@ function DraftImageThumb({ file }: { file: File }) {
     return () => URL.revokeObjectURL(url);
   }, [url]);
 
-  return (
-    <img src={url} alt="" className="h-full w-full object-cover" />
-  );
+  return <img src={url} alt="" className="h-full w-full object-cover" />;
 }
 
 const generateProductReference = () => {
@@ -514,7 +513,9 @@ function ProductCartForm({
       for (const line of activeLines) {
         const stock = variantEffectiveStock(productVariants, line.variant);
         if (line.quantity <= 0)
-          issues.push(`« ${variantLabel(line.variant)} »: quantité doit être > 0`);
+          issues.push(
+            `« ${variantLabel(line.variant)} »: quantité doit être > 0`
+          );
         if (stock <= 0)
           issues.push(`« ${variantLabel(line.variant)} »: stock épuisé`);
         if (line.quantity > stock)
@@ -692,9 +693,7 @@ function ProductCartForm({
                   getEffectiveUnitCost(product.id, line.variant.id) ||
                   Number(line.variant.unit_cost ?? 0);
                 const margin =
-                  cost > 0
-                    ? Math.round((line.unit_cost / cost - 1) * 100)
-                    : 0;
+                  cost > 0 ? Math.round((line.unit_cost / cost - 1) * 100) : 0;
                 return (
                   <div
                     key={line.variant.id}
@@ -802,7 +801,9 @@ function ProductCartForm({
               Résumé
             </p>
             {activeLines.length === 0 ? (
-              <p className="text-sm text-muted">Aucune variante sélectionnée.</p>
+              <p className="text-sm text-muted">
+                Aucune variante sélectionnée.
+              </p>
             ) : (
               <>
                 <ul className="space-y-1">
@@ -880,7 +881,9 @@ function ProductCartForm({
               <QuantityInput
                 label="Quantité"
                 value={form.quantity}
-                onChange={(value) => setForm((p) => ({ ...p, quantity: value }))}
+                onChange={(value) =>
+                  setForm((p) => ({ ...p, quantity: value }))
+                }
                 error={errors.quantity}
                 placeholder="1"
                 disabled={isLoading}
@@ -1340,8 +1343,7 @@ function ProductForm({
   const activeVariants = draftVariants.filter((v) => v.name.trim());
   const hasDraftVariants = activeVariants.length > 0;
   const totalVariantQty = activeVariants.reduce(
-    (sum, v) =>
-      sum + Math.max(0, parseInt(v.quantity, 10) || 0),
+    (sum, v) => sum + Math.max(0, parseInt(v.quantity, 10) || 0),
     0
   );
   const totalVariantValue = activeVariants.reduce(
@@ -1458,7 +1460,11 @@ function ProductForm({
     if (!form.name.trim()) errs.name = "Nom requis";
     if (!form.sku.trim()) errs.sku = "SKU requis";
     if (!form.category_id) errs.category_id = "Catégorie requise";
-    if (!product && !hasDraftVariants && (Number(form.initial_stock) || 0) <= 0) {
+    if (
+      !product &&
+      !hasDraftVariants &&
+      (Number(form.initial_stock) || 0) <= 0
+    ) {
       errs.initial_stock = "Stock initial doit être supérieur à 0";
     }
     if (
@@ -1545,7 +1551,7 @@ function ProductForm({
   return (
     <form className="flex h-full min-h-0 flex-col" onSubmit={handleSubmit}>
       {/* Scrollable body */}
-      <div className="min-h-0 flex-1 overflow-y-auto px-1 pb-2">
+      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-1 pb-2">
         {errors.submit && (
           <div className="mb-4 rounded-xl border border-warning/50 bg-warning/10 px-3 py-2.5 text-sm text-ink">
             {errors.submit}
@@ -1554,7 +1560,7 @@ function ProductForm({
 
         <div className="grid gap-6 lg:grid-cols-3">
           {/* ── Colonne principale ── */}
-          <div className="space-y-5 lg:col-span-2">
+          <div className="min-w-0 space-y-5 lg:col-span-2">
             {!product && (
               <ReceiptImport
                 onApply={handleReceiptApply}
@@ -1652,7 +1658,7 @@ function ProductForm({
                       {draftVariants.map((variant, index) => (
                         <div
                           key={index}
-                          className="grid items-end gap-2 rounded-xl border border-border/50 bg-bg/40 p-2.5 transition hover:border-brand/30 sm:grid-cols-[2rem_2.5rem_1fr_5rem_6rem_6rem_2rem]"
+                          className="grid min-w-0 grid-cols-2 items-end gap-2 rounded-xl border border-border/50 bg-bg/40 p-2.5 transition hover:border-brand/30 sm:grid-cols-[2rem_2.5rem_1fr_5rem_6rem_6rem_2rem]"
                         >
                           <div className="hidden h-8 items-center justify-center rounded-lg bg-panel text-xs font-bold text-muted sm:flex">
                             {index + 1}
@@ -1673,9 +1679,7 @@ function ProductForm({
                             <input
                               type="file"
                               accept="image/*"
-                              onChange={(e) =>
-                                setDraftVariantImage(index, e)
-                              }
+                              onChange={(e) => setDraftVariantImage(index, e)}
                               disabled={isLoading}
                               className="sr-only"
                             />
@@ -1953,7 +1957,7 @@ function ProductForm({
           </div>
 
           {/* ── Colonne image ── */}
-          <div className="lg:col-span-1">
+          <div className="min-w-0 lg:col-span-1">
             <div className="rounded-2xl border border-border/60 bg-bg/30 p-4 flex flex-col gap-3">
               <div className="flex items-center gap-2.5">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand/10 text-brand">
@@ -1995,7 +1999,7 @@ function ProductForm({
                   <img
                     src={localImagePreview}
                     alt="Aperçu produit"
-                    className="h-52 w-full object-cover"
+                    className="h-52 w-full object-contain"
                   />
                   <label className="absolute bottom-2 left-2 inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-panel/90 px-2.5 py-1.5 text-xs font-semibold text-ink shadow-sm transition hover:border-brand/40">
                     <UploadCloud className="h-3.5 w-3.5" />
@@ -2047,7 +2051,9 @@ function ProductForm({
                       accept="image/*"
                       multiple
                       onChange={handleGallerySelection}
-                      disabled={isLoading || isUploadingImage || isDeletingImage}
+                      disabled={
+                        isLoading || isUploadingImage || isDeletingImage
+                      }
                       className="sr-only"
                     />
                   </label>
@@ -2055,7 +2061,8 @@ function ProductForm({
 
                 {existingImages.length === 0 && galleryPreviews.length === 0 ? (
                   <p className="rounded-lg border border-dashed border-border/70 bg-bg/40 px-3 py-2.5 text-center text-[11px] text-muted">
-                    Aucune image secondaire. Ajoutez plusieurs photos du produit.
+                    Aucune image secondaire. Ajoutez plusieurs photos du
+                    produit.
                   </p>
                 ) : (
                   <div className="grid grid-cols-3 gap-2">
@@ -2113,12 +2120,12 @@ function ProductForm({
       </div>
 
       {/* ── Footer fixe avec boutons ── */}
-      <div className="flex shrink-0 gap-3 border-t border-border/60 pt-4 mt-2">
+      <div className="flex shrink-0 flex-col gap-3 border-t border-border/60 pt-4 mt-2 sm:flex-row">
         <Button
           type="submit"
           isLoading={isLoading || isUploadingImage}
           variant="primary"
-          className="flex-1"
+          className="w-full sm:flex-1"
         >
           {product ? "Enregistrer les modifications" : "Créer le produit"}
         </Button>
@@ -2126,7 +2133,7 @@ function ProductForm({
           type="button"
           onClick={onCancel}
           variant="secondary"
-          className="flex-1"
+          className="w-full sm:flex-1"
           disabled={isLoading || isUploadingImage}
         >
           Annuler
@@ -2152,7 +2159,7 @@ export function ProductsPage() {
   );
   const [selectedForCart, setSelectedForCart] = useState<Product | null>(null);
   const [isCartViewerOpen, setIsCartViewerOpen] = useState(false);
-  const navigate = useNavigate();
+  const history = useHistory();
   const [notice, setNotice] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -2198,9 +2205,7 @@ export function ProductsPage() {
             m.type === "in_stock" &&
             m.lot_id != null &&
             m.product_id === productId &&
-            (variantId == null
-              ? !m.variant_id
-              : m.variant_id === variantId)
+            (variantId == null ? !m.variant_id : m.variant_id === variantId)
         )
         .sort((a, b) => (b.id ?? 0) - (a.id ?? 0))[0];
       if (!relevant) return 0;
@@ -2394,7 +2399,7 @@ export function ProductsPage() {
           ? `${payloads.length} variantes ajoutees au panier client avec succes`
           : "Produit ajoute au panier client avec succes"
       );
-      navigate("/customers", {
+      history.push("/customers", {
         state: {
           openCartCustomer: customer
             ? {
@@ -2427,13 +2432,14 @@ export function ProductsPage() {
             <img
               src={row.image}
               alt={name}
-              className="h-9 w-9 rounded-lg object-cover bg-border/30"
+              className="h-11 w-11 rounded-lg bg-border/30 p-0.5 object-contain"
+              loading="lazy"
               onError={(e) => {
                 (e.target as HTMLImageElement).style.display = "none";
               }}
             />
           ) : (
-            <div className="h-9 w-9 rounded-lg bg-border/30 flex items-center justify-center text-xs text-muted">
+            <div className="h-11 w-11 rounded-lg bg-border/30 flex items-center justify-center text-xs text-muted">
               —
             </div>
           )}
@@ -2489,9 +2495,9 @@ export function ProductsPage() {
   ];
 
   return (
-    <Layout title="Produits" subtitle="Gérez votre catalogue de produits">
+    <Layout title="Produits">
       <div className="animate-fade-up flex h-full min-h-0 flex-col gap-6 overflow-hidden">
-        <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-panel/65 px-4 py-3">
+        <div className="hidden items-center justify-between rounded-2xl border border-border/60 bg-panel/65 px-4 py-3 sm:flex">
           <div className="inline-flex items-center gap-2 text-sm font-semibold text-ink">
             <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-brand/15 text-brand ring-1 ring-brand/20">
               <Boxes className="h-4 w-4" />
@@ -2512,6 +2518,8 @@ export function ProductsPage() {
         <Card
           title="Catalogue produits"
           description={`Total: ${total} produits`}
+          hideHeaderOnMobile
+          plainOnMobile
           className="flex min-h-0 flex-1 flex-col"
           bodyClassName="flex min-h-0 flex-1 flex-col"
           headerAction={
@@ -2536,89 +2544,101 @@ export function ProductsPage() {
             </div>
           }
         >
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            onPageChange={setPage}
+            pageSize={pageSize}
+            onPageSizeChange={setPageSize}
+            showCount={false}
+            isLoading={isLoading}
+            className="mb-3"
+          />
           <DataTable
             columns={columns}
             data={products}
             isLoading={isLoading}
             emptyMessage="Aucun produit trouvé"
-            gridCardRender={(prod) => (
-              <div className="overflow-hidden rounded-xl border border-border/50 bg-bg/40">
-                <div className="h-36 w-full bg-border/30">
-                  {prod.image ? (
-                    <img
-                      src={prod.image}
-                      alt={prod.name}
-                      className="h-full w-full object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = "none";
-                      }}
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-xs font-semibold uppercase tracking-[0.12em] text-muted">
-                      Aucune image
-                    </div>
-                  )}
-                </div>
-
-                <div className="space-y-2.5 p-3">
-                  <div className="flex items-center justify-between gap-2 border-b border-border/40 pb-2">
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">
-                      Réf
-                    </span>
-                    <span className="text-sm font-semibold text-ink">
-                      {prod.sku || "-"}
+            gridCardRender={(prod) => {
+              const stock = getProductStock(prod);
+              const category =
+                prod.categorie ??
+                categories.find((c) => c.id === prod.category_id);
+              const isActive = prod.status === "active";
+              return (
+                <div className="flex flex-col">
+                  <div className="relative -mx-4 -mt-4 mb-3 flex h-44 items-center justify-center overflow-hidden rounded-t-xl bg-gradient-to-br from-brand-soft/60 via-border/25 to-bg p-3">
+                    {prod.image ? (
+                      <img
+                        src={prod.image}
+                        alt={prod.name}
+                        className="h-full w-full object-contain drop-shadow-sm"
+                        loading="lazy"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = "none";
+                        }}
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <Boxes className="h-9 w-9 text-muted/50" />
+                      </div>
+                    )}
+                    <span
+                      className={`absolute right-2 top-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold text-white shadow-sm ${
+                        isActive ? "bg-success" : "bg-warning"
+                      }`}
+                    >
+                      <span
+                        className={`h-1.5 w-1.5 rounded-full ${isActive ? "bg-white" : "bg-white/70"}`}
+                      />
+                      {isActive ? "Actif" : "Inactif"}
                     </span>
                   </div>
-
-                  <div className="flex items-center justify-between gap-2 border-b border-border/40 pb-2">
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">
-                      Produit
-                    </span>
-                    <span className="max-w-[65%] truncate text-right text-sm font-semibold text-ink">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-ink">
                       {prod.name}
-                    </span>
+                    </p>
+                    <p className="mt-0.5 truncate text-xs text-muted">
+                      {prod.sku}
+                      {category?.name ? ` · ${category.name}` : ""}
+                      {prod.unit ? ` · ${prod.unit}` : ""}
+                    </p>
                   </div>
-
-                  <div className="flex items-center justify-between gap-2 border-b border-border/40 pb-2">
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">
-                      Stock
-                    </span>
-                    <span className="text-sm font-semibold text-ink">
-                      {getProductStock(prod)}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between gap-2 border-b border-border/40 pb-2">
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">
-                      Prix de vente
-                    </span>
-                    <span className="text-sm font-semibold text-ink">
-                      {prod.selling_price
-                        ? Number(prod.selling_price).toLocaleString("fr-FR") +
-                          " Ar"
-                        : "-"}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">
-                      Commercial assigné
-                    </span>
-                    <span className="max-w-[65%] truncate text-right text-sm font-semibold text-ink">
-                      {prod.commercial_assignment?.user?.full_name ||
-                        prod.commercial_assignment?.user?.email ||
-                        "Non assigné"}
-                    </span>
+                  <div className="mt-3 flex items-end justify-between gap-3 border-t border-border/50 pt-3">
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+                        Stock
+                      </p>
+                      <p
+                        className={`mt-0.5 text-sm font-bold ${
+                          stock <= 0 ? "text-warning" : "text-ink"
+                        }`}
+                      >
+                        {stock} pcs
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+                        Prix de vente
+                      </p>
+                      <p className="mt-0.5 text-sm font-bold text-brand">
+                        {prod.selling_price
+                          ? Number(prod.selling_price).toLocaleString("fr-FR") +
+                            " Ar"
+                          : "—"}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              );
+            }}
             actions={(prod) => (
               <div className="flex w-full flex-wrap items-center justify-end gap-2">
                 <Button
                   size="sm"
                   variant="primary"
-                  className="h-9 w-9 p-0 shadow-md shadow-brand/20"
+                  className="h-8 w-8 p-0 shadow-md shadow-brand/20"
                   title="Panier"
                   aria-label="Panier"
                   disabled={isFormLoading || getProductStock(prod) <= 0}
@@ -2629,7 +2649,7 @@ export function ProductsPage() {
                 <Button
                   size="sm"
                   variant="secondary"
-                  className="h-9 w-9 p-0"
+                  className="h-8 w-8 p-0"
                   title="Arrivage"
                   aria-label="Arrivage"
                   disabled={isFormLoading}
@@ -2640,7 +2660,7 @@ export function ProductsPage() {
                 <Button
                   size="sm"
                   variant="secondary"
-                  className="h-9 w-9 p-0"
+                  className="h-8 w-8 p-0"
                   title="Modifier"
                   aria-label="Modifier"
                   disabled={isFormLoading}
@@ -2654,7 +2674,7 @@ export function ProductsPage() {
                 <Button
                   size="sm"
                   variant="danger"
-                  className="h-9 w-9 p-0 shadow-md shadow-warning/20"
+                  className="h-8 w-8 p-0 shadow-md shadow-warning/20"
                   title="Supprimer"
                   aria-label="Supprimer"
                   disabled={isFormLoading}
@@ -2666,54 +2686,6 @@ export function ProductsPage() {
             )}
           />
         </Card>
-        <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-xl border border-border/60 bg-panel/65 px-2.5 py-2 sm:gap-3 sm:px-3">
-          <p className="text-xs font-medium text-muted sm:text-sm">
-            Page {page} de {totalPages}
-          </p>
-          <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
-            <label
-              className="text-[11px] font-semibold uppercase tracking-wide text-muted sm:text-xs"
-              htmlFor="products-page-size"
-            >
-              Par page
-            </label>
-            <select
-              id="products-page-size"
-              className="h-8 min-w-[68px] rounded-lg border border-border bg-bg px-2 text-xs font-semibold text-ink outline-none transition focus-visible:border-brand/70 focus-visible:ring-2 focus-visible:ring-brand/25 sm:h-9 sm:min-w-[72px] sm:text-sm"
-              value={pageSize}
-              onChange={(e) => {
-                const nextSize = Number(e.target.value) || 20;
-                setPageSize(nextSize);
-                setPage(1);
-              }}
-              disabled={isLoading}
-            >
-              {[10, 20, 50, 100].map((size) => (
-                <option key={size} value={size}>
-                  {size}
-                </option>
-              ))}
-            </select>
-            <Button
-              size="sm"
-              variant="secondary"
-              className="min-w-[84px] sm:min-w-[96px]"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-            >
-              Précédent
-            </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              className="min-w-[84px] sm:min-w-[96px]"
-              onClick={() => setPage((p) => p + 1)}
-              disabled={page >= totalPages}
-            >
-              Suivant
-            </Button>
-          </div>
-        </div>
         <Modal
           isOpen={isModalOpen}
           onClose={() => {

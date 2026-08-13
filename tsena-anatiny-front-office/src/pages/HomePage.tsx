@@ -1,13 +1,22 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent
+} from "react";
 import { Link, useHistory, useLocation } from "react-router-dom";
 import {
   ArrowDown,
   ArrowRight,
-  Banknote,
   BadgePercent,
+  Banknote,
   Flame,
   PackageSearch,
   RefreshCcw,
+  Search,
+  ShieldCheck,
   ShoppingBag,
   Sparkles,
   Store,
@@ -23,7 +32,13 @@ import type { Category, Product } from "../types/product";
 import { ProductCard } from "../components/ProductCard";
 import { ProductGridSkeleton } from "../components/Skeletons";
 import { Page } from "../components/Page";
-import { cn, getRecentProductIds, resolveImageUrl } from "../lib/utils";
+import { useAuth } from "../contexts/AuthContext";
+import {
+  cn,
+  formatAr,
+  getRecentProductIds,
+  resolveImageUrl
+} from "../lib/utils";
 
 const PAGE_SIZE = 200;
 
@@ -46,6 +61,14 @@ function isAvailable(product: Product): boolean {
   return getProductTotalStock(product) > 0;
 }
 
+function greetingLabel(): string {
+  const h = new Date().getHours();
+  if (h < 5) return "Bonsoir";
+  if (h < 12) return "Bonjour";
+  if (h < 18) return "Bon après-midi";
+  return "Bonsoir";
+}
+
 function categoryEmoji(name?: string): string {
   if (!name) return "🛒";
   const n = name.toLowerCase();
@@ -66,16 +89,39 @@ function categoryEmoji(name?: string): string {
   return "🛒";
 }
 
+function categoryGradient(name?: string): string {
+  const n = (name ?? "").toLowerCase();
+  if (/l[ée]gume|fruit|mara/.test(n)) return "from-emerald-100 to-lime-200";
+  if (/riz/.test(n)) return "from-amber-100 to-yellow-200";
+  if (/viande|poulet|volaille/.test(n)) return "from-rose-100 to-red-200";
+  if (/poisson|crevette|fruit de mer/.test(n)) return "from-sky-100 to-cyan-200";
+  if (/lait|fromage|produit laitier/.test(n)) return "from-violet-100 to-purple-200";
+  if (/boisson|jus|soda|eau/.test(n)) return "from-blue-100 to-indigo-200";
+  if (/c[éè]r[éè]ale|farine|bl[ée]/.test(n)) return "from-yellow-100 to-amber-200";
+  if (/[éè]pice|poivre|sel/.test(n)) return "from-red-100 to-orange-200";
+  if (/huile/.test(n)) return "from-lime-100 to-emerald-200";
+  if (/sucre|chocolat|bonbon/.test(n)) return "from-pink-100 to-rose-200";
+  if (/oeuf|œuf/.test(n)) return "from-orange-100 to-yellow-200";
+  if (/pain|boulangerie/.test(n)) return "from-amber-100 to-orange-200";
+  if (/caf[éè]|th[éè]/.test(n)) return "from-stone-200 to-amber-200";
+  if (/bio|miel|sant/.test(n)) return "from-emerald-100 to-green-200";
+  return "from-brand-soft to-emerald-100";
+}
+
 const TRUST = [
+  { icon: Banknote, label: "Paiement à la réception" },
   { icon: Truck, label: "Livraison rapide" },
-  { icon: Banknote, label: "Paiement à la livraison" },
-  { icon: RefreshCcw, label: "Retours faciles" }
+  { icon: ShieldCheck, label: "Retours faciles" }
 ];
 
 function AnnouncementBar() {
   return (
-    <div className="bg-gradient-to-r from-[#0b5f42] via-brand to-[#0b5f42] text-white">
+    <div className="bg-gradient-to-r from-[#9a3412] via-brand to-[#9a3412] text-white">
       <div className="mx-auto flex max-w-7xl items-center justify-center gap-2 px-4 py-2 text-center text-xs font-semibold tracking-wide sm:text-sm">
+        <span className="relative flex h-2 w-2">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-75" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-accent" />
+        </span>
         <Truck className="h-3.5 w-3.5 shrink-0" />
         <span>Livraison à domicile — paiement à la réception</span>
       </div>
@@ -83,20 +129,137 @@ function AnnouncementBar() {
   );
 }
 
-function TrustBadges() {
+function GreetingHero({
+  featured,
+  onExplore,
+  onNewest
+}: {
+  featured: Product | null;
+  onExplore: () => void;
+  onNewest: () => void;
+}) {
+  const { customer, isBooting } = useAuth();
+  const history = useHistory();
+  const [query, setQuery] = useState("");
+  const firstName = (customer?.name ?? "").trim().split(" ")[0] ?? "";
+
+  const image = featured ? resolveImageUrl(featured.image) : null;
+  const price = featured ? getProductDisplayPrice(featured) : 0;
+
+  const handleSearch = (e: FormEvent) => {
+    e.preventDefault();
+    const q = query.trim();
+    history.push(q ? `/?q=${encodeURIComponent(q)}` : "/");
+  };
+
   return (
-    <section className="mx-4 mt-4 flex items-stretch justify-between gap-2 sm:mx-6">
-      {TRUST.map(({ icon: Icon, label }) => (
-        <div
-          key={label}
-          className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-border bg-panel px-3 py-2.5 shadow-card"
-        >
-          <Icon className="h-4 w-4 shrink-0 text-brand" />
-          <span className="text-[11px] font-semibold leading-tight text-ink">
-            {label}
-          </span>
+    <section className="mx-4 mt-4 animate-fade-up sm:mx-6">
+      <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#7c2d12] via-brand to-[hsl(16_85%_14%)] px-5 pb-6 pt-6 text-white shadow-glow sm:px-8 sm:pb-8 sm:pt-9">
+        <div className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-28 -left-16 h-72 w-72 rounded-full bg-accent/20 blur-3xl" />
+        <div className="pointer-events-none absolute right-8 top-8 h-14 w-14 rounded-full border border-white/15" />
+        <div className="pointer-events-none absolute right-16 top-16 h-8 w-8 rounded-full border border-white/10" />
+
+        <div className="relative z-10">
+          <div className="flex items-center gap-3">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/15 text-lg font-bold ring-1 ring-white/20 backdrop-blur-sm">
+              {!isBooting && firstName ? (
+                firstName[0].toUpperCase()
+              ) : (
+                <Sparkles className="h-5 w-5" />
+              )}
+            </span>
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-white/70">
+                {greetingLabel()}
+              </p>
+              <p className="truncate text-base font-bold">
+                {!isBooting && firstName
+                  ? `${firstName} 👋`
+                  : "Bienvenue chez Tsena Anatiny"}
+              </p>
+            </div>
+          </div>
+
+          <h1 className="mt-5 font-display text-[2rem] font-extrabold leading-[1.05] tracking-tight sm:text-4xl">
+            Vos produits,
+            <br />
+            livrés chez vous.
+          </h1>
+          <p className="mt-2.5 max-w-sm text-sm leading-relaxed text-white/85">
+            Produits frais, de qualité. Paiement à la réception, sans avance.
+          </p>
+
+          <form onSubmit={handleSearch} className="mt-5 max-w-md">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-brand" />
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Rechercher un produit..."
+                className="w-full rounded-2xl bg-white py-3.5 pl-12 pr-4 text-[15px] font-medium text-ink shadow-lg outline-none transition placeholder:text-muted/70 focus:ring-4 focus:ring-white/25"
+              />
+            </div>
+          </form>
+
+          <div className="mt-5 flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={onExplore}
+              className="inline-flex items-center gap-2 rounded-2xl bg-white px-6 py-3.5 text-sm font-bold text-brand shadow-lg transition hover:bg-white/90 active:scale-95"
+            >
+              Explorer la boutique
+              <ArrowRight className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={onNewest}
+              className="inline-flex items-center gap-2 rounded-2xl bg-white/10 px-5 py-3.5 text-sm font-bold text-white ring-1 ring-white/25 transition hover:bg-white/20 active:scale-95"
+            >
+              <Flame className="h-4 w-4 text-accent" />
+              Nouveautés
+            </button>
+          </div>
+
+          <div className="mt-6 grid grid-cols-3 gap-2">
+            {TRUST.map(({ icon: Icon, label }) => (
+              <div
+                key={label}
+                className="flex flex-col items-center gap-1 rounded-2xl bg-white/10 px-2 py-2.5 text-center ring-1 ring-white/15 backdrop-blur-sm"
+              >
+                <Icon className="h-4 w-4 text-white" />
+                <span className="text-[10px] font-semibold leading-tight text-white/85">
+                  {label}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
-      ))}
+
+        {image && featured && (
+          <div className="absolute -bottom-4 -right-2 z-10 hidden w-40 rotate-3 overflow-hidden rounded-3xl border-4 border-white/25 bg-panel shadow-2xl sm:block lg:w-48">
+            <img
+              src={image}
+              alt={featured.name}
+              className="aspect-square w-full object-cover"
+            />
+            <div className="flex items-center justify-between gap-2 bg-white px-3 py-2">
+              <div className="min-w-0">
+                <p className="text-[9px] font-bold uppercase tracking-wider text-muted">
+                  En vedette
+                </p>
+                <p className="truncate text-xs font-bold text-ink">
+                  {featured.name}
+                </p>
+              </div>
+              <span className="shrink-0 text-sm font-extrabold text-brand">
+                {price > 0 ? formatAr(price) : ""}
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
     </section>
   );
 }
@@ -112,9 +275,9 @@ function SectionHeader({
 }) {
   return (
     <div className="flex items-center justify-between px-4 sm:px-6">
-      <h2 className="flex items-center gap-2 text-lg font-bold text-ink">
+      <h2 className="flex items-center gap-2 font-display text-lg font-bold text-ink">
         {Icon && (
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-soft">
+          <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-brand-soft">
             <Icon className="h-4 w-4 text-brand" />
           </span>
         )}
@@ -134,78 +297,144 @@ function SectionHeader({
   );
 }
 
-function Hero({
-  featured,
-  onExplore,
-  onNewest
+function CategoryRail({
+  categories,
+  counts,
+  totalCount,
+  activeCategory
 }: {
-  featured: Product | null;
-  onExplore: () => void;
-  onNewest: () => void;
+  categories: Category[];
+  counts: Map<number, number>;
+  totalCount: number;
+  activeCategory: number | null;
 }) {
-  const image = featured ? resolveImageUrl(featured.image) : null;
+  if (categories.length === 0) return null;
+
+  const tile = cn(
+    "relative flex h-[4.5rem] w-[4.5rem] shrink-0 items-center justify-center rounded-3xl text-2xl shadow-card ring-2 transition"
+  );
+
   return (
-    <section className="relative mx-4 mt-4 overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#0b5f42] via-brand to-[hsl(158_92%_15%)] px-6 pb-6 pt-7 text-white shadow-glow sm:mx-6 sm:px-9 sm:py-12">
-      <div className="pointer-events-none absolute -right-14 -top-14 h-52 w-52 rounded-full bg-white/10 blur-2xl" />
-      <div className="pointer-events-none absolute -bottom-24 -left-12 h-56 w-56 rounded-full bg-accent/25 blur-3xl" />
-      <div className="pointer-events-none absolute right-6 top-6 h-16 w-16 rounded-full border border-white/15" />
-      <div className="pointer-events-none absolute right-12 top-12 h-10 w-10 rounded-full border border-white/10" />
+    <section className="mt-5 animate-fade-up">
+      <SectionHeader title="Catégories" icon={Store} />
+      <div className="scrollbar-hide -mx-4 mt-2 flex snap-x gap-4 overflow-x-auto px-4 pb-1 pt-1 sm:mx-0 sm:px-6">
+        <Link
+          to="/"
+          className={cn(
+            "flex shrink-0 snap-start flex-col items-center gap-1.5",
+            activeCategory == null ? "" : "opacity-55"
+          )}
+        >
+          <span
+            className={cn(
+              tile,
+              activeCategory == null
+                ? "bg-brand text-white ring-brand"
+                : "bg-brand-soft text-brand ring-transparent"
+            )}
+          >
+            <ShoppingBag className="h-6 w-6" />
+            <span className="absolute -right-1.5 -top-1.5 flex h-6 min-w-6 items-center justify-center rounded-full bg-ink px-1 text-[10px] font-bold text-white ring-2 ring-bg">
+              {totalCount}
+            </span>
+          </span>
+          <span className="max-w-24 text-center text-[11px] font-semibold leading-tight text-ink">
+            Tout
+          </span>
+        </Link>
 
-      <div className="relative z-10">
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider ring-1 ring-white/20 backdrop-blur-sm">
-          <Sparkles className="h-3.5 w-3.5" />
-          Bienvenue
-        </span>
+        {categories.map((c) => (
+          <Link
+            key={c.id}
+            to={`/?cat=${c.id}`}
+            className={cn(
+              "flex shrink-0 snap-start flex-col items-center gap-1.5",
+              activeCategory === c.id ? "" : "opacity-70"
+            )}
+          >
+            <span
+              className={cn(
+                tile,
+                "bg-gradient-to-br",
+                categoryGradient(c.name),
+                activeCategory === c.id ? "ring-brand" : "ring-transparent"
+              )}
+            >
+              {categoryEmoji(c.name)}
+              <span className="absolute -right-1.5 -top-1.5 flex h-6 min-w-6 items-center justify-center rounded-full bg-panel px-1 text-[10px] font-bold text-brand shadow-card ring-1 ring-border">
+                {counts.get(c.id) ?? 0}
+              </span>
+            </span>
+            <span className="max-w-24 text-center text-[11px] font-semibold leading-tight text-ink">
+              {c.name}
+            </span>
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
 
-        <h1 className="mt-4 max-w-md text-3xl font-extrabold leading-[1.08] sm:text-4xl">
-          Vos produits,
-          <br />
-          livrés chez vous.
-        </h1>
-        <p className="mt-3 max-w-sm text-sm leading-relaxed text-white/85 sm:text-base">
-          Frais, de qualité, commandés en quelques clics. Paiement à la
-          réception.
-        </p>
+function ProductRail({
+  title,
+  icon: Icon,
+  action,
+  products,
+  delay = 0
+}: {
+  title: string;
+  icon?: typeof Flame;
+  action?: { label: string; onPress: () => void };
+  products: Product[];
+  delay?: number;
+}) {
+  if (products.length === 0) return null;
+  return (
+    <section className="mt-6 animate-fade-up" style={{ animationDelay: `${delay}ms` }}>
+      <SectionHeader title={title} icon={Icon} action={action} />
+      <div className="scrollbar-hide -mx-4 mt-3 flex snap-x gap-3 overflow-x-auto px-4 pb-2 pt-1 sm:mx-0 sm:px-6">
+        {products.map((product) => (
+          <div
+            key={product.id}
+            className="w-40 shrink-0 snap-start sm:w-48"
+          >
+            <ProductCard product={product} />
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
 
-        <div className="mt-6 flex flex-wrap items-center gap-3">
+function PromoBanner({ onPress }: { onPress: () => void }) {
+  return (
+    <section className="mx-4 mt-6 animate-fade-up sm:mx-6">
+      <div className="relative overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-accent via-[hsl(24_92%_45%)] to-[hsl(8_85%_40%)] p-6 text-white shadow-glow sm:p-8">
+        <div className="pointer-events-none absolute -right-12 -top-12 h-44 w-44 rounded-full bg-white/15 blur-2xl" />
+        <div className="pointer-events-none absolute -bottom-16 -left-10 h-48 w-48 rounded-full bg-black/10 blur-2xl" />
+        <div className="pointer-events-none absolute right-10 top-6 h-12 w-12 rounded-full border border-white/20" />
+
+        <div className="relative z-10 flex items-center justify-between gap-4">
+          <div className="min-w-0">
+            <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-white/85">
+              <BadgePercent className="h-4 w-4" />
+              Bonne affaire
+            </p>
+            <h2 className="mt-1.5 font-display text-lg font-bold leading-snug sm:text-xl">
+              Commandez maintenant,
+              <br />
+              payez à la réception.
+            </h2>
+          </div>
           <button
             type="button"
-            onClick={onExplore}
-            className="inline-flex items-center gap-2 rounded-2xl bg-white px-6 py-3.5 text-sm font-bold text-brand shadow-lg transition hover:bg-white/90 active:scale-95"
+            onClick={onPress}
+            className="shrink-0 rounded-2xl bg-white px-4 py-2.5 text-sm font-bold text-brand shadow-card transition hover:bg-white/90 active:scale-95"
           >
-            Explorer la boutique
-            <ArrowRight className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            onClick={onNewest}
-            className="inline-flex items-center gap-2 rounded-2xl bg-white/10 px-5 py-3.5 text-sm font-bold text-white ring-1 ring-white/25 transition hover:bg-white/20 active:scale-95"
-          >
-            <Flame className="h-4 w-4 text-accent" />
-            Nouveautés
+            Découvrir
           </button>
         </div>
       </div>
-
-      {image && (
-        <div className="absolute -right-3 -bottom-3 z-10 w-28 rotate-3 overflow-hidden rounded-2xl border-4 border-white/20 bg-panel shadow-2xl sm:right-10 sm:top-1/2 sm:w-44 sm:-translate-y-1/2 sm:rotate-6">
-          <img
-            src={image}
-            alt="Produit en vedette"
-            className="aspect-square w-full object-cover"
-          />
-          <div className="absolute inset-x-0 bottom-0 bg-ink/70 px-2 py-1.5 text-center backdrop-blur-sm">
-            <p className="text-[9px] font-bold uppercase tracking-wider text-white/80">
-              En vedette
-            </p>
-            {featured && (
-              <p className="truncate text-[11px] font-bold text-white">
-                {featured.name}
-              </p>
-            )}
-          </div>
-        </div>
-      )}
     </section>
   );
 }
@@ -291,6 +520,14 @@ export function HomePage() {
     [availableProducts]
   );
 
+  const categoryCounts = useMemo(() => {
+    const map = new Map<number, number>();
+    for (const p of availableProducts) {
+      map.set(p.category_id, (map.get(p.category_id) ?? 0) + 1);
+    }
+    return map;
+  }, [availableProducts]);
+
   const filtered = useMemo(() => {
     const list = products.filter((p) => {
       if (p.status === "inactive") return false;
@@ -363,130 +600,51 @@ export function HomePage() {
 
   return (
     <Page>
-      <div className="pb-12">
+      <div className="pb-8">
         <AnnouncementBar />
-        <Hero
+        <GreetingHero
           featured={availableProducts[0] ?? null}
           onExplore={scrollToProducts}
           onNewest={goNewest}
         />
-        <TrustBadges />
-
-        {categories.length > 0 && (
-          <section className="mt-7">
-            <SectionHeader title="Catégories" icon={Store} />
-            <div className="scrollbar-hide -mx-4 mt-3 flex snap-x gap-3 overflow-x-auto px-4 pb-1 pt-1 sm:mx-0 sm:px-6">
-              <Link
-                to="/"
-                className={cn(
-                  "flex w-20 shrink-0 snap-start flex-col items-center gap-2",
-                  activeCategory == null ? "" : "opacity-60"
-                )}
-              >
-                <span
-                  className={cn(
-                    "flex h-16 w-16 items-center justify-center rounded-full text-2xl shadow-card ring-2 transition",
-                    activeCategory == null
-                      ? "bg-brand text-white ring-brand"
-                      : "bg-brand-soft ring-transparent"
-                  )}
-                >
-                  <ShoppingBag className="h-6 w-6" />
-                </span>
-                <span className="w-20 truncate text-center text-[11px] font-semibold text-ink">
-                  Tout
-                </span>
-              </Link>
-              {categories.map((c) => (
-                <Link
-                  key={c.id}
-                  to={`/?cat=${c.id}`}
-                  className={cn(
-                    "flex w-20 shrink-0 snap-start flex-col items-center gap-2",
-                    activeCategory === c.id ? "" : "opacity-70"
-                  )}
-                >
-                  <span
-                    className={cn(
-                      "flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-brand-soft to-brand/20 text-2xl shadow-card ring-2 transition",
-                      activeCategory === c.id
-                        ? "ring-brand"
-                        : "ring-transparent"
-                    )}
-                  >
-                    {categoryEmoji(c.name)}
-                  </span>
-                  <span className="w-20 truncate text-center text-[11px] font-semibold text-ink">
-                    {c.name}
-                  </span>
-                </Link>
-              ))}
-            </div>
-          </section>
-        )}
+        <CategoryRail
+          categories={categories}
+          counts={categoryCounts}
+          totalCount={availableProducts.length}
+          activeCategory={activeCategory}
+        />
 
         {!hasActiveFilter && newestProducts.length > 0 && (
-          <section className="mt-8">
-            <SectionHeader
-              title="Nouveautés"
-              icon={Flame}
-              action={{
-                label: "Tout voir",
-                onPress: () => {
-                  setSort("newest");
-                  history.push("/");
-                }
-              }}
-            />
-            <div className="scrollbar-hide -mx-4 mt-3 flex snap-x gap-3 overflow-x-auto px-4 pb-2 pt-1 sm:mx-0 sm:px-6">
-              {newestProducts.map((product) => (
-                <div
-                  key={product.id}
-                  className="w-40 shrink-0 snap-start sm:w-48"
-                >
-                  <ProductCard product={product} />
-                </div>
-              ))}
-            </div>
-          </section>
+          <ProductRail
+            title="Nouveautés"
+            icon={Flame}
+            delay={40}
+            action={{
+              label: "Tout voir",
+              onPress: () => {
+                setSort("newest");
+                history.push("/");
+              }
+            }}
+            products={newestProducts}
+          />
         )}
 
         {!hasActiveFilter && (
-          <section className="mx-4 mt-8 overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-accent via-[hsl(24_92%_45%)] to-[hsl(8_85%_40%)] p-5 text-white shadow-glow sm:mx-6 sm:p-7">
-            <div className="relative z-10 flex items-center justify-between gap-4">
-              <div>
-                <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-white/80">
-                  <BadgePercent className="h-4 w-4" />
-                  Bonne affaire
-                </p>
-                <h2 className="mt-1 text-lg font-bold leading-snug sm:text-xl">
-                  Commandez maintenant,
-                  <br />
-                  payez à la réception.
-                </h2>
-              </div>
-              <button
-                type="button"
-                onClick={scrollToProducts}
-                className="shrink-0 rounded-2xl bg-white px-4 py-2.5 text-sm font-bold text-brand shadow-card transition hover:bg-white/90 active:scale-95"
-              >
-                Découvrir
-              </button>
-            </div>
-          </section>
+          <PromoBanner onPress={scrollToProducts} />
         )}
 
         <section
           ref={productsRef}
-          className="mt-8 scroll-mt-4 px-4 sm:px-6"
+          className="mt-6 scroll-mt-4 px-4 sm:px-6"
         >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <h2 className="text-xl font-bold text-ink">
+              <h2 className="font-display text-xl font-bold text-ink">
                 {hasActiveFilter ? "Résultats" : "Tous les produits"}
               </h2>
               {!isLoading && (
-                <span className="rounded-full bg-brand-soft px-2 py-0.5 text-xs font-bold text-brand">
+                <span className="rounded-full bg-brand-soft px-2.5 py-0.5 text-xs font-bold text-brand">
                   {filtered.length}
                 </span>
               )}
@@ -508,14 +666,25 @@ export function HomePage() {
               </select>
             </label>
           </div>
+
           {(hasActiveFilter || sort !== "pertinence") && (
-            <p className="mt-1.5 text-sm text-muted">
-              {query ? `Recherche « ${query} »` : ""}
-              {activeCategoryName ? `Catégorie : ${activeCategoryName}` : ""}
-              {!hasActiveFilter && sort !== "pertinence"
-                ? `Tri : ${SORT_LABELS[sort].toLowerCase()}`
-                : ""}
-            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {query && (
+                <span className="rounded-full border border-border bg-panel px-3 py-1 text-xs font-medium text-muted">
+                  « {query} »
+                </span>
+              )}
+              {activeCategoryName && (
+                <span className="rounded-full border border-border bg-panel px-3 py-1 text-xs font-medium text-muted">
+                  {activeCategoryName}
+                </span>
+              )}
+              {!hasActiveFilter && sort !== "pertinence" && (
+                <span className="rounded-full border border-border bg-panel px-3 py-1 text-xs font-medium text-muted">
+                  Tri : {SORT_LABELS[sort].toLowerCase()}
+                </span>
+              )}
+            </div>
           )}
 
           {isLoading ? (
@@ -580,26 +749,16 @@ export function HomePage() {
         </section>
 
         {!hasActiveFilter && recommended.length > 0 && (
-          <section className="mt-10">
-            <SectionHeader
-              title={
-                recentProducts.length > 0
-                  ? "Recommandé pour vous"
-                  : "À découvrir"
-              }
-              icon={Sparkles}
-            />
-            <div className="scrollbar-hide -mx-4 mt-3 flex snap-x gap-3 overflow-x-auto px-4 pb-2 pt-1 sm:mx-0 sm:px-6">
-              {recommended.map((product) => (
-                <div
-                  key={product.id}
-                  className="w-40 shrink-0 snap-start sm:w-48"
-                >
-                  <ProductCard product={product} />
-                </div>
-              ))}
-            </div>
-          </section>
+          <ProductRail
+            title={
+              recentProducts.length > 0
+                ? "Recommandé pour vous"
+                : "À découvrir"
+            }
+            icon={Sparkles}
+            delay={80}
+            products={recommended}
+          />
         )}
       </div>
     </Page>

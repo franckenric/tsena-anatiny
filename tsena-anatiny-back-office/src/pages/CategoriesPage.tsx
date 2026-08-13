@@ -6,8 +6,14 @@ import type {
 } from "../types/product";
 import type { Column } from "../components/index";
 import { categoriesService } from "../services/categories.service";
-import { Card, Button, DataTable, Select } from "../components/index";
-import { Pencil, Trash2 } from "lucide-react";
+import {
+  Card,
+  Button,
+  DataTable,
+  Select,
+  Pagination
+} from "../components/index";
+import { Pencil, Plus, Tags, Trash2 } from "lucide-react";
 import { Modal } from "../components/Modal";
 import { Input } from "../components/Input";
 import { Layout } from "../components/Layout";
@@ -205,8 +211,16 @@ export function CategoriesPage() {
   ];
 
   return (
-    <Layout title="Catégories" subtitle="Gérez les catégories de produits">
-      <div className="flex h-full min-h-0 flex-col gap-6 overflow-hidden">
+    <Layout title="Catégories">
+      <div className="animate-fade-up flex h-full min-h-0 flex-col gap-6 overflow-hidden">
+        <div className="hidden items-center justify-between rounded-2xl border border-border/60 bg-panel/65 px-4 py-3 sm:flex">
+          <div className="inline-flex items-center gap-2 text-sm font-semibold text-ink">
+            <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-brand/15 text-brand ring-1 ring-brand/20">
+              <Tags className="h-4 w-4" />
+            </span>
+            Gestion des catégories
+          </div>
+        </div>
         {error && (
           <div className="rounded-2xl border border-warning/50 bg-warning/10 px-4 py-3 text-sm text-ink">
             {error}
@@ -215,6 +229,8 @@ export function CategoriesPage() {
         <Card
           title="Liste des catégories"
           description={`Total: ${total} catégories`}
+          hideHeaderOnMobile
+          plainOnMobile
           className="flex min-h-0 flex-1 flex-col"
           bodyClassName="flex min-h-0 flex-1 flex-col"
           headerAction={
@@ -225,15 +241,47 @@ export function CategoriesPage() {
                 setIsModalOpen(true);
               }}
             >
-              + Ajouter une catégorie
+              <Plus className="mr-2 h-4 w-4" />
+              Ajouter une catégorie
             </Button>
           }
         >
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            onPageChange={setPage}
+            pageSize={pageSize}
+            onPageSizeChange={setPageSize}
+            showCount={false}
+            itemLabel="catégories"
+            isLoading={isLoading}
+            className="mb-3"
+          />
           <DataTable
             columns={columns}
             data={categories}
             isLoading={isLoading}
             emptyMessage="Aucune catégorie trouvée"
+            gridCardRender={(cat) => (
+              <div className="flex flex-col">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-ink">
+                      {cat.name}
+                    </p>
+                    <p className="mt-0.5 line-clamp-2 text-xs text-muted">
+                      {cat.description || "Aucune description"}
+                    </p>
+                  </div>
+                  <span
+                    className={`inline-flex shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${cat.status === "active" ? "bg-success/20 text-success" : "bg-warning/20 text-warning"}`}
+                  >
+                    {cat.status === "active" ? "Active" : "Inactive"}
+                  </span>
+                </div>
+              </div>
+            )}
             actions={(cat) => (
               <>
                 <Button
@@ -265,54 +313,6 @@ export function CategoriesPage() {
             )}
           />
         </Card>
-        <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-xl border border-border/60 bg-panel/65 px-2.5 py-2 sm:gap-3 sm:px-3">
-          <p className="text-xs font-medium text-muted sm:text-sm">
-            Page {page} de {totalPages}
-          </p>
-          <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
-            <label
-              className="text-[11px] font-semibold uppercase tracking-wide text-muted sm:text-xs"
-              htmlFor="categories-page-size"
-            >
-              Par page
-            </label>
-            <select
-              id="categories-page-size"
-              className="h-8 min-w-[68px] rounded-lg border border-border bg-bg px-2 text-xs font-semibold text-ink outline-none transition focus-visible:border-brand/70 focus-visible:ring-2 focus-visible:ring-brand/25 sm:h-9 sm:min-w-[72px] sm:text-sm"
-              value={pageSize}
-              onChange={(e) => {
-                const nextSize = Number(e.target.value) || 20;
-                setPageSize(nextSize);
-                setPage(1);
-              }}
-              disabled={isLoading}
-            >
-              {[10, 20, 50, 100].map((size) => (
-                <option key={size} value={size}>
-                  {size}
-                </option>
-              ))}
-            </select>
-            <Button
-              size="sm"
-              variant="secondary"
-              className="min-w-[84px] sm:min-w-[96px]"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-            >
-              Précédent
-            </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              className="min-w-[84px] sm:min-w-[96px]"
-              onClick={() => setPage((p) => p + 1)}
-              disabled={page >= totalPages}
-            >
-              Suivant
-            </Button>
-          </div>
-        </div>
         <Modal
           isOpen={isModalOpen}
           onClose={() => {

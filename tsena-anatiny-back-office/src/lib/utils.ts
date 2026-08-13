@@ -5,6 +5,32 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+export type PaginationItem = number | "ellipsis";
+
+export function getPaginationItems(
+  current: number,
+  total: number
+): PaginationItem[] {
+  if (total <= 1) return [1];
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+
+  const candidates = [1, total, current - 1, current, current + 1];
+  const sorted = [...new Set(candidates)]
+    .filter((p) => p >= 1 && p <= total)
+    .sort((a, b) => a - b);
+
+  const items: PaginationItem[] = [];
+  let prev = 0;
+  for (const page of sorted) {
+    if (page - prev > 1) items.push("ellipsis");
+    items.push(page);
+    prev = page;
+  }
+  return items;
+}
+
 export function roundToNearestThousand(value: number) {
   if (!Number.isFinite(value) || value <= 0) return 0;
   if (value < 500) return Math.round(value * 100) / 100;

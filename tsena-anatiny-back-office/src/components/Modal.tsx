@@ -32,8 +32,8 @@ export function Modal({
           className={
             scrollBody
               ? bodyClassName
-                ? `max-h-[calc(100vh-9rem)] overflow-y-auto p-5 sm:p-6 ${bodyClassName}`
-                : "max-h-[calc(100vh-9rem)] overflow-y-auto p-5 sm:p-6"
+                ? `max-h-[calc(100vh-9rem)] overflow-y-auto overflow-x-hidden p-5 sm:p-6 ${bodyClassName}`
+                : "max-h-[calc(100vh-9rem)] overflow-y-auto overflow-x-hidden p-5 sm:p-6"
               : bodyClassName
                 ? `p-5 sm:p-6 ${bodyClassName}`
                 : "p-5 sm:p-6"

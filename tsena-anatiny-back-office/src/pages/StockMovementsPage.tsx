@@ -22,10 +22,19 @@ import {
   DataTable,
   Input,
   QuantityInput,
-  Select
+  Select,
+  Pagination
 } from "../components/index";
 import { Modal } from "../components/Modal";
-import { Pencil, Trash2 } from "lucide-react";
+import {
+  ArrowLeftRight,
+  Boxes,
+  Coins,
+  Pencil,
+  Plus,
+  Trash2,
+  Users
+} from "lucide-react";
 
 const getLotDateLabel = (lot: Lot) => {
   const rawDate = lot.received_at ?? lot.created_at;
@@ -170,9 +179,14 @@ function MovementForm({
 
         {/* Acteurs */}
         <div className="rounded-2xl border border-border/60 bg-bg/30 p-4 space-y-4">
-          <p className="text-xs font-semibold uppercase tracking-widest text-muted">
-            Acteurs
-          </p>
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand/10 text-brand">
+              <Users className="h-4 w-4" />
+            </div>
+            <p className="text-xs font-bold uppercase tracking-widest text-ink">
+              Acteurs
+            </p>
+          </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <Select
               label="Produit"
@@ -201,9 +215,14 @@ function MovementForm({
 
         {/* Type & Quantité */}
         <div className="rounded-2xl border border-border/60 bg-bg/30 p-4 space-y-4">
-          <p className="text-xs font-semibold uppercase tracking-widest text-muted">
-            Mouvement
-          </p>
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand/10 text-brand">
+              <ArrowLeftRight className="h-4 w-4" />
+            </div>
+            <p className="text-xs font-bold uppercase tracking-widest text-ink">
+              Mouvement
+            </p>
+          </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <Select
               label="Type"
@@ -229,13 +248,24 @@ function MovementForm({
 
         {/* Tarification (entrée uniquement) */}
         <div className="rounded-2xl border border-border/60 bg-bg/30 p-4 space-y-4">
-          <p
-            className={`text-xs font-semibold uppercase tracking-widest ${
-              form.type !== "in_stock" ? "text-muted/40" : "text-muted"
-            }`}
-          >
-            Tarification
-          </p>
+          <div className="flex items-center gap-2.5">
+            <div
+              className={`flex h-8 w-8 items-center justify-center rounded-lg ${
+                form.type !== "in_stock"
+                  ? "bg-muted/10 text-muted/40"
+                  : "bg-brand/10 text-brand"
+              }`}
+            >
+              <Coins className="h-4 w-4" />
+            </div>
+            <p
+              className={`text-xs font-bold uppercase tracking-widest ${
+                form.type !== "in_stock" ? "text-muted/40" : "text-ink"
+              }`}
+            >
+              Tarification
+            </p>
+          </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <Input
               label="Prix unitaire (Ar)"
@@ -279,13 +309,24 @@ function MovementForm({
 
         {/* Lot & Référence (entrée uniquement) */}
         <div className="rounded-2xl border border-border/60 bg-bg/30 p-4 space-y-4">
-          <p
-            className={`text-xs font-semibold uppercase tracking-widest ${
-              form.type !== "in_stock" ? "text-muted/40" : "text-muted"
-            }`}
-          >
-            Lot & Référence
-          </p>
+          <div className="flex items-center gap-2.5">
+            <div
+              className={`flex h-8 w-8 items-center justify-center rounded-lg ${
+                form.type !== "in_stock"
+                  ? "bg-muted/10 text-muted/40"
+                  : "bg-brand/10 text-brand"
+              }`}
+            >
+              <Boxes className="h-4 w-4" />
+            </div>
+            <p
+              className={`text-xs font-bold uppercase tracking-widest ${
+                form.type !== "in_stock" ? "text-muted/40" : "text-ink"
+              }`}
+            >
+              Lot & Référence
+            </p>
+          </div>
           <Select
             label="Lot"
             value={String(form.lot_id)}
@@ -611,9 +652,16 @@ export function StockMovementsPage() {
   return (
     <Layout
       title="Mouvements de stock"
-      subtitle="Historique des entrées et sorties"
     >
-      <div className="flex h-full min-h-0 flex-col gap-6 overflow-hidden">
+      <div className="animate-fade-up flex h-full min-h-0 flex-col gap-6 overflow-hidden">
+        <div className="hidden items-center justify-between rounded-2xl border border-border/60 bg-panel/65 px-4 py-3 sm:flex">
+          <div className="inline-flex items-center gap-2 text-sm font-semibold text-ink">
+            <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-brand/15 text-brand ring-1 ring-brand/20">
+              <ArrowLeftRight className="h-4 w-4" />
+            </span>
+            Gestion des mouvements
+          </div>
+        </div>
         {error && (
           <div className="rounded-2xl border border-warning/50 bg-warning/10 px-4 py-3 text-sm text-ink">
             {error}
@@ -622,6 +670,8 @@ export function StockMovementsPage() {
         <Card
           title="Mouvements"
           description={`Total: ${total} mouvements`}
+          hideHeaderOnMobile
+          plainOnMobile
           className="flex min-h-0 flex-1 flex-col"
           bodyClassName="flex min-h-0 flex-1 flex-col"
           headerAction={
@@ -632,15 +682,104 @@ export function StockMovementsPage() {
                 setIsModalOpen(true);
               }}
             >
-              + Nouveau mouvement
+              <Plus className="mr-2 h-4 w-4" />
+              Nouveau mouvement
             </Button>
           }
         >
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            onPageChange={setPage}
+            pageSize={pageSize}
+            onPageSizeChange={setPageSize}
+            showCount={false}
+            itemLabel="mouvements"
+            isLoading={isLoading}
+            className="mb-3"
+          />
           <DataTable
             columns={columns}
             data={displayMovements}
             isLoading={isLoading}
             emptyMessage="Aucun mouvement"
+            gridCardRender={(m) => {
+              const productName =
+                m.product?.name ??
+                products.find((p) => p.id === m.product_id)?.name ??
+                `#${m.product_id}`;
+              const variantCost =
+                m.variant_id != null
+                  ? getEffectiveVariantUnitCost(m.variant_id)
+                  : null;
+              const unitCost = variantCost ?? Number(m.unit_cost ?? 0);
+              return (
+                <div className="flex flex-col">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-ink">
+                        {productName}
+                      </p>
+                      {m.variant?.name && (
+                        <p className="mt-0.5 truncate text-xs font-medium text-brand">
+                          {m.variant.name}
+                          {m.variant.sku ? ` · ${m.variant.sku}` : ""}
+                        </p>
+                      )}
+                      <p className="mt-0.5 truncate text-xs text-muted">
+                        {m.user?.email ?? `#${m.user_id}`}
+                      </p>
+                    </div>
+                    <span
+                      className={`inline-flex shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${m.type === "in_stock" ? "bg-success/20 text-success" : "bg-warning/20 text-warning"}`}
+                    >
+                      {m.type === "in_stock" ? "Entrée" : "Sortie"}
+                    </span>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2.5 border-t border-border/50 pt-3">
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+                        Quantité
+                      </p>
+                      <p className="mt-0.5 text-sm font-bold text-ink">
+                        {m.quantity}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+                        Prix unitaire
+                      </p>
+                      <p className="mt-0.5 text-sm font-bold text-brand">
+                        {unitCost > 0
+                          ? `${unitCost.toLocaleString("fr-FR")} Ar`
+                          : "—"}
+                      </p>
+                    </div>
+                    {m.lot_id ? (
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+                          Lot
+                        </p>
+                        <p className="mt-0.5 text-sm font-bold text-ink">
+                          #{m.lot_id}
+                        </p>
+                      </div>
+                    ) : null}
+                    <div className={m.lot_id ? "text-right" : ""}>
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+                        Date
+                      </p>
+                      <p className="mt-0.5 text-sm font-bold text-ink">
+                        {m.created_at
+                          ? new Date(m.created_at).toLocaleString("fr-FR")
+                          : "—"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              );
+            }}
             actions={(m) => (
               <>
                 <Button
@@ -672,54 +811,6 @@ export function StockMovementsPage() {
             )}
           />
         </Card>
-        <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-xl border border-border/60 bg-panel/65 px-2.5 py-2 sm:gap-3 sm:px-3">
-          <p className="text-xs font-medium text-muted sm:text-sm">
-            Page {page} / {totalPages}
-          </p>
-          <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
-            <label
-              className="text-[11px] font-semibold uppercase tracking-wide text-muted sm:text-xs"
-              htmlFor="stock-movements-page-size"
-            >
-              Par page
-            </label>
-            <select
-              id="stock-movements-page-size"
-              className="h-8 min-w-[68px] rounded-lg border border-border bg-bg px-2 text-xs font-semibold text-ink outline-none transition focus-visible:border-brand/70 focus-visible:ring-2 focus-visible:ring-brand/25 sm:h-9 sm:min-w-[72px] sm:text-sm"
-              value={pageSize}
-              onChange={(e) => {
-                const nextSize = Number(e.target.value) || 20;
-                setPageSize(nextSize);
-                setPage(1);
-              }}
-              disabled={isLoading}
-            >
-              {[10, 20, 50, 100].map((size) => (
-                <option key={size} value={size}>
-                  {size}
-                </option>
-              ))}
-            </select>
-            <Button
-              size="sm"
-              variant="secondary"
-              className="min-w-[84px] sm:min-w-[96px]"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-            >
-              Précédent
-            </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              className="min-w-[84px] sm:min-w-[96px]"
-              onClick={() => setPage((p) => p + 1)}
-              disabled={page >= totalPages}
-            >
-              Suivant
-            </Button>
-          </div>
-        </div>
         <Modal
           isOpen={isModalOpen}
           onClose={() => {
@@ -727,6 +818,7 @@ export function StockMovementsPage() {
             setSelected(null);
           }}
           title={selected ? "Modifier mouvement" : "Nouveau mouvement"}
+          contentClassName="max-w-4xl"
         >
           <MovementForm
             movement={selected ?? undefined}

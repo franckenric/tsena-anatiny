@@ -7,6 +7,8 @@ interface CardProps {
   description?: string;
   headerAction?: ReactNode;
   bodyClassName?: string;
+  hideHeaderOnMobile?: boolean;
+  plainOnMobile?: boolean;
 }
 
 export function Card({
@@ -15,14 +17,24 @@ export function Card({
   title,
   description,
   headerAction,
-  bodyClassName = ""
+  bodyClassName = "",
+  hideHeaderOnMobile = false,
+  plainOnMobile = false
 }: CardProps) {
   return (
     <div
-      className={`overflow-hidden rounded-2xl border border-border/70 bg-panel/75 shadow-[0_16px_42px_-26px_rgba(8,18,38,0.45)] backdrop-blur ${className}`}
+      className={`overflow-hidden rounded-2xl backdrop-blur ${
+        plainOnMobile
+          ? "border-0 bg-transparent shadow-none sm:border sm:border-border/70 sm:bg-panel/75 sm:shadow-[0_16px_42px_-26px_rgba(8,18,38,0.45)]"
+          : "border border-border/70 bg-panel/75 shadow-[0_16px_42px_-26px_rgba(8,18,38,0.45)]"
+      } ${className}`}
     >
       {(title || description) && (
-        <div className="border-b border-border/50 bg-bg/40 px-6 py-4">
+        <div
+          className={`border-b border-border/50 bg-bg/40 px-3 py-3 sm:px-6 sm:py-4 ${
+            hideHeaderOnMobile ? "hidden sm:block" : ""
+          }`}
+        >
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
             <div className="min-w-0">
               {title && (
@@ -42,7 +54,9 @@ export function Card({
           </div>
         </div>
       )}
-      <div className={`p-6 ${bodyClassName}`}>{children}</div>
+      <div className={`${plainOnMobile ? "p-0 sm:p-6" : "p-3 sm:p-6"} ${bodyClassName}`}>
+        {children}
+      </div>
     </div>
   );
 }

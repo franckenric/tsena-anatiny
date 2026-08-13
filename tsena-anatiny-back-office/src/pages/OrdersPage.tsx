@@ -1,6 +1,15 @@
 import { useState, useEffect } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import { Pencil, Printer, Trash2 } from "lucide-react";
+import { useHistory, useLocation } from "react-router-dom";
+import {
+  ClipboardList,
+  Pencil,
+  Plus,
+  Printer,
+  Receipt,
+  ShoppingCart,
+  Trash2,
+  Users
+} from "lucide-react";
 import type {
   Order,
   CreateOrderPayload,
@@ -23,7 +32,8 @@ import {
   Button,
   DataTable,
   Input,
-  Select
+  Select,
+  Pagination
 } from "../components/index";
 import { Modal } from "../components/Modal";
 
@@ -39,6 +49,13 @@ const STATUS_COLORS: Record<OrderStatus, string> = {
   confirmed: "bg-brand/20 text-brand",
   delivered: "bg-success/20 text-success",
   cancelled: "bg-warning/20 text-warning"
+};
+
+const STATUS_SOLID: Record<OrderStatus, string> = {
+  draft: "bg-muted",
+  confirmed: "bg-brand",
+  delivered: "bg-success",
+  cancelled: "bg-warning"
 };
 
 const PROJECT_NAME = "TSENA ANATINY";
@@ -611,9 +628,14 @@ function OrderForm({
 
         {/* Commercial & Statut */}
         <div className="rounded-2xl border border-border/60 bg-bg/30 p-4 space-y-4">
-          <p className="text-xs font-semibold uppercase tracking-widest text-muted">
-            Commande
-          </p>
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand/10 text-brand">
+              <ClipboardList className="h-4 w-4" />
+            </div>
+            <p className="text-xs font-bold uppercase tracking-widest text-ink">
+              Commande
+            </p>
+          </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <Select
               label="Commercial"
@@ -643,9 +665,14 @@ function OrderForm({
 
         {/* Client */}
         <div className="rounded-2xl border border-border/60 bg-bg/30 p-4 space-y-3">
-          <p className="text-xs font-semibold uppercase tracking-widest text-muted">
-            Client
-          </p>
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand/10 text-brand">
+              <Users className="h-4 w-4" />
+            </div>
+            <p className="text-xs font-bold uppercase tracking-widest text-ink">
+              Client
+            </p>
+          </div>
           <Select
             label="Client"
             value={form.customer_id ? String(form.customer_id) : ""}
@@ -692,9 +719,14 @@ function OrderForm({
 
         {/* Other price */}
         <div className="rounded-2xl border border-border/60 bg-bg/30 p-4 space-y-4">
-          <p className="text-xs font-semibold uppercase tracking-widest text-muted">
-            Frais supplémentaires
-          </p>
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand/10 text-brand">
+              <Receipt className="h-4 w-4" />
+            </div>
+            <p className="text-xs font-bold uppercase tracking-widest text-ink">
+              Frais supplémentaires
+            </p>
+          </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <Input
               label="Other price (Ar)"
@@ -729,9 +761,14 @@ function OrderForm({
         {/* Panier */}
         <div className="rounded-2xl border border-border/60 bg-bg/30 p-4 space-y-3">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-xs font-semibold uppercase tracking-widest text-muted">
-              {order ? "Panier de la commande" : "Panier client"}
-            </p>
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand/10 text-brand">
+                <ShoppingCart className="h-4 w-4" />
+              </div>
+              <p className="text-xs font-bold uppercase tracking-widest text-ink">
+                {order ? "Panier de la commande" : "Panier client"}
+              </p>
+            </div>
             {!order && (
               <Button
                 type="button"
@@ -763,9 +800,7 @@ function OrderForm({
                       <div>
                         <p className="text-sm font-semibold text-ink">
                           {item.product_name}
-                          {item.variant_name
-                            ? ` — ${item.variant_name}`
-                            : ""}
+                          {item.variant_name ? ` — ${item.variant_name}` : ""}
                         </p>
                         {item.variant_sku && (
                           <p className="text-xs font-medium text-brand">
@@ -872,7 +907,7 @@ function OrderForm({
 
 export function OrdersPage() {
   const location = useLocation();
-  const navigate = useNavigate();
+  const history = useHistory();
   const [orders, setOrders] = useState<Order[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -885,9 +920,7 @@ export function OrdersPage() {
     message: string;
   } | null>(() => {
     const state = location.state as { notice?: string } | null;
-    return state?.notice
-      ? { type: "success", message: state.notice }
-      : null;
+    return state?.notice ? { type: "success", message: state.notice } : null;
   });
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selected, setSelected] = useState<Order | null>(null);
@@ -914,7 +947,7 @@ export function OrdersPage() {
     if (order) {
       void openEditOrderModal(order);
     }
-    navigate(location.pathname, { replace: true, state: null });
+    history.replace(location.pathname);
   }, [orders]);
 
   useEffect(() => {
@@ -1096,6 +1129,49 @@ export function OrdersPage() {
     (order.stock_movements || []).filter(
       (movement) => !movement.type || movement.type === "out_stock"
     );
+
+  const getOrderProductCount = (order: Order): number => {
+    const outMovements = getOrderOutMovements(order);
+    if (outMovements.length > 0) {
+      return new Set(
+        outMovements
+          .map((movement) => Number(movement.product_id || 0))
+          .filter((id) => id > 0)
+      ).size;
+    }
+    return order.product_id ? 1 : 0;
+  };
+
+  const getOrderTotalQty = (order: Order): number => {
+    const outMovements = getOrderOutMovements(order);
+    if (outMovements.length > 0) {
+      return outMovements.reduce(
+        (sum, movement) => sum + Number(movement.quantity || 0),
+        0
+      );
+    }
+    return Number(order.quantity || 0);
+  };
+
+  const getOrderTotal = (order: Order): number => {
+    const outMovements = getOrderOutMovements(order);
+    if (outMovements.length > 0) {
+      const productsTotal = outMovements.reduce(
+        (sum, movement) =>
+          sum + Number(movement.quantity || 0) * Number(movement.unit_cost || 0),
+        0
+      );
+      const otherTotal = outMovements.reduce(
+        (sum, movement) => sum + Number(movement.another_price || 0),
+        0
+      );
+      return productsTotal + otherTotal;
+    }
+    return (
+      Number(order.quantity || 0) * Number(order.unit_cost || 0) +
+      Number(order.another_price || 0)
+    );
+  };
 
   const mapCartItemsFromOrder = (order: Order): CartItem[] => {
     const outMovements = getOrderOutMovements(order);
@@ -1294,65 +1370,54 @@ export function OrdersPage() {
 
   const columns: Column<Order>[] = [
     {
-      header: "N°",
+      header: "Commande",
       accessor: "order_number",
-      render: (v, r) => v ?? `#${r.id}`,
-      width: "10%"
+      width: "30%",
+      render: (v, r) => {
+        const reference = (v as string) || `#${r.id}`;
+        const customer = r.customer;
+        return (
+          <div className="min-w-0">
+            <p className="truncate font-semibold text-ink">{reference}</p>
+            <p className="truncate text-xs text-muted">
+              {customer?.name || `Client #${r.customer_id}`}
+              {customer?.phone ? ` · ${customer.phone}` : ""}
+            </p>
+          </div>
+        );
+      }
     },
     {
-      header: "Client",
-      accessor: "customer_id",
-      render: (_, r) => r.customer?.name ?? `#${r.customer_id}`,
-      width: "18%"
-    },
-    {
-      header: "Panier",
+      header: "Produits",
       accessor: "product_id",
+      width: "15%",
       render: (_, r) => {
-        const outMovements = getOrderOutMovements(r);
-        if (outMovements.length > 0) {
-          const uniqueProducts = new Set(
-            outMovements
-              .map((movement) => Number(movement.product_id || 0))
-              .filter((id) => id > 0)
-          );
-          const totalQty = outMovements.reduce(
-            (sum, movement) => sum + Number(movement.quantity || 0),
-            0
-          );
-          return `${uniqueProducts.size} produit(s) / Qté ${totalQty}`;
-        }
-
-        if (!r.product_id) return "Panier non détaillé";
-        return `1 produit / Qté ${Number(r.quantity || 0)}`;
-      },
-      width: "18%"
+        const count = getOrderProductCount(r);
+        const qty = getOrderTotalQty(r);
+        if (count === 0) return "Panier non détaillé";
+        return `${count} produit${count > 1 ? "s" : ""} / Qté ${qty}`;
+      }
     },
     {
       header: "Commercial",
       accessor: "user_id",
-      render: (_, r) => r.user?.email ?? `#${r.user_id}`,
-      width: "18%"
+      width: "16%",
+      render: (_, r) => r.user?.email ?? `#${r.user_id}`
     },
     {
-      header: "Qté totale",
-      accessor: "quantity",
-      render: (v, r) => {
-        const outMovements = getOrderOutMovements(r);
-        if (outMovements.length > 0) {
-          return outMovements.reduce(
-            (sum, movement) => sum + Number(movement.quantity || 0),
-            0
-          );
-        }
-        return v ?? "-";
-      },
-      width: "7%"
+      header: "Total",
+      accessor: "another_price",
+      width: "12%",
+      render: (_, r) => (
+        <span className="whitespace-nowrap font-semibold text-ink">
+          {formatAr(getOrderTotal(r))}
+        </span>
+      )
     },
     {
       header: "Statut",
       accessor: "status",
-      width: "13%",
+      width: "11%",
       render: (v: OrderStatus) => (
         <span
           className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${STATUS_COLORS[v] ?? "bg-muted/20 text-muted"}`}
@@ -1372,8 +1437,16 @@ export function OrdersPage() {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   return (
-    <Layout title="Commandes" subtitle="Gestion des commandes clients">
-      <div className="flex h-full min-h-0 flex-col gap-6 overflow-hidden">
+    <Layout title="Commandes">
+      <div className="animate-fade-up flex h-full min-h-0 flex-col gap-6 overflow-hidden">
+        <div className="hidden items-center justify-between rounded-2xl border border-border/60 bg-panel/65 px-4 py-3 sm:flex">
+          <div className="inline-flex items-center gap-2 text-sm font-semibold text-ink">
+            <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-brand/15 text-brand ring-1 ring-brand/20">
+              <ShoppingCart className="h-4 w-4" />
+            </span>
+            Gestion des commandes
+          </div>
+        </div>
         {notice && (
           <div
             className={`rounded-2xl border px-4 py-3 text-sm text-ink ${
@@ -1393,6 +1466,8 @@ export function OrdersPage() {
         <Card
           title="Commandes"
           description={`Total: ${total} commandes`}
+          hideHeaderOnMobile
+          plainOnMobile
           className="flex min-h-0 flex-1 flex-col"
           bodyClassName="flex min-h-0 flex-1 flex-col"
           headerAction={
@@ -1404,17 +1479,99 @@ export function OrdersPage() {
                 setIsModalOpen(true);
               }}
             >
-              + Confirmer panier
+              <Plus className="mr-2 h-4 w-4" />
+              Confirmer panier
             </Button>
           }
         >
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            onPageChange={setPage}
+            pageSize={pageSize}
+            onPageSizeChange={setPageSize}
+            showCount={false}
+            itemLabel="commandes"
+            isLoading={isLoading}
+            className="mb-3"
+          />
           <DataTable
             columns={columns}
             data={orders}
             isLoading={isLoading}
             emptyMessage="Aucune commande"
+            gridCardRender={(o) => {
+              const reference = o.order_number ?? `#${o.id}`;
+              const customer = o.customer;
+              const count = getOrderProductCount(o);
+              const qty = getOrderTotalQty(o);
+              const orderTotal = getOrderTotal(o);
+              const status = (o.status ?? "draft") as OrderStatus;
+              const productsLabel =
+                count === 0
+                  ? "Panier non détaillé"
+                  : `${count} produit${count > 1 ? "s" : ""} · ${qty} pcs`;
+              return (
+                <div className="flex flex-col">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-ink">
+                        {reference}
+                      </p>
+                      <p className="mt-0.5 truncate text-xs text-muted">
+                        {customer?.name || `Client #${o.customer_id}`}
+                        {customer?.phone ? ` · ${customer.phone}` : ""}
+                      </p>
+                    </div>
+                    <span
+                      className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold text-white shadow-sm ${STATUS_SOLID[status] ?? "bg-muted"}`}
+                    >
+                      <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                      {STATUS_LABELS[status] ?? status}
+                    </span>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2.5 border-t border-border/50 pt-3">
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+                        Produits
+                      </p>
+                      <p className="mt-0.5 text-sm font-semibold text-ink">
+                        {productsLabel}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+                        Total
+                      </p>
+                      <p className="mt-0.5 text-sm font-bold text-brand">
+                        {formatAr(orderTotal)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+                        Commercial
+                      </p>
+                      <p className="mt-0.5 truncate text-sm font-semibold text-ink">
+                        {o.user?.email ?? `#${o.user_id}`}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+                        Date
+                      </p>
+                      <p className="mt-0.5 text-sm font-semibold text-ink">
+                        {o.created_at
+                          ? new Date(o.created_at).toLocaleDateString("fr-FR")
+                          : "-"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              );
+            }}
             actions={(o) => (
-              <>
+              <div className="flex w-full flex-wrap items-center justify-end gap-2">
                 <Button
                   size="sm"
                   variant="secondary"
@@ -1448,58 +1605,10 @@ export function OrdersPage() {
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>
-              </>
+              </div>
             )}
           />
         </Card>
-        <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-xl border border-border/60 bg-panel/65 px-2.5 py-2 sm:gap-3 sm:px-3">
-          <p className="text-xs font-medium text-muted sm:text-sm">
-            Page {page} / {totalPages}
-          </p>
-          <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
-            <label
-              className="text-[11px] font-semibold uppercase tracking-wide text-muted sm:text-xs"
-              htmlFor="orders-page-size"
-            >
-              Par page
-            </label>
-            <select
-              id="orders-page-size"
-              className="h-8 min-w-[68px] rounded-lg border border-border bg-bg px-2 text-xs font-semibold text-ink outline-none transition focus-visible:border-brand/70 focus-visible:ring-2 focus-visible:ring-brand/25 sm:h-9 sm:min-w-[72px] sm:text-sm"
-              value={pageSize}
-              onChange={(e) => {
-                const nextSize = Number(e.target.value) || 20;
-                setPageSize(nextSize);
-                setPage(1);
-              }}
-              disabled={isLoading}
-            >
-              {[10, 20, 50, 100].map((size) => (
-                <option key={size} value={size}>
-                  {size}
-                </option>
-              ))}
-            </select>
-            <Button
-              size="sm"
-              variant="secondary"
-              className="min-w-[84px] sm:min-w-[96px]"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-            >
-              Précédent
-            </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              className="min-w-[84px] sm:min-w-[96px]"
-              onClick={() => setPage((p) => p + 1)}
-              disabled={page >= totalPages}
-            >
-              Suivant
-            </Button>
-          </div>
-        </div>
         <Modal
           isOpen={isModalOpen}
           onClose={() => {
@@ -1508,6 +1617,7 @@ export function OrdersPage() {
             setSelectedCartItems([]);
           }}
           title={selected ? "Mise a jour panier" : "Confirmation panier"}
+          contentClassName="max-w-4xl"
         >
           <OrderForm
             order={selected ?? undefined}

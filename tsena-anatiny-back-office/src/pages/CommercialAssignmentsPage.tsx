@@ -16,10 +16,11 @@ import {
   Button,
   DataTable,
   QuantityInput,
-  Select
+  Select,
+  Pagination
 } from "../components/index";
 import { Modal } from "../components/Modal";
-import { Pencil, Trash2 } from "lucide-react";
+import { Handshake, Pencil, Plus, Trash2, UserCheck } from "lucide-react";
 
 function AssignmentForm({
   assignment,
@@ -78,9 +79,14 @@ function AssignmentForm({
         )}
 
         <div className="rounded-2xl border border-border/60 bg-bg/30 p-4 space-y-4">
-          <p className="text-xs font-semibold uppercase tracking-widest text-muted">
-            Affectation
-          </p>
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand/10 text-brand">
+              <UserCheck className="h-4 w-4" />
+            </div>
+            <p className="text-xs font-bold uppercase tracking-widest text-ink">
+              Affectation
+            </p>
+          </div>
           <Select
             label="Commercial"
             value={String(form.user_id)}
@@ -265,9 +271,16 @@ export function CommercialAssignmentsPage() {
   return (
     <Layout
       title="Affectations commerciales"
-      subtitle="Gestion des produits assignés aux commerciaux"
     >
-      <div className="flex h-full min-h-0 flex-col gap-6 overflow-hidden">
+      <div className="animate-fade-up flex h-full min-h-0 flex-col gap-6 overflow-hidden">
+        <div className="hidden items-center justify-between rounded-2xl border border-border/60 bg-panel/65 px-4 py-3 sm:flex">
+          <div className="inline-flex items-center gap-2 text-sm font-semibold text-ink">
+            <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-brand/15 text-brand ring-1 ring-brand/20">
+              <Handshake className="h-4 w-4" />
+            </span>
+            Gestion des affectations
+          </div>
+        </div>
         {error && (
           <div className="rounded-2xl border border-warning/50 bg-warning/10 px-4 py-3 text-sm text-ink">
             {error}
@@ -276,6 +289,8 @@ export function CommercialAssignmentsPage() {
         <Card
           title="Affectations"
           description={`Total: ${total} affectations`}
+          hideHeaderOnMobile
+          plainOnMobile
           className="flex min-h-0 flex-1 flex-col"
           bodyClassName="flex min-h-0 flex-1 flex-col"
           headerAction={
@@ -286,15 +301,46 @@ export function CommercialAssignmentsPage() {
                 setIsModalOpen(true);
               }}
             >
-              + Nouvelle affectation
+              <Plus className="mr-2 h-4 w-4" />
+              Nouvelle affectation
             </Button>
           }
         >
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            onPageChange={setPage}
+            pageSize={pageSize}
+            onPageSizeChange={setPageSize}
+            showCount={false}
+            itemLabel="affectations"
+            isLoading={isLoading}
+            className="mb-3"
+          />
           <DataTable
             columns={columns}
             data={assignments}
             isLoading={isLoading}
             emptyMessage="Aucune affectation"
+            gridCardRender={(a) => (
+              <div className="flex flex-col">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-ink">
+                      {a.user?.email ?? `#${a.user_id}`}
+                    </p>
+                    <p className="mt-0.5 truncate text-xs text-muted">
+                      {a.product?.name ?? `#${a.product_id}`}
+                      {a.product?.sku ? ` · ${a.product.sku}` : ""}
+                    </p>
+                  </div>
+                  <span className="inline-flex shrink-0 rounded-full bg-brand/15 px-2 py-0.5 text-[11px] font-bold text-brand">
+                    {a.quantity} pcs
+                  </span>
+                </div>
+              </div>
+            )}
             actions={(a) => (
               <>
                 <Button
@@ -326,54 +372,6 @@ export function CommercialAssignmentsPage() {
             )}
           />
         </Card>
-        <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-xl border border-border/60 bg-panel/65 px-2.5 py-2 sm:gap-3 sm:px-3">
-          <p className="text-xs font-medium text-muted sm:text-sm">
-            Page {page} / {totalPages}
-          </p>
-          <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
-            <label
-              className="text-[11px] font-semibold uppercase tracking-wide text-muted sm:text-xs"
-              htmlFor="assignments-page-size"
-            >
-              Par page
-            </label>
-            <select
-              id="assignments-page-size"
-              className="h-8 min-w-[68px] rounded-lg border border-border bg-bg px-2 text-xs font-semibold text-ink outline-none transition focus-visible:border-brand/70 focus-visible:ring-2 focus-visible:ring-brand/25 sm:h-9 sm:min-w-[72px] sm:text-sm"
-              value={pageSize}
-              onChange={(e) => {
-                const nextSize = Number(e.target.value) || 20;
-                setPageSize(nextSize);
-                setPage(1);
-              }}
-              disabled={isLoading}
-            >
-              {[10, 20, 50, 100].map((size) => (
-                <option key={size} value={size}>
-                  {size}
-                </option>
-              ))}
-            </select>
-            <Button
-              size="sm"
-              variant="secondary"
-              className="min-w-[84px] sm:min-w-[96px]"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-            >
-              Précédent
-            </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              className="min-w-[84px] sm:min-w-[96px]"
-              onClick={() => setPage((p) => p + 1)}
-              disabled={page >= totalPages}
-            >
-              Suivant
-            </Button>
-          </div>
-        </div>
         <Modal
           isOpen={isModalOpen}
           onClose={() => {

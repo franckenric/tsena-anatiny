@@ -8,4 +8,5 @@ export { Layout } from "./Layout";
 export { ReceiptImport } from "./ReceiptImport";
 export type { ReceiptApplyPayload } from "./ReceiptImport";
 export { VariantsManager } from "./VariantsManager";
+export { Pagination } from "./Pagination";
 export type { Column } from "./DataTable";

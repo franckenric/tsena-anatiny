@@ -4,7 +4,7 @@ import type { Role } from "../types/role";
 import type { Column } from "../components/index";
 import { usersService } from "../services/users.service";
 import { rolesService } from "../services/roles.service";
-import { Card, Button, DataTable } from "../components/index";
+import { Card, Button, DataTable, Pagination } from "../components/index";
 import { UserForm } from "../components/UserForm";
 import { Modal } from "../components/Modal";
 import { Layout } from "../components/Layout";
@@ -159,10 +159,9 @@ export function UsersPage() {
   return (
     <Layout
       title="Utilisateurs"
-      subtitle="Gérez les utilisateurs de votre plateforme"
     >
       <div className="animate-fade-up flex h-full min-h-0 flex-col gap-6 overflow-hidden">
-        <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-panel/65 px-4 py-3">
+        <div className="hidden items-center justify-between rounded-2xl border border-border/60 bg-panel/65 px-4 py-3 sm:flex">
           <div className="inline-flex items-center gap-2 text-sm font-semibold text-ink">
             <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-brand/15 text-brand ring-1 ring-brand/20">
               <Users className="h-4 w-4" />
@@ -180,6 +179,8 @@ export function UsersPage() {
         <Card
           title="Liste des utilisateurs"
           description={`Total: ${total} utilisateurs`}
+          hideHeaderOnMobile
+          plainOnMobile
           className="flex min-h-0 flex-1 flex-col"
           bodyClassName="flex min-h-0 flex-1 flex-col"
           headerAction={
@@ -189,11 +190,64 @@ export function UsersPage() {
             </Button>
           }
         >
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            onPageChange={setPage}
+            pageSize={pageSize}
+            onPageSizeChange={setPageSize}
+            showCount={false}
+            itemLabel="utilisateurs"
+            isLoading={isLoading}
+            className="mb-3"
+          />
           <DataTable
             columns={columns}
             data={users}
             isLoading={isLoading}
             emptyMessage="Aucun utilisateur trouvé"
+            gridCardRender={(user) => {
+              const role = roles.find((item) => item.id === user.role_id);
+              return (
+                <div className="flex flex-col">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-ink">
+                        {user.email}
+                      </p>
+                      <p className="mt-0.5 truncate text-xs text-muted">
+                        {user.full_name || "Sans nom"}
+                        {user.phone_numer ? ` · ${user.phone_numer}` : ""}
+                      </p>
+                    </div>
+                    <span
+                      className={`inline-flex shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${user.is_active ? "bg-success/20 text-success" : "bg-warning/20 text-warning"}`}
+                    >
+                      {user.is_active ? "Actif" : "Inactif"}
+                    </span>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2.5 border-t border-border/50 pt-3">
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+                        Rôle
+                      </p>
+                      <p className="mt-0.5 text-sm font-bold text-ink">
+                        {role?.name || `Rôle ${user.role_id}`}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+                        Téléphone
+                      </p>
+                      <p className="mt-0.5 text-sm font-bold text-brand">
+                        {user.phone_numer || "—"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              );
+            }}
             actions={(user) => (
               <>
                 <Button
@@ -222,55 +276,6 @@ export function UsersPage() {
             )}
           />
         </Card>
-
-        <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-xl border border-border/60 bg-panel/65 px-2.5 py-2 sm:gap-3 sm:px-3">
-          <p className="text-xs font-medium text-muted sm:text-sm">
-            Page {page} de {totalPages}
-          </p>
-          <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
-            <label
-              className="text-[11px] font-semibold uppercase tracking-wide text-muted sm:text-xs"
-              htmlFor="users-page-size"
-            >
-              Par page
-            </label>
-            <select
-              id="users-page-size"
-              className="h-8 min-w-[68px] rounded-lg border border-border bg-bg px-2 text-xs font-semibold text-ink outline-none transition focus-visible:border-brand/70 focus-visible:ring-2 focus-visible:ring-brand/25 sm:h-9 sm:min-w-[72px] sm:text-sm"
-              value={pageSize}
-              onChange={(e) => {
-                const nextSize = Number(e.target.value) || 20;
-                setPageSize(nextSize);
-                setPage(1);
-              }}
-              disabled={isLoading}
-            >
-              {[10, 20, 50, 100].map((size) => (
-                <option key={size} value={size}>
-                  {size}
-                </option>
-              ))}
-            </select>
-            <Button
-              size="sm"
-              variant="secondary"
-              className="min-w-[84px] sm:min-w-[96px]"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-            >
-              Précédent
-            </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              className="min-w-[84px] sm:min-w-[96px]"
-              onClick={() => setPage((p) => p + 1)}
-              disabled={page >= totalPages}
-            >
-              Suivant
-            </Button>
-          </div>
-        </div>
 
         <Modal
           isOpen={isModalOpen}

@@ -66,3 +66,31 @@
     animation: fade-up 0.45s ease-out both;
   }
 }
+
+:root {
+  --ion-color-primary: hsl(var(--brand));
+  --ion-color-primary-rgb: 232, 90, 40;
+  --ion-color-primary-contrast: #ffffff;
+  --ion-color-primary-contrast-rgb: 255, 255, 255;
+  --ion-color-primary-shade: hsl(var(--brand) / 0.88);
+  --ion-color-primary-tint: hsl(var(--brand) / 0.12);
+  --ion-background-color: hsl(var(--bg));
+  --ion-text-color: hsl(var(--ink));
+  --ion-border-color: hsl(var(--border));
+  --ion-toolbar-background: hsl(var(--panel));
+  --ion-toolbar-color: hsl(var(--ink));
+  --ion-font-family: "Manrope", ui-sans-serif, system-ui, sans-serif;
+}
+
+ion-page {
+  background: hsl(var(--bg));
+}
+
+ion-content {
+  --background: hsl(var(--bg));
+}
+
+ion-toolbar {
+  --border-width: 0;
+  --background: hsl(var(--panel));
+}

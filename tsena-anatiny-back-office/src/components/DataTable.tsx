@@ -20,6 +20,7 @@ interface DataTableProps<T> {
   gridCardRender?: (row: T) => ReactNode;
   getRowKey?: (row: T, index: number) => string | number;
   tableMaxHeight?: string;
+  hideControlsOnMobile?: boolean;
 }
 
 export function DataTable<T extends { id?: number | string }>({
@@ -33,7 +34,8 @@ export function DataTable<T extends { id?: number | string }>({
   searchPlaceholder = "Rechercher...",
   gridCardRender,
   getRowKey,
-  tableMaxHeight
+  tableMaxHeight,
+  hideControlsOnMobile = false
 }: DataTableProps<T>) {
   const rows = Array.isArray(data) ? data : [];
   const [view, setView] = useState<"table" | "grid">(defaultView);
@@ -114,7 +116,13 @@ export function DataTable<T extends { id?: number | string }>({
   }
 
   const controls = (
-    <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+    <div
+      className={`mb-3 gap-2 sm:items-center sm:justify-between ${
+        hideControlsOnMobile
+          ? "hidden flex-col sm:flex sm:flex-row"
+          : "flex flex-col sm:flex-row"
+      }`}
+    >
       {searchable ? (
         <label className="relative block w-full sm:max-w-xs">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />

@@ -84,90 +84,117 @@ function VariantRow({
     <div className="space-y-1.5">
       <div
         className={cn(
-          "flex items-center gap-2 rounded-xl border px-2.5 py-2 transition",
+          "rounded-xl border px-2.5 py-2 transition",
           depth === 0
             ? "border-border/70 bg-panel/50"
             : "border-border/50 bg-bg/40"
         )}
         style={{ marginLeft: `${depth * 20}px` }}
       >
-        <button
-          type="button"
-          onClick={() => onToggle(node.id)}
-          className={cn(
-            "rounded-md p-1 text-muted transition hover:bg-brand/10 hover:text-brand",
-            expanded && "text-brand"
-          )}
-          title={expanded ? "Replier" : "Déplier"}
-        >
-          {expanded ? (
-            <ChevronDown className="h-4 w-4" />
+        <div className="flex min-w-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onToggle(node.id)}
+            className={cn(
+              "rounded-md p-1 text-muted transition hover:bg-brand/10 hover:text-brand",
+              expanded && "text-brand"
+            )}
+            title={expanded ? "Replier" : "Déplier"}
+          >
+            {expanded ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <ChevronRight className="h-4 w-4" />
+            )}
+          </button>
+
+          {node.image ? (
+            <img
+              src={node.image}
+              alt={node.name}
+              className="h-7 w-7 shrink-0 rounded-md border border-border object-cover"
+            />
           ) : (
-            <ChevronRight className="h-4 w-4" />
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-bg text-muted ring-1 ring-border/50">
+              <Layers className="h-3.5 w-3.5" />
+            </div>
           )}
-        </button>
 
-        {node.image ? (
-          <img
-            src={node.image}
-            alt={node.name}
-            className="h-7 w-7 shrink-0 rounded-md border border-border object-cover"
-          />
-        ) : (
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-bg text-muted ring-1 ring-border/50">
-            <Layers className="h-3.5 w-3.5" />
+          <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">
+            {node.name}
+          </span>
+
+          <div className="hidden shrink-0 items-center gap-2 sm:flex">
+            {node.selling_price != null && (
+              <span className="text-xs font-bold text-brand">
+                {node.selling_price.toLocaleString("fr-FR")} Ar
+              </span>
+            )}
+            {node.unit_cost != null && (
+              <span className="text-[11px] text-muted">
+                PA {node.unit_cost.toLocaleString("fr-FR")} Ar
+              </span>
+            )}
+            <span
+              className={cn(
+                "rounded-md px-2 py-0.5 text-xs font-bold",
+                stock > 0 ? "text-success" : "text-muted"
+              )}
+            >
+              {stock} pcs
+            </span>
           </div>
-        )}
 
-        <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">
-          {node.name}
-        </span>
-        {node.selling_price != null && (
-          <span className="shrink-0 text-xs font-bold text-brand">
-            {node.selling_price.toLocaleString("fr-FR")} Ar
-          </span>
-        )}
-        {node.unit_cost != null && (
-          <span className="shrink-0 text-[11px] text-muted">
-            PA {node.unit_cost.toLocaleString("fr-FR")} Ar
-          </span>
-        )}
-        <span
-          className={cn(
-            "shrink-0 rounded-md px-2 py-0.5 text-xs font-bold",
-            stock > 0 ? "text-success" : "text-muted"
+          {!disabled && (
+            <div className="flex shrink-0 items-center gap-1">
+              <button
+                type="button"
+                onClick={() => onAddChild(node)}
+                className="rounded-md p-1.5 text-muted transition hover:bg-brand/10 hover:text-brand"
+                title="Ajouter une sous-variante"
+              >
+                <Plus className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => onEdit(node)}
+                className="rounded-md p-1.5 text-muted transition hover:bg-brand/10 hover:text-brand"
+                title="Modifier"
+              >
+                <Pencil className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => onDelete(node)}
+                className="rounded-md p-1.5 text-muted transition hover:bg-warning/10 hover:text-warning"
+                title="Supprimer"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
           )}
-        >
-          {stock} pcs
-        </span>
-        {!disabled && (
-          <div className="flex shrink-0 items-center gap-1">
-            <button
-              type="button"
-              onClick={() => onAddChild(node)}
-              className="rounded-md p-1.5 text-muted transition hover:bg-brand/10 hover:text-brand"
-              title="Ajouter une sous-variante"
-            >
-              <Plus className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => onEdit(node)}
-              className="rounded-md p-1.5 text-muted transition hover:bg-brand/10 hover:text-brand"
-              title="Modifier"
-            >
-              <Pencil className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => onDelete(node)}
-              className="rounded-md p-1.5 text-muted transition hover:bg-warning/10 hover:text-warning"
-              title="Supprimer"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
-          </div>
-        )}
+        </div>
+
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 border-t border-border/40 pt-1.5 sm:hidden">
+          {node.selling_price != null && (
+            <span className="text-xs font-bold text-brand">
+              {node.selling_price.toLocaleString("fr-FR")} Ar
+            </span>
+          )}
+          {node.unit_cost != null && (
+            <span className="text-[11px] text-muted">
+              PA {node.unit_cost.toLocaleString("fr-FR")} Ar
+            </span>
+          )}
+          <span
+            className={cn(
+              "text-xs font-bold",
+              stock > 0 ? "text-success" : "text-muted"
+            )}
+          >
+            {stock} pcs
+          </span>
+        </div>
       </div>
 
       {expanded && node.children.length > 0 && (
@@ -415,7 +442,7 @@ export function VariantsManager({
         </div>
       )}
 
-      <div className="space-y-3 p-4">
+      <div className="min-w-0 space-y-3 p-4">
         {loading && <p className="text-xs text-muted">Chargement...</p>}
 
         {!loading && error && (
@@ -444,7 +471,7 @@ export function VariantsManager({
         )}
 
         {!loading && variants.length > 0 && (
-          <div className="space-y-1.5">
+          <div className="min-w-0 space-y-1.5">
             {variants.map((node) => (
               <VariantRow
                 key={node.id}

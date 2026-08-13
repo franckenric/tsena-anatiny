@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { useHistory, useLocation } from "react-router-dom";
+import { IonContent, IonHeader, IonPage } from "@ionic/react";
 import {
   Boxes,
   ClipboardList,
@@ -15,23 +16,23 @@ import {
   X
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
+import { cn } from "../lib/utils";
 
 interface LayoutProps {
   children: ReactNode;
   title: string;
-  subtitle?: string;
 }
 
 const navItems = [
   { label: "Tableau de bord", href: "/dashboard", icon: LayoutDashboard },
-  { label: "Utilisateurs", href: "/users", icon: Users },
+  { label: "Commandes", href: "/orders", icon: ShoppingCart },
   { label: "Produits", href: "/products", icon: Package },
-  { label: "Catégories", href: "/categories", icon: Shapes },
   { label: "Stock", href: "/stock", icon: Boxes },
   { label: "Lots", href: "/lots", icon: ScanBarcode },
   { label: "Mouvements", href: "/stock-movements", icon: ScanBarcode },
-  { label: "Commandes", href: "/orders", icon: ShoppingCart },
+  { label: "Catégories", href: "/categories", icon: Shapes },
   { label: "Clients", href: "/customers", icon: ContactRound },
+  { label: "Utilisateurs", href: "/users", icon: Users },
   {
     label: "Affectations",
     href: "/commercial-assignments",
@@ -39,8 +40,16 @@ const navItems = [
   }
 ];
 
-export function Layout({ children, title, subtitle }: LayoutProps) {
-  const { logout } = useAuth();
+const tabItems = [
+  { label: "Accueil", href: "/dashboard", icon: LayoutDashboard },
+  { label: "Commandes", href: "/orders", icon: ShoppingCart },
+  { label: "Produits", href: "/products", icon: Package },
+  { label: "Stock", href: "/stock", icon: Boxes }
+];
+
+export function Layout({ children, title }: LayoutProps) {
+  const { logout, user } = useAuth();
+  const history = useHistory();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -65,131 +74,168 @@ export function Layout({ children, title, subtitle }: LayoutProps) {
   const isActive = (href: string) =>
     location.pathname === href || location.pathname.startsWith(`${href}/`);
 
+  const go = (href: string) => {
+    setMenuOpen(false);
+    history.push(href);
+  };
+
   const brand = (
-    <div className="flex items-center gap-2">
-      <div className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-brand to-warning text-white shadow-lg shadow-brand/30">
-        <Package className="h-4 w-4" />
+    <div className="flex items-center gap-2.5">
+      <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-brand to-warning text-white shadow-lg shadow-brand/30">
+        <Package className="h-5 w-5" />
       </div>
       <div className="text-left">
-        <p className="text-[11px] uppercase tracking-[0.16em] text-muted">
+        <p className="text-[10px] uppercase tracking-[0.16em] text-muted">
           Tsena Anatiny
         </p>
-        <p className="font-display text-lg font-bold leading-none text-ink">
+        <p className="font-display text-base font-bold leading-none text-ink">
           Back Office
         </p>
       </div>
     </div>
   );
 
-  const nav = (
-    <nav className="space-y-1 px-3 py-4 sm:flex-1">
-      {navItems.map((item) => (
-        <Link
-          key={item.href}
-          to={item.href}
-          onClick={() => setMenuOpen(false)}
-          className={`flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
-            isActive(item.href)
-              ? "bg-brand/20 text-brand"
-              : "text-muted hover:bg-brand/10 hover:text-ink"
-          }`}
-        >
-          <item.icon className="h-4 w-4 shrink-0" />
-          {item.label}
-        </Link>
-      ))}
-    </nav>
-  );
+  const renderNavItem = (item: (typeof navItems)[number]) => {
+    const active = isActive(item.href);
+    return (
+      <button
+        key={item.href}
+        type="button"
+        onClick={() => go(item.href)}
+        className={cn(
+          "flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition active:scale-[0.98]",
+          active
+            ? "bg-brand/15 text-brand"
+            : "text-muted hover:bg-brand/10 hover:text-ink"
+        )}
+      >
+        <item.icon className="h-4 w-4 shrink-0" />
+        {item.label}
+      </button>
+    );
+  };
 
   const logoutButton = (
-    <div className="border-t border-border/50 p-2 sm:p-3">
-      <button
-        type="button"
-        onClick={logout}
-        className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-border bg-panel px-3 text-sm font-semibold text-ink transition hover:-translate-y-0.5 hover:border-brand/40 hover:bg-brand-soft/35"
-      >
-        <LogOut className="h-4 w-4" />
-        Se déconnecter
-      </button>
-    </div>
+    <button
+      type="button"
+      onClick={logout}
+      className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-border bg-panel px-3 text-sm font-semibold text-ink transition hover:border-brand/40 hover:bg-brand-soft/35 active:scale-[0.98]"
+    >
+      <LogOut className="h-4 w-4" />
+      Se déconnecter
+    </button>
   );
 
   return (
-    <div className="relative isolate min-h-screen overflow-hidden bg-bg">
-      <div className="absolute inset-0 -z-30 bg-[radial-gradient(circle_at_0%_10%,hsl(var(--brand-soft)/0.35),transparent_26%),radial-gradient(circle_at_95%_5%,hsl(var(--warning)/0.15),transparent_28%),linear-gradient(155deg,hsl(var(--bg)),hsl(var(--panel)))]" />
-      <div className="absolute -left-24 top-10 -z-20 h-72 w-72 rounded-full border border-brand/20 bg-brand/10 blur-3xl" />
-      <div className="absolute -right-24 bottom-16 -z-20 h-80 w-80 rounded-full border border-warning/20 bg-warning/10 blur-3xl" />
+    <IonPage className="bg-bg">
+      <IonHeader className="ion-no-border">
+        <div className="border-b border-border/70 bg-panel/90 pt-[env(safe-area-inset-top)] backdrop-blur-md">
+          <div className="flex h-14 items-center gap-2 px-3 sm:px-5">
+            <button
+              type="button"
+              onClick={() => setMenuOpen(true)}
+              aria-label="Ouvrir le menu"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-ink transition hover:bg-bg active:scale-95"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
 
-      <div className="flex h-screen flex-col lg:flex-row">
-        {/* Barre supérieure mobile/tablette */}
-        <header className="flex items-center justify-between border-b border-border/60 bg-panel/80 px-4 py-3 backdrop-blur-xl lg:hidden">
-          {brand}
-          <button
-            type="button"
-            onClick={() => setMenuOpen(true)}
-            aria-label="Ouvrir le menu"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-panel text-ink transition hover:border-brand/40 hover:text-brand"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-        </header>
+            <div className="flex min-w-0 flex-1 items-center justify-center">
+              <h1 className="truncate font-display text-lg font-bold text-ink">
+                {title}
+              </h1>
+            </div>
 
-        {/* Sidebar desktop */}
-        <aside className="hidden flex-col border-b border-border/60 bg-panel/80 backdrop-blur-xl lg:flex lg:w-72 lg:border-b-0 lg:border-r">
-          <div className="flex items-center justify-between border-b border-border/50 px-4 py-6 sm:justify-start sm:px-5">
-            {brand}
+            <button
+              type="button"
+              onClick={logout}
+              aria-label="Se déconnecter"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-muted transition hover:bg-bg hover:text-ink active:scale-95"
+            >
+              <LogOut className="h-5 w-5" />
+            </button>
           </div>
-          {nav}
-          {logoutButton}
-        </aside>
+        </div>
+      </IonHeader>
 
-        {/* Drawer mobile/tablette */}
-        {menuOpen && (
-          <div className="fixed inset-0 z-50 lg:hidden">
-            <div
-              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-              onClick={() => setMenuOpen(false)}
-            />
-            <div className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col overflow-y-auto border-r border-border/60 bg-panel/95 backdrop-blur-xl sm:max-w-sm">
-              <div className="flex items-center justify-between border-b border-border/50 px-4 py-5">
-                {brand}
-                <button
-                  type="button"
-                  onClick={() => setMenuOpen(false)}
-                  aria-label="Fermer le menu"
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-panel text-muted transition hover:border-brand/40 hover:text-brand"
-                >
-                  <X className="h-5 w-5" />
-                </button>
+      <IonContent>
+        <div className="flex h-full flex-col">
+          <main className="animate-fade-up flex h-full min-h-0 flex-1 flex-col gap-6 overflow-hidden px-3 pb-12 pt-3 sm:px-5">
+            {children}
+          </main>
+        </div>
+      </IonContent>
+
+      <div
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-panel/95 backdrop-blur-md"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      >
+        <div className="mx-auto flex h-11 max-w-7xl items-stretch">
+          {tabItems.map((tab) => {
+            const active = isActive(tab.href);
+            return (
+              <button
+                key={tab.href}
+                type="button"
+                onClick={() => go(tab.href)}
+                className={cn(
+                  "flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 transition active:scale-95",
+                  active ? "text-brand" : "text-muted"
+                )}
+              >
+                <tab.icon className="h-5 w-5" />
+                <span className="text-[10px] font-bold">{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {menuOpen && (
+        <div className="fixed inset-0 z-50">
+          <div
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setMenuOpen(false)}
+          />
+          <div className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col overflow-y-auto border-r border-border/60 bg-panel/95 backdrop-blur-xl">
+            <div className="flex items-center justify-between border-b border-border/50 px-4 py-4 pt-[max(1rem,env(safe-area-inset-top))]">
+              {brand}
+              <button
+                type="button"
+                onClick={() => setMenuOpen(false)}
+                aria-label="Fermer le menu"
+                className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-panel text-muted transition hover:border-brand/40 hover:text-brand active:scale-95"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2.5 border-b border-border/50 px-4 py-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand/15 text-sm font-bold text-brand">
+                {(user?.email ?? user?.phone_numer ?? "?")
+                  .charAt(0)
+                  .toUpperCase()}
               </div>
-              {nav}
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-ink">
+                  {user?.email || user?.phone_numer || "Administrateur"}
+                </p>
+                <p className="truncate text-[11px] text-muted">
+                  {user?.email ? (user.phone_numer ?? "") : ""}
+                </p>
+              </div>
+            </div>
+
+            <nav className="space-y-1 px-3 py-4">
+              {navItems.map(renderNavItem)}
+            </nav>
+
+            <div className="mt-auto space-y-2 border-t border-border/50 p-3">
               {logoutButton}
             </div>
           </div>
-        )}
-
-        <main className="flex-1 overflow-hidden">
-          <div className="h-full overflow-hidden px-4 py-6 lg:px-8">
-            <div className="mx-auto flex h-full min-h-0 max-w-7xl flex-col">
-              <div className="animate-fade-up mb-6 rounded-2xl border border-border/60 bg-panel/70 p-5 backdrop-blur xl:p-6">
-                <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-border/60 bg-bg/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
-                  Espace professionnel
-                </div>
-                <div>
-                  <h1 className="font-display text-3xl font-bold text-ink sm:text-4xl">
-                    {title}
-                  </h1>
-                  {subtitle && (
-                    <p className="mt-1.5 text-sm text-muted">{subtitle}</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="min-h-0 flex-1">{children}</div>
-            </div>
-          </div>
-        </main>
-      </div>
-    </div>
+        </div>
+      )}
+    </IonPage>
   );
 }

@@ -212,7 +212,7 @@ export function CategoriesPage() {
 
   return (
     <Layout title="Catégories">
-      <div className="animate-fade-up flex h-full min-h-0 flex-col gap-6 overflow-hidden">
+      <div className="animate-fade-up flex flex-col gap-6">
         <div className="hidden items-center justify-between rounded-2xl border border-border/60 bg-panel/65 px-4 py-3 sm:flex">
           <div className="inline-flex items-center gap-2 text-sm font-semibold text-ink">
             <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-brand/15 text-brand ring-1 ring-brand/20">

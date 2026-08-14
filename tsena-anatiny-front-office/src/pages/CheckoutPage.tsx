@@ -10,7 +10,7 @@ import { formatAr, formatPhoneMadagascar } from "../lib/utils";
 
 export function CheckoutPage() {
   const { customer, isBooting, apiUser } = useAuth();
-  const { refresh } = useCart();
+  const { clear } = useCart();
   const history = useHistory();
 
   const [items, setItems] = useState<Awaited<
@@ -73,10 +73,10 @@ export function CheckoutPage() {
         customer_name: customer.name,
         customer_phone: customer.phone,
         delivery_address: address.trim() || undefined,
-        status: "confirmed",
+        status: "draft",
         note: note.trim() || undefined
       });
-      await refresh();
+      clear();
       history.push(`/succes/${order.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur lors de la commande");
@@ -207,7 +207,8 @@ export function CheckoutPage() {
           <h2 className="text-lg font-bold text-ink">Paiement</h2>
           <p className="mt-2 text-xs text-muted">
             Le paiement s'effectue à la livraison. En confirmant, votre commande
-            est enregistrée et le stock est réservé.
+            est transmise pour vérification et le stock est réservé après
+            validation.
           </p>
           <dl className="mt-4 space-y-2 text-sm">
             <div className="flex justify-between">

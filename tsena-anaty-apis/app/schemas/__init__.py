@@ -36,6 +36,12 @@ from .lot_expenses import (
   ResponseLotExpenses
 )
 from .msg import Msg
+from .notifications import (
+  Notifications,
+  NotificationsCreate,
+  NotificationsUpdate,
+  ResponseNotifications
+)
 from .register import RegisterRequest, RegisterResponse
 from .orders import ( 
   Orders,  

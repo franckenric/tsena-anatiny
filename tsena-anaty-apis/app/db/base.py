@@ -6,6 +6,7 @@ from app.models.users import Users # noqa
 from app.models.commercial_assignments import CommercialAssignments # noqa
 from app.models.lot_expenses import LotExpenses # noqa
 from app.models.lots import Lots # noqa
+from app.models.notifications import Notifications # noqa
 from app.models.products import Products # noqa
 from app.models.product_images import ProductImages # noqa
 from app.models.product_variants import ProductVariants # noqa

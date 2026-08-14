@@ -9,6 +9,9 @@ import {
 } from "@ionic/react";
 import { home, cart, person } from "ionicons/icons";
 import { HomePage } from "./pages/HomePage";
+import { NouveautesPage } from "./pages/NouveautesPage";
+import { RecommandesPage } from "./pages/RecommandesPage";
+import { CategoriesPage } from "./pages/CategoriesPage";
 import { ProductPage } from "./pages/ProductPage";
 import { CartPage } from "./pages/CartPage";
 import { CheckoutPage } from "./pages/CheckoutPage";
@@ -16,6 +19,7 @@ import { OrderSuccessPage } from "./pages/OrderSuccessPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { LoginPage } from "./pages/LoginPage";
 import { AccountPage } from "./pages/AccountPage";
+import { NotificationsPage } from "./pages/NotificationsPage";
 
 export default function App() {
   return (
@@ -26,6 +30,15 @@ export default function App() {
         </Route>
         <Route path="/produit/:id">
           <ProductPage />
+        </Route>
+        <Route exact path="/nouveautes">
+          <NouveautesPage />
+        </Route>
+        <Route exact path="/recommandes">
+          <RecommandesPage />
+        </Route>
+        <Route exact path="/categories">
+          <CategoriesPage />
         </Route>
         <Route exact path="/panier">
           <CartPage />
@@ -44,6 +57,9 @@ export default function App() {
         </Route>
         <Route exact path="/compte">
           <AccountPage />
+        </Route>
+        <Route exact path="/notifications">
+          <NotificationsPage />
         </Route>
         <Route>
           <HomePage />

@@ -8,9 +8,13 @@ from sqlalchemy.orm import Session
 
 from app import crud, models, schemas
 from app.api import deps
+from app.api.api_v1.endpoints.notifications import notify_order_created
 from app.enum.product_status import ProductStatusEnum
 from app.schemas.orders import OrderMovementPayload
-from app.api.api_v1.endpoints.orders import _generate_order_number
+from app.api.api_v1.endpoints.orders import (
+    _generate_order_number,
+    _note_with_pending_lines,
+)
 
 router = APIRouter()
 
@@ -319,13 +323,42 @@ def checkout_cart(
                     another_price=movement.another_price,
                     other_price_reason=movement.other_price_reason,
                 )
+        else:
+            pending_lines = [
+                {
+                    'product_id': item.product_id,
+                    'product_name': item.product.name if item.product else None,
+                    'variant_id': item.variant_id,
+                    'variant_name': item.variant.name if item.variant else None,
+                    'quantity': item.quantity,
+                    'unit_cost': item.unit_cost,
+                    'another_price': item.another_price,
+                    'other_price_reason': item.other_price_reason,
+                }
+                for item in cart_items
+            ]
+            if pending_lines:
+                order.note = _note_with_pending_lines(order.note, pending_lines)
 
-        if order_status in (ProductStatusEnum.confirmed, ProductStatusEnum.delivered):
-            for item in cart_items:
-                db.delete(item)
+        # The cart is always cleared once the order is placed. Pending lines are
+        # stored on the order for non-validated statuses so confirmation can
+        # still build the stock-out movements.
+        for item in cart_items:
+            db.delete(item)
 
         db.commit()
         db.refresh(order)
+        notify_order_created(
+            db,
+            order,
+            customer=customer,
+            total=sum(
+                float(item.quantity or 0) * float(item.unit_cost or 0)
+                + float(item.another_price or 0)
+                for item in cart_items
+            )
+            + float(checkout_in.another_price or 0),
+        )
         return order
     except HTTPException:
         db.rollback()

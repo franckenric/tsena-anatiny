@@ -18,6 +18,7 @@ import {
 } from "../services/operations.service";
 import { productsService } from "../services/products.service";
 import { Layout, Card, Button, DataTable, Input } from "../components/index";
+import { Modal } from "../components/Modal";
 import {
   ArrowLeft,
   Coins,
@@ -48,13 +49,15 @@ function StatCard({
   value,
   icon: Icon,
   tone,
-  delay
+  delay,
+  onClick
 }: {
   label: string;
   value: string;
   icon: typeof Package;
   tone: "brand" | "success" | "warning" | "muted";
   delay?: string;
+  onClick?: () => void;
 }) {
   const tones: Record<typeof tone, string> = {
     brand: "bg-brand/15 text-brand ring-brand/20",
@@ -62,11 +65,8 @@ function StatCard({
     warning: "bg-warning/15 text-warning ring-warning/20",
     muted: "bg-muted/10 text-muted ring-muted/20"
   };
-  return (
-    <div
-      className="animate-fade-up flex items-center gap-3 rounded-2xl border border-border/60 bg-panel/70 p-3 shadow-[0_14px_28px_-22px_rgba(8,18,38,0.6)] sm:p-4"
-      style={{ animationDelay: delay }}
-    >
+  const inner = (
+    <>
       <div
         className={cn(
           "grid h-10 w-10 shrink-0 place-items-center rounded-xl ring-1",
@@ -83,6 +83,28 @@ function StatCard({
           {value}
         </p>
       </div>
+    </>
+  );
+  const baseClass =
+    "animate-fade-up flex items-center gap-3 rounded-2xl border border-border/60 bg-panel/70 p-3 shadow-[0_14px_28px_-22px_rgba(8,18,38,0.6)] sm:p-4";
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className={cn(
+          baseClass,
+          "cursor-pointer text-left transition hover:border-brand/50 hover:bg-panel"
+        )}
+        style={{ animationDelay: delay }}
+      >
+        {inner}
+      </button>
+    );
+  }
+  return (
+    <div className={baseClass} style={{ animationDelay: delay }}>
+      {inner}
     </div>
   );
 }
@@ -103,6 +125,7 @@ export function LotDetailsPage() {
   const [isFormLoading, setIsFormLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showExpenseForm, setShowExpenseForm] = useState(false);
+  const [isExpensesModalOpen, setIsExpensesModalOpen] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState<LotExpense | null>(
     null
   );
@@ -653,7 +676,7 @@ export function LotDetailsPage() {
   if (isLoading) {
     return (
       <Layout title={lot ? `Lot #${lot.id}` : "Détail du lot"}>
-        <div className="animate-fade-up flex h-full min-h-0 flex-col gap-6 overflow-hidden">
+        <div className="animate-fade-up flex flex-col gap-6">
           <div className="hidden items-center justify-between rounded-2xl border border-border/60 bg-panel/65 px-4 py-3 sm:flex">
             <div className="inline-flex items-center gap-2 text-sm font-semibold text-ink">
               <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-brand/15 text-brand ring-1 ring-brand/20">
@@ -678,7 +701,7 @@ export function LotDetailsPage() {
 
   return (
     <Layout title={lot ? `Lot #${lot.id}` : "Détail du lot"}>
-      <div className="animate-fade-up flex h-full min-h-0 flex-col gap-4 overflow-y-auto">
+      <div className="animate-fade-up flex flex-col gap-4">
         <div className="hidden items-center justify-between rounded-2xl border border-border/60 bg-panel/65 px-4 py-3 sm:flex">
           <div className="inline-flex items-center gap-2 text-sm font-semibold text-ink">
             <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-brand/15 text-brand ring-1 ring-brand/20">
@@ -733,6 +756,7 @@ export function LotDetailsPage() {
             icon={Coins}
             tone="warning"
             delay="0.06s"
+            onClick={() => setIsExpensesModalOpen(true)}
           />
           <StatCard
             label="Total vendu"
@@ -868,114 +892,114 @@ export function LotDetailsPage() {
           />
         </Card>
 
-        <Card
+        <Modal
+          isOpen={isExpensesModalOpen}
+          onClose={() => {
+            setIsExpensesModalOpen(false);
+            setShowExpenseForm(false);
+            setSelectedExpense(null);
+          }}
           title="Dépenses du lot"
-          description={
-            lotExpenses.length
-              ? `${lotExpenses.length} dépense${lotExpenses.length > 1 ? "s" : ""} · ${formatAr(totalExtraExpenses)} au total`
-              : "Aucune dépense"
-          }
-          hideHeaderOnMobile
-          plainOnMobile
-          headerAction={
-            <Button
-              size="sm"
-              variant="primary"
-              onClick={() => {
-                setSelectedExpense(null);
-                setShowExpenseForm((v) => !v);
-              }}
-            >
-              {showExpenseForm && !selectedExpense ? (
-                "Fermer formulaire"
-              ) : (
-                <>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Ajouter
-                </>
-              )}
-            </Button>
-          }
+          contentClassName="max-w-2xl"
         >
-          {showExpenseForm && lot && (
-            <div className="mb-4 rounded-lg border border-border/50 bg-bg/20 p-4">
-              <ExpenseForm
-                lotId={lot.id}
-                expense={selectedExpense ?? undefined}
-                onSubmit={handleSubmitExpense}
-                onCancel={() => {
-                  setShowExpenseForm(false);
-                  setSelectedExpense(null);
-                }}
-                isLoading={isFormLoading}
-              />
-            </div>
-          )}
-
-          <DataTable
-            columns={lotExpenseColumns}
-            data={lotExpenses}
-            isLoading={false}
-            emptyMessage="Aucune dépense enregistrée"
-            tableMaxHeight="calc(100vh - 24rem)"
-            gridCardRender={(expense) => (
-              <div className="flex flex-col">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-ink">
-                      {expense.name}
-                    </p>
-                    <p className="mt-0.5 line-clamp-2 text-xs text-muted">
-                      {expense.description || "—"}
-                    </p>
-                  </div>
-                  <span className="inline-flex shrink-0 rounded-full bg-warning/15 px-2 py-0.5 text-[11px] font-bold text-warning">
-                    {formatAr(Number(expense.amount || 0))}
-                  </span>
-                </div>
-                {expense.created_at && (
-                  <div className="mt-3 border-t border-border/50 pt-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
-                      Date
-                    </p>
-                    <p className="mt-0.5 text-sm text-ink">
-                      {new Date(expense.created_at).toLocaleDateString("fr-FR")}
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-            actions={(expense) => (
-              <div className="flex w-full flex-wrap items-center justify-end gap-2">
+          {showExpenseForm && lot ? (
+            <ExpenseForm
+              lotId={lot.id}
+              expense={selectedExpense ?? undefined}
+              onSubmit={handleSubmitExpense}
+              onCancel={() => {
+                setShowExpenseForm(false);
+                setSelectedExpense(null);
+              }}
+              isLoading={isFormLoading}
+            />
+          ) : (
+            <>
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm text-muted">
+                  {lotExpenses.length} dépense
+                  {lotExpenses.length > 1 ? "s" : ""} ·{" "}
+                  {formatAr(totalExtraExpenses)} au total
+                </p>
                 <Button
                   size="sm"
-                  variant="secondary"
-                  disabled={isFormLoading}
+                  variant="primary"
                   onClick={() => {
-                    setSelectedExpense(expense);
+                    setSelectedExpense(null);
                     setShowExpenseForm(true);
                   }}
-                  title="Modifier"
-                  aria-label="Modifier"
-                  className="h-8 w-8 p-0"
                 >
-                  <Pencil className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="danger"
-                  disabled={isFormLoading}
-                  onClick={() => handleDeleteExpense(expense)}
-                  title="Supprimer"
-                  aria-label="Supprimer"
-                  className="h-8 w-8 p-0"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
+                  <Plus className="mr-2 h-4 w-4" />
+                  Ajouter
                 </Button>
               </div>
-            )}
-          />
-        </Card>
+              <DataTable
+                columns={lotExpenseColumns}
+                data={lotExpenses}
+                isLoading={false}
+                emptyMessage="Aucune dépense enregistrée"
+                gridCardRender={(expense) => (
+                  <div className="flex flex-col">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-ink">
+                          {expense.name}
+                        </p>
+                        <p className="mt-0.5 line-clamp-2 text-xs text-muted">
+                          {expense.description || "—"}
+                        </p>
+                      </div>
+                      <span className="inline-flex shrink-0 rounded-full bg-warning/15 px-2 py-0.5 text-[11px] font-bold text-warning">
+                        {formatAr(Number(expense.amount || 0))}
+                      </span>
+                    </div>
+                    {expense.created_at && (
+                      <div className="mt-3 border-t border-border/50 pt-3">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+                          Date
+                        </p>
+                        <p className="mt-0.5 text-sm text-ink">
+                          {new Date(expense.created_at).toLocaleDateString(
+                            "fr-FR"
+                          )}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+                actions={(expense) => (
+                  <div className="flex w-full flex-wrap items-center justify-end gap-2">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={isFormLoading}
+                      onClick={() => {
+                        setSelectedExpense(expense);
+                        setShowExpenseForm(true);
+                      }}
+                      title="Modifier"
+                      aria-label="Modifier"
+                      className="h-8 w-8 p-0"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      disabled={isFormLoading}
+                      onClick={() => handleDeleteExpense(expense)}
+                      title="Supprimer"
+                      aria-label="Supprimer"
+                      className="h-8 w-8 p-0"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                )}
+              />
+            </>
+          )}
+        </Modal>
       </div>
     </Layout>
   );

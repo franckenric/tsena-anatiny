@@ -4,6 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.cors import CORSMiddleware
 
 from app.api.api_v1.api import api_router
+from app.api.api_v1.endpoints.notifications import router as notifications_router
 from app.core.config import settings
 from backend_pre_start import main
 
@@ -22,6 +23,7 @@ app.add_middleware(
 )
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
+app.include_router(notifications_router, prefix="/ws")
 app.mount("/files", StaticFiles(directory="files"), name="files")
 
 

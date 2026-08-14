@@ -7,8 +7,20 @@ import {
   useState,
   type ReactNode
 } from "react";
-import { Link, useHistory } from "react-router-dom";
-import { ShoppingBag, UserRound, X } from "lucide-react";
+import { Link, NavLink, useHistory } from "react-router-dom";
+import {
+  Bell,
+  Home,
+  LogOut,
+  Package,
+  Shapes,
+  ShoppingBag,
+  ShoppingCart,
+  Sparkles,
+  Star,
+  UserRound,
+  X
+} from "lucide-react";
 import { useAuth } from "./AuthContext";
 import { cn } from "../lib/utils";
 
@@ -42,21 +54,58 @@ export function MobileMenuProvider({ children }: { children: ReactNode }) {
     };
   }, [isOpen, closeMenu]);
 
-  const navLink = (to: string, children: ReactNode) => (
-    <Link
+  const navLink = (
+    to: string,
+    label: string,
+    icon: ReactNode,
+    exact = false
+  ) => (
+    <NavLink
       to={to}
+      exact={exact}
       onClick={closeMenu}
-      className={cn(
-        "flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold text-ink transition hover:bg-bg"
-      )}
+      className={(isActive) =>
+        cn(
+          "flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition active:scale-[0.98]",
+          isActive
+            ? "bg-brand/15 text-brand"
+            : "text-muted hover:bg-brand/10 hover:text-ink"
+        )
+      }
     >
-      {children}
-    </Link>
+      {icon}
+      {label}
+    </NavLink>
+  );
+
+  const sectionLabel = (label: string) => (
+    <p className="px-3 pb-1 pt-4 text-[11px] font-bold uppercase tracking-[0.16em] text-muted">
+      {label}
+    </p>
   );
 
   const value = useMemo(
     () => ({ isOpen, openMenu, closeMenu }),
     [isOpen, openMenu, closeMenu]
+  );
+
+  const initials = (customer?.name || "?").trim().charAt(0).toUpperCase();
+  const firstName = (customer?.name ?? "").trim().split(" ")[0] ?? "";
+
+  const brand = (
+    <div className="flex items-center gap-2.5">
+      <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-brand to-warning text-white shadow-lg shadow-brand/30">
+        <ShoppingBag className="h-5 w-5" />
+      </div>
+      <div className="text-left">
+        <p className="text-[10px] uppercase tracking-[0.16em] text-muted">
+          Tsena Anatiny
+        </p>
+        <p className="font-display text-base font-bold leading-none text-ink">
+          Boutique
+        </p>
+      </div>
+    </div>
   );
 
   return (
@@ -69,62 +118,124 @@ export function MobileMenuProvider({ children }: { children: ReactNode }) {
             type="button"
             aria-label="Fermer le menu"
             onClick={closeMenu}
-            className="animate-fade-in absolute inset-0 h-full w-full bg-ink/40 backdrop-blur-sm"
+            className="animate-fade-in absolute inset-0 h-full w-full bg-black/50 backdrop-blur-sm"
           />
-          <aside className="animate-slide-in-right absolute right-0 top-0 flex h-full w-full max-w-xs flex-col bg-panel shadow-lift">
-            <div className="flex items-center justify-between border-b border-border px-5 py-4">
-              <span className="flex items-center gap-2 font-bold text-ink">
-                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-brand text-white">
-                  <ShoppingBag className="h-4 w-4" />
-                </span>
-                Menu
-              </span>
+          <aside className="animate-slide-in-left absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col overflow-y-auto border-r border-border/60 bg-panel/95 backdrop-blur-xl">
+            <div className="flex items-center justify-between border-b border-border/50 px-4 py-4 pt-[max(1rem,env(safe-area-inset-top))]">
+              {brand}
               <button
                 type="button"
                 onClick={closeMenu}
-                aria-label="Fermer"
-                className="flex h-9 w-9 items-center justify-center rounded-xl text-muted transition hover:bg-bg hover:text-ink"
+                aria-label="Fermer le menu"
+                className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-panel text-muted transition hover:border-brand/40 hover:text-brand active:scale-95"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <nav className="flex-1 overflow-y-auto px-3 py-4">
-              <p className="px-3 text-xs font-semibold uppercase tracking-widest text-muted">
-                Boutique
-              </p>
-              {navLink("/", "Boutique")}
-              {navLink("/panier", "Mon panier")}
-              <p className="mt-4 px-3 text-xs font-semibold uppercase tracking-widest text-muted">
-                Compte
-              </p>
+            {customer && (
+              <div className="flex items-center gap-2.5 border-b border-border/50 px-4 py-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand/15 text-sm font-bold text-brand">
+                  {initials}
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-ink">
+                    {firstName}
+                  </p>
+                  <p className="truncate text-[11px] text-muted">
+                    {customer.phone}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-3">
+              {sectionLabel("Boutique")}
+              {navLink("/", "Accueil", <Home className="h-4 w-4 shrink-0" />, true)}
+              {navLink(
+                "/nouveautes",
+                "Nouveautés",
+                <Sparkles className="h-4 w-4 shrink-0" />
+              )}
+              {navLink(
+                "/recommandes",
+                "Recommandés",
+                <Star className="h-4 w-4 shrink-0" />
+              )}
+              {navLink(
+                "/categories",
+                "Catégories",
+                <Shapes className="h-4 w-4 shrink-0" />
+              )}
+              {navLink(
+                "/panier",
+                "Mon panier",
+                <ShoppingCart className="h-4 w-4 shrink-0" />
+              )}
+
+              {sectionLabel("Compte")}
               {customer ? (
                 <>
-                  {navLink("/compte", (
-                    <>
-                      <UserRound className="h-4 w-4" />
-                      {customer.name}
-                    </>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      logout();
-                      closeMenu();
-                      history.push("/");
-                    }}
-                    className="block w-full rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-danger transition hover:bg-danger/10"
-                  >
-                    Se déconnecter
-                  </button>
+                  {navLink(
+                    "/compte",
+                    "Mes commandes",
+                    <UserRound className="h-4 w-4 shrink-0" />
+                  )}
+                  {navLink(
+                    "/notifications",
+                    "Mes notifications",
+                    <Bell className="h-4 w-4 shrink-0" />
+                  )}
                 </>
               ) : (
                 <>
-                  {navLink("/connexion", "Se connecter")}
-                  {navLink("/inscription", "Créer un compte")}
+                  {navLink(
+                    "/connexion",
+                    "Se connecter",
+                    <UserRound className="h-4 w-4 shrink-0" />
+                  )}
+                  {navLink(
+                    "/inscription",
+                    "Créer un compte",
+                    <Package className="h-4 w-4 shrink-0" />
+                  )}
                 </>
               )}
             </nav>
+
+            <div className="mt-auto space-y-2 border-t border-border/50 p-3">
+              {customer ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    logout();
+                    closeMenu();
+                    history.push("/");
+                  }}
+                  className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-border bg-panel px-3 text-sm font-semibold text-ink transition hover:border-brand/40 hover:bg-brand-soft/35 active:scale-[0.98]"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Se déconnecter
+                </button>
+              ) : (
+                <>
+                  <Link
+                    to="/connexion"
+                    onClick={closeMenu}
+                    className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-brand px-3 text-sm font-semibold text-white shadow-lg shadow-brand/35 transition duration-200 hover:-translate-y-0.5 hover:bg-brand/90"
+                  >
+                    Se connecter
+                  </Link>
+                  <Link
+                    to="/inscription"
+                    onClick={closeMenu}
+                    className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-border bg-panel/80 px-3 text-sm font-semibold text-ink transition duration-200 hover:-translate-y-0.5 hover:border-brand/35 hover:bg-panel"
+                  >
+                    Créer un compte
+                  </Link>
+                </>
+              )}
+            </div>
           </aside>
         </div>
       )}

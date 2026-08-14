@@ -4,6 +4,7 @@ from .crud_customers import customers
 from .crud_commercial_assignments import commercial_assignments
 from .crud_lot_expenses import lot_expenses
 from .crud_lots import lots
+from .crud_notifications import notifications
 from .crud_orders import orders
 from .crud_products import products
 from .crud_product_images import product_images

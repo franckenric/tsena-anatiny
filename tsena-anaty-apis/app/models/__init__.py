@@ -4,6 +4,7 @@ from .commercial_assignments import CommercialAssignments
 from .customers import Customers
 from .lot_expenses import LotExpenses
 from .lots import Lots
+from .notifications import Notifications
 from .orders import Orders
 from .products import Products
 from .product_images import ProductImages

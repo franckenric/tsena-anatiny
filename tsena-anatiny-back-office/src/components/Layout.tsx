@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useHistory, useLocation } from "react-router-dom";
 import { IonContent, IonHeader, IonPage } from "@ionic/react";
 import {
+  Bell,
   Boxes,
   ClipboardList,
   ContactRound,
@@ -16,6 +17,7 @@ import {
   X
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
+import { NotificationsBell } from "./NotificationsBell";
 import { cn } from "../lib/utils";
 
 interface LayoutProps {
@@ -32,6 +34,7 @@ const navItems = [
   { label: "Mouvements", href: "/stock-movements", icon: ScanBarcode },
   { label: "Catégories", href: "/categories", icon: Shapes },
   { label: "Clients", href: "/customers", icon: ContactRound },
+  { label: "Notifications", href: "/notifications", icon: Bell },
   { label: "Utilisateurs", href: "/users", icon: Users },
   {
     label: "Affectations",
@@ -146,6 +149,8 @@ export function Layout({ children, title }: LayoutProps) {
               </h1>
             </div>
 
+            <NotificationsBell />
+
             <button
               type="button"
               onClick={logout}
@@ -159,11 +164,9 @@ export function Layout({ children, title }: LayoutProps) {
       </IonHeader>
 
       <IonContent>
-        <div className="flex h-full flex-col">
-          <main className="animate-fade-up flex h-full min-h-0 flex-1 flex-col gap-6 overflow-hidden px-3 pb-12 pt-3 sm:px-5">
-            {children}
-          </main>
-        </div>
+        <main className="animate-fade-up flex min-h-full flex-col gap-6 px-3 pb-20 pt-3 sm:px-5">
+          {children}
+        </main>
       </IonContent>
 
       <div

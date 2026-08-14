@@ -12,15 +12,19 @@ import {
   ArrowRight,
   BadgePercent,
   Banknote,
+  Check,
+  ChevronRight,
   Flame,
   PackageSearch,
+  Plus,
   RefreshCcw,
   Search,
   ShieldCheck,
   ShoppingBag,
   Sparkles,
   Store,
-  Truck
+  Truck,
+  X
 } from "lucide-react";
 import { categoriesService } from "../services/categories.service";
 import {
@@ -39,6 +43,7 @@ import {
   getRecentProductIds,
   resolveImageUrl
 } from "../lib/utils";
+import { categoryEmoji, categoryGradient } from "../lib/categories";
 
 const PAGE_SIZE = 200;
 
@@ -67,45 +72,6 @@ function greetingLabel(): string {
   if (h < 12) return "Bonjour";
   if (h < 18) return "Bon après-midi";
   return "Bonsoir";
-}
-
-function categoryEmoji(name?: string): string {
-  if (!name) return "🛒";
-  const n = name.toLowerCase();
-  if (/l[ée]gume|fruit|mara/.test(n)) return "🥬";
-  if (/riz/.test(n)) return "🍚";
-  if (/viande|poulet|volaille/.test(n)) return "🥩";
-  if (/poisson|crevette|fruit de mer/.test(n)) return "🐟";
-  if (/lait|fromage|produit laitier/.test(n)) return "🥛";
-  if (/boisson|jus|soda|eau/.test(n)) return "🧃";
-  if (/c[éè]r[éè]ale|farine|bl[ée]/.test(n)) return "🌾";
-  if (/[éè]pice|poivre|sel/.test(n)) return "🌶️";
-  if (/huile/.test(n)) return "🌻";
-  if (/sucre|chocolat|bonbon/.test(n)) return "🍬";
-  if (/oeuf|œuf/.test(n)) return "🥚";
-  if (/pain|boulangerie/.test(n)) return "🥖";
-  if (/caf[éè]|th[éè]/.test(n)) return "☕";
-  if (/bio|miel|sant/.test(n)) return "🌱";
-  return "🛒";
-}
-
-function categoryGradient(name?: string): string {
-  const n = (name ?? "").toLowerCase();
-  if (/l[ée]gume|fruit|mara/.test(n)) return "from-emerald-100 to-lime-200";
-  if (/riz/.test(n)) return "from-amber-100 to-yellow-200";
-  if (/viande|poulet|volaille/.test(n)) return "from-rose-100 to-red-200";
-  if (/poisson|crevette|fruit de mer/.test(n)) return "from-sky-100 to-cyan-200";
-  if (/lait|fromage|produit laitier/.test(n)) return "from-violet-100 to-purple-200";
-  if (/boisson|jus|soda|eau/.test(n)) return "from-blue-100 to-indigo-200";
-  if (/c[éè]r[éè]ale|farine|bl[ée]/.test(n)) return "from-yellow-100 to-amber-200";
-  if (/[éè]pice|poivre|sel/.test(n)) return "from-red-100 to-orange-200";
-  if (/huile/.test(n)) return "from-lime-100 to-emerald-200";
-  if (/sucre|chocolat|bonbon/.test(n)) return "from-pink-100 to-rose-200";
-  if (/oeuf|œuf/.test(n)) return "from-orange-100 to-yellow-200";
-  if (/pain|boulangerie/.test(n)) return "from-amber-100 to-orange-200";
-  if (/caf[éè]|th[éè]/.test(n)) return "from-stone-200 to-amber-200";
-  if (/bio|miel|sant/.test(n)) return "from-emerald-100 to-green-200";
-  return "from-brand-soft to-emerald-100";
 }
 
 const TRUST = [
@@ -275,10 +241,10 @@ function SectionHeader({
 }) {
   return (
     <div className="flex items-center justify-between px-4 sm:px-6">
-      <h2 className="flex items-center gap-2 font-display text-lg font-bold text-ink">
+      <h2 className="flex items-center gap-2.5 font-display text-xl font-bold text-ink sm:text-2xl">
         {Icon && (
-          <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-brand-soft">
-            <Icon className="h-4 w-4 text-brand" />
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-soft">
+            <Icon className="h-5 w-5 text-brand" />
           </span>
         )}
         {title}
@@ -287,10 +253,10 @@ function SectionHeader({
         <button
           type="button"
           onClick={action.onPress}
-          className="flex items-center gap-1 rounded-xl bg-brand-soft px-2.5 py-1.5 text-xs font-bold text-brand transition hover:bg-brand/15 active:scale-95"
+          className="flex items-center gap-1.5 rounded-2xl bg-brand-soft px-3 py-2 text-sm font-bold text-brand transition hover:bg-brand/15 active:scale-95"
         >
           {action.label}
-          <ArrowRight className="h-3.5 w-3.5" />
+          <ArrowRight className="h-4 w-4" />
         </button>
       )}
     </div>
@@ -301,75 +267,116 @@ function CategoryRail({
   categories,
   counts,
   totalCount,
-  activeCategory
+  activeCategories,
+  onToggleCategory,
+  onClearCategories,
+  onExplore
 }: {
   categories: Category[];
   counts: Map<number, number>;
   totalCount: number;
-  activeCategory: number | null;
+  activeCategories: Set<number>;
+  onToggleCategory: (id: number) => void;
+  onClearCategories: () => void;
+  onExplore?: () => void;
 }) {
   if (categories.length === 0) return null;
 
-  const tile = cn(
-    "relative flex h-[4.5rem] w-[4.5rem] shrink-0 items-center justify-center rounded-3xl text-2xl shadow-card ring-2 transition"
-  );
+  const visible = categories.slice(0, 2);
+  const row =
+    "flex w-full items-center gap-2.5 rounded-xl px-2.5 py-1.5 text-left transition active:scale-[0.99]";
+  const isAllSelected = activeCategories.size === 0;
 
   return (
     <section className="mt-5 animate-fade-up">
-      <SectionHeader title="Catégories" icon={Store} />
-      <div className="scrollbar-hide -mx-4 mt-2 flex snap-x gap-4 overflow-x-auto px-4 pb-1 pt-1 sm:mx-0 sm:px-6">
-        <Link
-          to="/"
+      <SectionHeader
+        title="Catégories"
+        icon={Store}
+        action={
+          onExplore ? { label: "Tout voir", onPress: onExplore } : undefined
+        }
+      />
+      <div className="mx-4 mt-2.5 space-y-1 sm:mx-6">
+        <button
+          type="button"
+          onClick={onClearCategories}
           className={cn(
-            "flex shrink-0 snap-start flex-col items-center gap-1.5",
-            activeCategory == null ? "" : "opacity-55"
+            row,
+            isAllSelected
+              ? "bg-brand-soft ring-2 ring-brand/60"
+              : "bg-panel shadow-card"
           )}
         >
-          <span
-            className={cn(
-              tile,
-              activeCategory == null
-                ? "bg-brand text-white ring-brand"
-                : "bg-brand-soft text-brand ring-transparent"
-            )}
-          >
-            <ShoppingBag className="h-6 w-6" />
-            <span className="absolute -right-1.5 -top-1.5 flex h-6 min-w-6 items-center justify-center rounded-full bg-ink px-1 text-[10px] font-bold text-white ring-2 ring-bg">
-              {totalCount}
-            </span>
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand text-white shadow-glow">
+            <ShoppingBag className="h-4 w-4" />
           </span>
-          <span className="max-w-24 text-center text-[11px] font-semibold leading-tight text-ink">
+          <span className="min-w-0 flex-1 text-[13px] font-bold text-ink">
             Tout
           </span>
-        </Link>
+          <span className="shrink-0 rounded-full bg-brand-soft px-1.5 py-0.5 text-[10px] font-bold text-brand">
+            {totalCount}
+          </span>
+          {isAllSelected ? (
+            <Check className="h-3.5 w-3.5 shrink-0 text-brand" />
+          ) : (
+            <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted" />
+          )}
+        </button>
 
-        {categories.map((c) => (
-          <Link
-            key={c.id}
-            to={`/?cat=${c.id}`}
-            className={cn(
-              "flex shrink-0 snap-start flex-col items-center gap-1.5",
-              activeCategory === c.id ? "" : "opacity-70"
-            )}
-          >
-            <span
+        {visible.map((c) => {
+          const selected = activeCategories.has(c.id);
+          return (
+            <button
+              key={c.id}
+              type="button"
+              onClick={() => onToggleCategory(c.id)}
               className={cn(
-                tile,
-                "bg-gradient-to-br",
-                categoryGradient(c.name),
-                activeCategory === c.id ? "ring-brand" : "ring-transparent"
+                row,
+                selected
+                  ? "bg-brand-soft ring-2 ring-brand/60"
+                  : "bg-panel shadow-card"
               )}
             >
-              {categoryEmoji(c.name)}
-              <span className="absolute -right-1.5 -top-1.5 flex h-6 min-w-6 items-center justify-center rounded-full bg-panel px-1 text-[10px] font-bold text-brand shadow-card ring-1 ring-border">
+              <span
+                className={cn(
+                  "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br text-base",
+                  categoryGradient(c.name)
+                )}
+              >
+                {categoryEmoji(c.name)}
+              </span>
+              <span className="min-w-0 flex-1 truncate text-[13px] font-bold text-ink">
+                {c.name}
+              </span>
+              <span className="shrink-0 rounded-full bg-brand-soft px-1.5 py-0.5 text-[10px] font-bold text-brand">
                 {counts.get(c.id) ?? 0}
               </span>
+              {selected ? (
+                <Check className="h-3.5 w-3.5 shrink-0 text-brand" />
+              ) : (
+                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted" />
+              )}
+            </button>
+          );
+        })}
+
+        {onExplore && (
+          <Link
+            to="/categories"
+            className={cn(row, "border border-dashed border-brand/40 bg-panel/70")}
+          >
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-soft text-brand">
+              <Plus className="h-4 w-4" />
             </span>
-            <span className="max-w-24 text-center text-[11px] font-semibold leading-tight text-ink">
-              {c.name}
+            <span className="min-w-0 flex-1 text-[13px] font-bold text-ink">
+              Toutes les catégories
             </span>
+            <span className="shrink-0 text-[11px] font-semibold text-muted">
+              {categories.length}
+            </span>
+            <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted" />
           </Link>
-        ))}
+        )}
       </div>
     </section>
   );
@@ -389,19 +396,50 @@ function ProductRail({
   delay?: number;
 }) {
   if (products.length === 0) return null;
+  const isCompact = products.length <= 2;
   return (
-    <section className="mt-6 animate-fade-up" style={{ animationDelay: `${delay}ms` }}>
-      <SectionHeader title={title} icon={Icon} action={action} />
-      <div className="scrollbar-hide -mx-4 mt-3 flex snap-x gap-3 overflow-x-auto px-4 pb-2 pt-1 sm:mx-0 sm:px-6">
-        {products.map((product) => (
-          <div
-            key={product.id}
-            className="w-40 shrink-0 snap-start sm:w-48"
-          >
-            <ProductCard product={product} />
+    <section className="mt-7 animate-fade-up sm:mt-9" style={{ animationDelay: `${delay}ms` }}>
+      {isCompact ? (
+        <div className="mx-4 overflow-hidden rounded-[2rem] border border-border bg-gradient-to-br from-brand-soft/40 via-panel to-panel p-4 shadow-card sm:mx-6 sm:p-6">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="flex items-center gap-2.5 font-display text-xl font-bold text-ink sm:text-2xl">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-soft">
+                {Icon && <Icon className="h-5 w-5 text-brand" />}
+              </span>
+              {title}
+            </h2>
+            {action && (
+              <button
+                type="button"
+                onClick={action.onPress}
+                className="flex shrink-0 items-center gap-1.5 rounded-2xl bg-brand px-3.5 py-2 text-sm font-bold text-white shadow-glow transition hover:bg-brand/90 active:scale-95"
+              >
+                {action.label}
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            )}
           </div>
-        ))}
-      </div>
+          <div className="mt-4 grid grid-cols-2 gap-3 sm:gap-6 md:grid-cols-3 lg:grid-cols-4">
+            {products.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        </div>
+      ) : (
+        <>
+          <SectionHeader title={title} icon={Icon} action={action} />
+          <div className="scrollbar-hide -mx-4 mt-3 flex snap-x gap-3 overflow-x-auto px-4 pb-2 pt-1 sm:mx-0 sm:px-6">
+            {products.map((product) => (
+              <div
+                key={product.id}
+                className="w-40 shrink-0 snap-start sm:w-48"
+              >
+                <ProductCard product={product} />
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </section>
   );
 }
@@ -444,9 +482,17 @@ export function HomePage() {
   const { search } = useLocation();
   const searchParams = new URLSearchParams(search);
   const query = (searchParams.get("q") ?? "").toLowerCase().trim();
-  const rawCat = searchParams.get("cat");
-  const activeCategory =
-    rawCat && Number.isFinite(Number(rawCat)) ? Number(rawCat) : null;
+  const rawCats = searchParams.get("cats");
+  const activeCategories = useMemo(() => {
+    const set = new Set<number>();
+    if (rawCats) {
+      for (const part of rawCats.split(",")) {
+        const id = Number(part);
+        if (Number.isFinite(id) && id > 0) set.add(id);
+      }
+    }
+    return set;
+  }, [rawCats]);
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -516,7 +562,7 @@ export function HomePage() {
             new Date(b.created_at ?? 0).getTime() -
             new Date(a.created_at ?? 0).getTime()
         )
-        .slice(0, 10),
+        .slice(0, 2),
     [availableProducts]
   );
 
@@ -532,7 +578,7 @@ export function HomePage() {
     const list = products.filter((p) => {
       if (p.status === "inactive") return false;
       if (getProductTotalStock(p) <= 0) return false;
-      if (activeCategory != null && p.category_id !== activeCategory)
+      if (activeCategories.size > 0 && !activeCategories.has(p.category_id))
         return false;
       if (query) {
         const name = (p.name ?? "").toLowerCase();
@@ -564,39 +610,59 @@ export function HomePage() {
             new Date(b.created_at ?? 0).getTime() -
             new Date(a.created_at ?? 0).getTime()
         );
-      default:
-        return list;
+    default:
+      return list;
     }
-  }, [products, activeCategory, query, sort]);
+  }, [products, activeCategories, query, sort]);
 
   const recentProducts = useMemo(() => {
-    if (query || activeCategory != null) return [];
+    if (query || activeCategories.size > 0) return [];
     const ids = getRecentProductIds();
     const byId = new Map(products.map((p) => [p.id, p]));
     return ids.map((id) => byId.get(id)).filter((p): p is Product => Boolean(p));
-  }, [products, query, activeCategory]);
+  }, [products, query, activeCategories]);
 
   const recommended = useMemo(() => {
-    if (query || activeCategory != null) return [];
+    if (query || activeCategories.size > 0) return [];
     const recent = recentProducts;
     const recentIds = new Set(recent.map((p) => p.id));
     const fill = availableProducts.filter((p) => !recentIds.has(p.id));
-    return [...recent, ...fill].slice(0, 10);
-  }, [recentProducts, availableProducts, query, activeCategory]);
+    return [...recent, ...fill].slice(0, 2);
+  }, [recentProducts, availableProducts, query, activeCategories]);
 
-  const activeCategoryName = activeCategory != null
-    ? categories.find((c) => c.id === activeCategory)?.name
-    : null;
+  const hasActiveFilter = Boolean(query) || activeCategories.size > 0;
 
-  const hasActiveFilter = Boolean(query) || activeCategory != null;
+  const updateCategories = (next: Set<number>) => {
+    const params = new URLSearchParams();
+    if (query) params.set("q", query);
+    if (next.size > 0) params.set("cats", [...next].join(","));
+    const qs = params.toString();
+    history.push(qs ? `/?${qs}` : "/");
+  };
+
+  const toggleCategory = (id: number) => {
+    const next = new Set(activeCategories);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    updateCategories(next);
+  };
+
+  const clearCategories = () => updateCategories(new Set());
 
   const scrollToProducts = () =>
     productsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
 
   const goNewest = () => {
-    setSort("newest");
-    scrollToProducts();
+    history.push("/nouveautes");
   };
+
+  const selectedCategoryNames = useMemo(
+    () =>
+      [...activeCategories]
+        .map((id) => categories.find((c) => c.id === id)?.name)
+        .filter((n): n is string => Boolean(n)),
+    [activeCategories, categories]
+  );
 
   return (
     <Page>
@@ -611,7 +677,10 @@ export function HomePage() {
           categories={categories}
           counts={categoryCounts}
           totalCount={availableProducts.length}
-          activeCategory={activeCategory}
+          activeCategories={activeCategories}
+          onToggleCategory={toggleCategory}
+          onClearCategories={clearCategories}
+          onExplore={() => history.push("/categories")}
         />
 
         {!hasActiveFilter && newestProducts.length > 0 && (
@@ -621,10 +690,7 @@ export function HomePage() {
             delay={40}
             action={{
               label: "Tout voir",
-              onPress: () => {
-                setSort("newest");
-                history.push("/");
-              }
+              onPress: () => history.push("/nouveautes")
             }}
             products={newestProducts}
           />
@@ -674,11 +740,25 @@ export function HomePage() {
                   « {query} »
                 </span>
               )}
-              {activeCategoryName && (
-                <span className="rounded-full border border-border bg-panel px-3 py-1 text-xs font-medium text-muted">
-                  {activeCategoryName}
+              {selectedCategoryNames.map((name) => (
+                <span
+                  key={name}
+                  className="flex items-center gap-1.5 rounded-full border border-brand/30 bg-brand-soft px-3 py-1 text-xs font-semibold text-brand"
+                >
+                  {name}
+                  <button
+                    type="button"
+                    aria-label={`Retirer ${name}`}
+                    onClick={() => {
+                      const id = categories.find((c) => c.name === name)?.id;
+                      if (id != null) toggleCategory(id);
+                    }}
+                    className="text-brand transition hover:text-danger"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
                 </span>
-              )}
+              ))}
               {!hasActiveFilter && sort !== "pertinence" && (
                 <span className="rounded-full border border-border bg-panel px-3 py-1 text-xs font-medium text-muted">
                   Tri : {SORT_LABELS[sort].toLowerCase()}
@@ -757,6 +837,10 @@ export function HomePage() {
             }
             icon={Sparkles}
             delay={80}
+            action={{
+              label: "Tout voir",
+              onPress: () => history.push("/recommandes")
+            }}
             products={recommended}
           />
         )}

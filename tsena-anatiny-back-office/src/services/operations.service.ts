@@ -22,6 +22,7 @@ import type {
   CheckoutCartPayload,
   CartItemListResponse,
   Order,
+  OrderStatus,
   CreateOrderPayload,
   UpdateOrderPayload,
   OrderListResponse,
@@ -291,9 +292,16 @@ export const ordersService = {
   async getOrders(
     page = 1,
     size = 20,
+    status?: OrderStatus,
     relation = '["customer{name,phone,delivery_address}","user{email}","stock_movements{product_id,variant_id,quantity,unit_cost,another_price,other_price_reason,type}","stock_movements.product{name}","stock_movements.variant{name,sku}"]'
   ): Promise<OrderListResponse> {
-    const data = await apiFetch<any>(listUrl("/orders/", page, size, relation));
+    const url = listUrl("/orders/", page, size, relation);
+    const where = status
+      ? `&where=${encodeURIComponent(
+          JSON.stringify([{ key: "status", operator: "==", value: status }])
+        )}`
+      : "";
+    const data = await apiFetch<any>(`${url}${where}`);
     return normalize<Order>(data);
   },
   async createOrder(payload: CreateOrderPayload): Promise<Order> {

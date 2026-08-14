@@ -63,10 +63,10 @@ export function ProductCard({ product }: { product: Product }) {
       </div>
 
       <div className="flex flex-1 flex-col gap-1 px-3 pb-3 pt-2 sm:px-4 sm:pb-4">
-        <h3 className="line-clamp-2 text-[13px] font-semibold leading-snug text-ink sm:text-sm">
+        <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-ink sm:text-[15px]">
           {product.name}
         </h3>
-        <p className="text-[11px] text-muted">
+        <p className="text-xs text-muted">
           {hasVariants
             ? `${variants.length} variante${variants.length > 1 ? "s" : ""}`
             : outOfStock
@@ -74,7 +74,7 @@ export function ProductCard({ product }: { product: Product }) {
               : `${stock} en stock`}
         </p>
         <div className="mt-auto flex items-center justify-between gap-2 pt-1">
-          <span className="text-[15px] font-bold text-brand sm:text-lg">
+          <span className="text-base font-bold text-brand sm:text-lg">
             {price > 0 ? formatAr(price) : "—"}
           </span>
           <button

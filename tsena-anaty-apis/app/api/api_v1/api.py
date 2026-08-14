@@ -7,6 +7,7 @@ from app.api.api_v1.endpoints import customers
 from app.api.api_v1.endpoints import login
 from app.api.api_v1.endpoints import lot_expenses
 from app.api.api_v1.endpoints import lots
+from app.api.api_v1.endpoints import notifications_api
 from app.api.api_v1.endpoints import orders
 from app.api.api_v1.endpoints import products
 from app.api.api_v1.endpoints import product_variants
@@ -24,6 +25,7 @@ api_router.include_router(customers.router, prefix="/customers", tags=["customer
 api_router.include_router(login.router, prefix="/login", tags=["login"])
 api_router.include_router(lot_expenses.router, prefix="/lot_expenses", tags=["lot_expenses"])
 api_router.include_router(lots.router, prefix="/lots", tags=["lots"])
+api_router.include_router(notifications_api.router, prefix="/notifications", tags=["notifications"])
 api_router.include_router(orders.router, prefix="/orders", tags=["orders"])
 api_router.include_router(products.router, prefix="/products", tags=["products"])
 api_router.include_router(product_variants.router, tags=["product_variants"])

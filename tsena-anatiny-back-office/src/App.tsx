@@ -12,6 +12,7 @@ import { StockMovementsPage } from "./pages/StockMovementsPage";
 import { OrdersPage } from "./pages/OrdersPage";
 import { CommercialAssignmentsPage } from "./pages/CommercialAssignmentsPage";
 import { CustomersPage } from "./pages/CustomersPage";
+import { NotificationsPage } from "./pages/NotificationsPage";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
 import { useAuth } from "./contexts/AuthContext";
 
@@ -29,6 +30,7 @@ function App() {
       <ProtectedRoute exact path="/stock-movements" component={StockMovementsPage} />
       <ProtectedRoute exact path="/orders" component={OrdersPage} />
       <ProtectedRoute exact path="/customers" component={CustomersPage} />
+      <ProtectedRoute exact path="/notifications" component={NotificationsPage} />
       <ProtectedRoute
         exact
         path="/commercial-assignments"

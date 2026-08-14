@@ -25,7 +25,7 @@ export function CartPage() {
     try {
       setIsLoading(true);
       setError(null);
-      const data = await cartItemsService.getCartItems(customer.id);
+      const data = await cartItemsService.getCartItemsWithProducts(customer.id);
       setItems(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur chargement panier");

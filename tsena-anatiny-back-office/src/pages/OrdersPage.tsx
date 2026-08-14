@@ -26,6 +26,7 @@ import {
 } from "../services/operations.service";
 import { customersService } from "../services/customers.service";
 import { productsService } from "../services/products.service";
+import { useNotifications } from "../contexts/NotificationsContext";
 import {
   Layout,
   Card,
@@ -38,21 +39,21 @@ import {
 import { Modal } from "../components/Modal";
 
 const STATUS_LABELS: Record<OrderStatus, string> = {
-  draft: "Brouillon",
+  draft: "En cours",
   confirmed: "Confirmée",
   delivered: "Livrée",
   cancelled: "Annulée"
 };
 
 const STATUS_COLORS: Record<OrderStatus, string> = {
-  draft: "bg-muted/20 text-muted",
+  draft: "bg-sky-100 text-sky-700",
   confirmed: "bg-brand/20 text-brand",
   delivered: "bg-success/20 text-success",
   cancelled: "bg-warning/20 text-warning"
 };
 
 const STATUS_SOLID: Record<OrderStatus, string> = {
-  draft: "bg-muted",
+  draft: "bg-sky-600",
   confirmed: "bg-brand",
   delivered: "bg-success",
   cancelled: "bg-warning"
@@ -386,6 +387,36 @@ type CartItem = {
   other_price_reason?: string;
 };
 
+const PENDING_LINES_MARKER = "__pending_lines__";
+
+function parsePendingLines(note?: string | null): Array<Record<string, unknown>> {
+  if (!note) return [];
+  const markerIdx = note.indexOf(PENDING_LINES_MARKER);
+  if (markerIdx < 0) return [];
+  try {
+    const parsed = JSON.parse(note.slice(markerIdx + PENDING_LINES_MARKER.length));
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function stripPendingLines(note?: string | null): string {
+  if (!note) return note ?? "";
+  const markerIdx = note.indexOf(PENDING_LINES_MARKER);
+  if (markerIdx < 0) return note;
+  return note.slice(0, markerIdx).replace(/\n+$/, "");
+}
+
+function preservePendingLines(
+  formNote: string,
+  originalNote?: string | null
+): string {
+  const markerIdx = originalNote?.indexOf(PENDING_LINES_MARKER) ?? -1;
+  if (markerIdx < 0) return formNote;
+  return formNote + originalNote!.slice(markerIdx);
+}
+
 function OrderForm({
   order,
   users,
@@ -416,7 +447,7 @@ function OrderForm({
     another_price: Number(order?.another_price || 0),
     other_price_reason: order?.other_price_reason || "",
     status: (order?.status ?? "draft") as OrderStatus,
-    note: order?.note ?? ""
+    note: stripPendingLines(order?.note)
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isCartLoading, setIsCartLoading] = useState(false);
@@ -609,7 +640,7 @@ function OrderForm({
             ? form.other_price_reason.trim() || undefined
             : undefined,
         status: form.status,
-        note: form.note || undefined,
+        note: preservePendingLines(form.note || "", order?.note),
         ...(generatedOrderNumber ? { order_number: generatedOrderNumber } : {})
       });
     } catch (err) {
@@ -870,7 +901,7 @@ function OrderForm({
           className="flex-1"
           disabled={isLoading || orderValidation.length > 0}
         >
-          {order ? "Mettre à jour" : "Créer commande (brouillon)"}
+          {order ? "Mettre à jour" : "Créer commande (en cours)"}
         </Button>
         {order && order.status === "draft" && (
           <Button
@@ -928,10 +959,18 @@ export function OrdersPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [total, setTotal] = useState(0);
+  const [statusFilter, setStatusFilter] = useState<OrderStatus | "">("");
+
+  const { orderRefreshKey } = useNotifications();
 
   useEffect(() => {
     load();
-  }, [page, pageSize]);
+  }, [page, pageSize, statusFilter]);
+
+  useEffect(() => {
+    if (orderRefreshKey > 0) void load(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderRefreshKey]);
 
   useEffect(() => {
     productsService
@@ -956,11 +995,15 @@ export function OrdersPage() {
     return () => window.clearTimeout(timeout);
   }, [notice]);
 
-  const load = async () => {
+  const load = async (silent = false) => {
     try {
-      setIsLoading(true);
+      if (!silent) setIsLoading(true);
       setError(null);
-      const r = await ordersService.getOrders(page, pageSize);
+      const r = await ordersService.getOrders(
+        page,
+        pageSize,
+        statusFilter || undefined
+      );
       setOrders(r.items);
       setTotal(r.total);
 
@@ -990,7 +1033,7 @@ export function OrdersPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur");
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
   };
 
@@ -1174,6 +1217,40 @@ export function OrdersPage() {
   };
 
   const mapCartItemsFromOrder = (order: Order): CartItem[] => {
+    const pendingLines = parsePendingLines(order.note);
+    if (pendingLines.length > 0) {
+      return pendingLines.map((line) => {
+        const productId = Number(line.product_id || 0);
+        const variantId =
+          line.variant_id != null ? Number(line.variant_id) : null;
+        const product = products.find((p) => p.id === productId);
+        const variant =
+          product?.variants?.find((v) => v.id === variantId) ?? null;
+        return {
+          product_id: productId,
+          variant_id: variantId,
+          product_name:
+            product?.name ||
+            (typeof line.product_name === "string" && line.product_name.trim()
+              ? line.product_name
+              : `Produit #${productId}`),
+          variant_name:
+            variant?.name ||
+            (typeof line.variant_name === "string" && line.variant_name.trim()
+              ? line.variant_name
+              : undefined),
+          variant_sku: variant?.sku || undefined,
+          quantity: Number(line.quantity || 0),
+          unit_cost: Number(line.unit_cost || 0),
+          another_price: Number(line.another_price || 0),
+          other_price_reason:
+            typeof line.other_price_reason === "string"
+              ? line.other_price_reason
+              : undefined
+        };
+      });
+    }
+
     const outMovements = getOrderOutMovements(order);
     if (outMovements.length === 0) {
       if (!order.product_id) return [];
@@ -1438,13 +1515,36 @@ export function OrdersPage() {
 
   return (
     <Layout title="Commandes">
-      <div className="animate-fade-up flex h-full min-h-0 flex-col gap-6 overflow-hidden">
+      <div className="animate-fade-up flex flex-col gap-6">
         <div className="hidden items-center justify-between rounded-2xl border border-border/60 bg-panel/65 px-4 py-3 sm:flex">
           <div className="inline-flex items-center gap-2 text-sm font-semibold text-ink">
             <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-brand/15 text-brand ring-1 ring-brand/20">
               <ShoppingCart className="h-4 w-4" />
             </span>
             Gestion des commandes
+          </div>
+        </div>
+        <div className="flex items-center gap-3 rounded-2xl border border-border/60 bg-panel/65 px-4 py-3">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-brand">
+            <ClipboardList className="h-4 w-4" />
+          </div>
+          <div className="w-full sm:w-64">
+            <Select
+              label="Filtrer par statut"
+              value={statusFilter || "all"}
+              onValueChange={(value) => {
+                setStatusFilter(value === "all" ? "" : (value as OrderStatus));
+                setPage(1);
+              }}
+              options={[
+                { label: "Tous les statuts", value: "all" },
+                ...(Object.keys(STATUS_LABELS) as OrderStatus[]).map((s) => ({
+                  label: STATUS_LABELS[s],
+                  value: s
+                }))
+              ]}
+              placeholder="Tous les statuts"
+            />
           </div>
         </div>
         {notice && (

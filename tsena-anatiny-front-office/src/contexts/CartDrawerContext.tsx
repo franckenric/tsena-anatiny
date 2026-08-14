@@ -8,7 +8,15 @@ import {
   type ReactNode
 } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, ShoppingBag, Trash2, X } from "lucide-react";
+import {
+  ArrowRight,
+  Lock,
+  Minus,
+  Plus,
+  ShoppingBag,
+  Trash2,
+  X
+} from "lucide-react";
 import { useAuth } from "./AuthContext";
 import { useCart } from "./CartContext";
 import { cartItemsService } from "../services/operations.service";
@@ -38,7 +46,7 @@ export function CartDrawerProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     setIsLoading(true);
     cartItemsService
-      .getCartItems(customer.id)
+      .getCartItemsWithProducts(customer.id)
       .then((data) => {
         if (!cancelled) setItems(data);
       })
@@ -67,16 +75,36 @@ export function CartDrawerProvider({ children }: { children: ReactNode }) {
     };
   }, [isOpen, closeCart]);
 
+  const reloadItems = useCallback(async () => {
+    if (!customer) return;
+    try {
+      const data = await cartItemsService.getCartItemsWithProducts(customer.id);
+      setItems(data);
+    } catch {
+      setItems([]);
+    }
+  }, [customer]);
+
   const handleRemove = async (id: number) => {
     setItems((prev) => prev.filter((i) => i.id !== id));
     try {
       await cartItemsService.deleteCartItem(id);
       await refresh();
     } catch {
-      if (customer) {
-        const data = await cartItemsService.getCartItems(customer.id);
-        setItems(data);
-      }
+      await reloadItems();
+    }
+  };
+
+  const handleUpdateQuantity = async (id: number, quantity: number) => {
+    if (quantity < 1) return;
+    setItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, quantity } : item))
+    );
+    try {
+      await cartItemsService.updateCartItem(id, { quantity });
+      await refresh();
+    } catch {
+      await reloadItems();
     }
   };
 
@@ -100,120 +128,190 @@ export function CartDrawerProvider({ children }: { children: ReactNode }) {
             type="button"
             aria-label="Fermer le panier"
             onClick={closeCart}
-            className="animate-fade-in absolute inset-0 h-full w-full bg-ink/40 backdrop-blur-sm"
+            className="animate-fade-in absolute inset-0 h-full w-full bg-[radial-gradient(circle_at_20%_10%,rgba(0,0,0,0.2),rgba(0,0,0,0.55))] backdrop-blur-sm"
           />
-          <aside className="animate-slide-in-right absolute right-0 top-0 flex h-full w-full max-w-md flex-col bg-panel shadow-lift">
-            <div className="flex items-center justify-between border-b border-border px-5 py-4">
-              <h2 className="flex items-center gap-2 text-lg font-bold text-ink">
-                <ShoppingBag className="h-5 w-5 text-brand" />
-                Mon panier
-                {count > 0 && (
-                  <span className="rounded-full bg-brand-soft px-2 py-0.5 text-xs font-bold text-brand">
-                    {count}
-                  </span>
-                )}
-              </h2>
+          <aside className="animate-slide-in-left absolute left-0 top-0 flex h-full w-full max-w-md flex-col overflow-hidden border-r border-border/70 bg-panel/95 shadow-[0_30px_70px_-30px_rgba(7,18,32,0.65)] backdrop-blur">
+            {/* En-tête */}
+            <div className="flex items-center justify-between gap-3 border-b border-border/50 bg-bg/35 px-5 py-4 sm:px-6">
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand/10">
+                  <ShoppingBag className="h-5 w-5 text-brand" />
+                </span>
+                <div className="min-w-0">
+                  <h2 className="truncate font-display text-lg font-semibold text-ink">
+                    Mon panier
+                  </h2>
+                  {count > 0 && (
+                    <p className="text-xs text-muted">
+                      {count} article{count > 1 ? "s" : ""}
+                    </p>
+                  )}
+                </div>
+              </div>
               <button
                 type="button"
                 onClick={closeCart}
                 aria-label="Fermer"
-                className="flex h-9 w-9 items-center justify-center rounded-xl text-muted transition hover:bg-bg hover:text-ink"
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-border bg-panel text-muted transition hover:border-brand/35 hover:bg-brand/10 hover:text-ink"
               >
-                <X className="h-5 w-5" />
+                <X className="h-4 w-4" />
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-5 py-4">
+            <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-5">
               {!customer ? (
-                <div className="flex flex-col items-center gap-3 py-16 text-center">
-                  <ShoppingBag className="h-10 w-10 text-muted" />
-                  <p className="text-sm text-muted">
-                    Connectez-vous pour voir votre panier.
-                  </p>
-                  <Link
-                    to="/connexion"
-                    onClick={closeCart}
-                    className="rounded-xl bg-brand px-4 py-2 text-sm font-bold text-white transition hover:bg-brand/90"
-                  >
-                    Se connecter
-                  </Link>
+                <div className="flex h-full flex-col items-center justify-center gap-4 py-16 text-center">
+                  <span className="flex h-16 w-16 items-center justify-center rounded-3xl bg-brand/10">
+                    <ShoppingBag className="h-8 w-8 text-brand" />
+                  </span>
+                  <div>
+                    <p className="font-display text-lg font-semibold text-ink">
+                      Connectez-vous
+                    </p>
+                    <p className="mt-1 max-w-xs text-sm leading-relaxed text-muted">
+                      Retrouvez les articles ajoutés depuis votre téléphone ou
+                      votre ordinateur.
+                    </p>
+                  </div>
+                  <div className="flex w-full flex-col gap-2">
+                    <Link
+                      to="/connexion"
+                      onClick={closeCart}
+                      className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand px-5 text-sm font-semibold text-white shadow-lg shadow-brand/35 transition duration-200 hover:-translate-y-0.5 hover:bg-brand/90"
+                    >
+                      Se connecter
+                      <ArrowRight className="h-4 w-4" />
+                    </Link>
+                    <Link
+                      to="/inscription"
+                      onClick={closeCart}
+                      className="inline-flex h-12 w-full items-center justify-center rounded-xl border border-border bg-panel/80 px-5 text-sm font-semibold text-ink transition duration-200 hover:-translate-y-0.5 hover:border-brand/35 hover:bg-panel"
+                    >
+                      Créer un compte
+                    </Link>
+                  </div>
                 </div>
               ) : isLoading ? (
                 <div className="space-y-4 py-4">
                   {[0, 1, 2].map((i) => (
                     <div key={i} className="flex gap-3">
-                      <div className="skeleton h-16 w-16" />
+                      <div className="skeleton h-20 w-20 rounded-2xl" />
                       <div className="flex-1 space-y-2">
-                        <div className="skeleton h-4 w-3/4" />
-                        <div className="skeleton h-3 w-1/2" />
+                        <div className="skeleton h-4 w-3/4 rounded-lg" />
+                        <div className="skeleton h-3 w-1/2 rounded-lg" />
+                        <div className="skeleton h-8 w-24 rounded-xl" />
                       </div>
                     </div>
                   ))}
                 </div>
               ) : items.length === 0 ? (
-                <div className="flex flex-col items-center gap-3 py-16 text-center">
-                  <ShoppingBag className="h-10 w-10 text-muted" />
-                  <p className="text-sm font-semibold text-ink">
-                    Votre panier est vide
-                  </p>
+                <div className="flex h-full flex-col items-center justify-center gap-4 py-16 text-center">
+                  <span className="flex h-16 w-16 items-center justify-center rounded-3xl bg-brand/10">
+                    <ShoppingBag className="h-8 w-8 text-brand" />
+                  </span>
+                  <div>
+                    <p className="font-display text-lg font-semibold text-ink">
+                      Votre panier est vide
+                    </p>
+                    <p className="mt-1 text-sm text-muted">
+                      Découvrez nos produits et ajoutez vos coups de cœur.
+                    </p>
+                  </div>
                   <Link
                     to="/"
                     onClick={closeCart}
-                    className="text-sm font-semibold text-brand hover:underline"
+                    className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand px-5 text-sm font-semibold text-white shadow-lg shadow-brand/35 transition duration-200 hover:-translate-y-0.5 hover:bg-brand/90"
                   >
-                    Voir la boutique
+                    Découvrir la boutique
+                    <ArrowRight className="h-4 w-4" />
                   </Link>
                 </div>
               ) : (
-                <ul className="space-y-4">
+                <ul className="space-y-3">
                   {items.map((item) => {
                     const name =
-                      item.product?.name ?? item.variant?.name ?? `Produit #${item.product_id}`;
+                      item.product?.name ??
+                      item.variant?.name ??
+                      `Produit #${item.product_id}`;
                     const unitPrice = Number(item.unit_cost || 0);
                     const imageUrl = resolveImageUrl(
                       item.variant?.image || item.product?.image || null
                     );
+                    const quantity = Number(item.quantity || 1);
                     return (
                       <li
                         key={item.id}
-                        className="flex items-center gap-3 rounded-2xl border border-border bg-bg p-3"
+                        className="group flex gap-3 rounded-2xl border border-border/70 bg-panel/80 p-3 transition duration-200 hover:border-brand/35"
                       >
                         {imageUrl ? (
                           <img
                             src={imageUrl}
                             alt={name}
-                            className="h-16 w-16 shrink-0 rounded-xl border border-border object-cover"
+                            className="h-20 w-20 shrink-0 rounded-xl border border-border object-cover"
                           />
                         ) : (
-                          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-panel text-muted/40">
-                            <ShoppingBag className="h-6 w-6" />
+                          <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-brand/5 text-brand/40">
+                            <ShoppingBag className="h-8 w-8" />
                           </div>
                         )}
-                        <div className="min-w-0 flex-1">
-                          <p className="line-clamp-2 text-sm font-semibold text-ink">
-                            {name}
-                          </p>
+
+                        <div className="flex min-w-0 flex-1 flex-col">
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="line-clamp-2 text-sm font-semibold text-ink">
+                              {name}
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => handleRemove(item.id)}
+                              aria-label="Retirer"
+                              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-muted transition hover:bg-warning/10 hover:text-warning"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+
                           {item.variant?.name && (
-                            <p className="mt-0.5 text-xs text-muted">
+                            <p className="mt-0.5 truncate text-xs text-muted">
                               {item.variant.name}
                             </p>
                           )}
-                          <p className="mt-1 text-xs text-muted">
-                            {item.quantity} × {formatAr(unitPrice)}
-                          </p>
-                        </div>
-                        <div className="flex flex-col items-end gap-2">
-                          <span className="text-sm font-bold text-ink">
-                            {formatAr(unitPrice * item.quantity)}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => handleRemove(item.id)}
-                            aria-label="Retirer"
-                            className="flex h-7 w-7 items-center justify-center rounded-lg text-muted transition hover:bg-danger/10 hover:text-danger"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
+
+                          <div className="mt-auto flex items-end justify-between gap-2 pt-2">
+                            <div className="flex items-center gap-1 rounded-xl border border-border bg-panel/80 p-0.5">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleUpdateQuantity(item.id, quantity - 1)
+                                }
+                                disabled={quantity <= 1}
+                                aria-label="Diminuer la quantité"
+                                className="flex h-7 w-7 items-center justify-center rounded-lg text-muted transition hover:bg-brand/10 hover:text-brand disabled:pointer-events-none disabled:opacity-40"
+                              >
+                                <Minus className="h-3.5 w-3.5" />
+                              </button>
+                              <span className="min-w-8 text-center text-xs font-bold text-ink">
+                                {quantity}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleUpdateQuantity(item.id, quantity + 1)
+                                }
+                                aria-label="Augmenter la quantité"
+                                className="flex h-7 w-7 items-center justify-center rounded-lg text-muted transition hover:bg-brand/10 hover:text-brand"
+                              >
+                                <Plus className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm font-bold text-ink">
+                                {formatAr(unitPrice * quantity)}
+                              </p>
+                              <p className="text-[11px] text-muted">
+                                {formatAr(unitPrice)} / unité
+                              </p>
+                            </div>
+                          </div>
                         </div>
                       </li>
                     );
@@ -223,18 +321,25 @@ export function CartDrawerProvider({ children }: { children: ReactNode }) {
             </div>
 
             {customer && items.length > 0 && (
-              <div className="border-t border-border px-5 py-4">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted">Sous-total</span>
-                  <span className="text-xl font-bold text-brand">
-                    {formatAr(subtotal)}
+              <div className="border-t border-border/50 bg-bg/35 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 sm:px-6">
+                <div className="flex items-center justify-between rounded-2xl border border-border/70 bg-panel/80 px-4 py-3">
+                  <span className="text-sm font-semibold text-muted">
+                    Sous-total
                   </span>
+                  <div className="text-right">
+                    <p className="text-xl font-extrabold text-brand">
+                      {formatAr(subtotal)}
+                    </p>
+                    <p className="text-[11px] text-muted">
+                      Frais de livraison calculés à la commande
+                    </p>
+                  </div>
                 </div>
-                <div className="mt-4 flex flex-col gap-2">
+                <div className="mt-3 flex flex-col gap-2">
                   <Link
                     to="/commande"
                     onClick={closeCart}
-                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-brand px-6 py-3.5 text-sm font-bold text-white shadow-glow transition hover:bg-brand/90"
+                    className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand px-5 text-sm font-semibold text-white shadow-lg shadow-brand/35 transition duration-200 hover:-translate-y-0.5 hover:bg-brand/90"
                   >
                     Passer commande
                     <ArrowRight className="h-4 w-4" />
@@ -242,11 +347,15 @@ export function CartDrawerProvider({ children }: { children: ReactNode }) {
                   <Link
                     to="/panier"
                     onClick={closeCart}
-                    className="flex w-full items-center justify-center rounded-2xl border border-ink px-6 py-3 text-sm font-bold text-ink transition hover:bg-ink hover:text-white"
+                    className="inline-flex h-12 w-full items-center justify-center rounded-xl border border-border bg-panel/80 px-5 text-sm font-semibold text-ink transition duration-200 hover:-translate-y-0.5 hover:border-brand/35 hover:bg-panel"
                   >
                     Voir le panier
                   </Link>
                 </div>
+                <p className="mt-3 flex items-center justify-center gap-1.5 text-[11px] text-muted">
+                  <Lock className="h-3 w-3" />
+                  Vos informations restent privées et sécurisées
+                </p>
               </div>
             )}
           </aside>

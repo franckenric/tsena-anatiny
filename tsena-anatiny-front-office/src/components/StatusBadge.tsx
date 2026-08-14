@@ -6,9 +6,9 @@ const STATUS_META: Record<
   { label: string; className: string; dot: string }
 > = {
   draft: {
-    label: "Brouillon",
-    className: "bg-border/60 text-ink",
-    dot: "bg-muted"
+    label: "En cours",
+    className: "bg-blue-100 text-blue-700",
+    dot: "bg-blue-600"
   },
   confirmed: {
     label: "Confirmée",

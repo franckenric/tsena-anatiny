@@ -1,5 +1,6 @@
 from typing import Any
 import ast
+import json
 from datetime import datetime
 from uuid import uuid4
 
@@ -10,11 +11,49 @@ from sqlalchemy.exc import IntegrityError
 
 from app import crud, models, schemas
 from app.api import deps
+from app.api.api_v1.endpoints.notifications import (
+    notify_order_created,
+    notify_order_status_changed,
+)
 from app.enum.product_status import ProductStatusEnum
 from app.enum.type import TypeEnum
 from app.schemas.orders import OrderMovementPayload
 
 router = APIRouter()
+
+_PENDING_LINES_MARKER = "__pending_lines__"
+
+
+def _pending_lines_from_note(note: str | None) -> list[dict[str, Any]]:
+    if not note:
+        return []
+    marker_idx = note.find(_PENDING_LINES_MARKER)
+    if marker_idx < 0:
+        return []
+    raw = note[marker_idx + len(_PENDING_LINES_MARKER):]
+    try:
+        parsed = json.loads(raw)
+    except Exception:
+        return []
+    return parsed if isinstance(parsed, list) else []
+
+
+def _strip_pending_lines(note: str | None) -> str | None:
+    if not note:
+        return note
+    marker_idx = note.find(_PENDING_LINES_MARKER)
+    if marker_idx < 0:
+        return note
+    return note[:marker_idx].rstrip("\n") or None
+
+
+def _note_with_pending_lines(
+    note: str | None,
+    lines: list[dict[str, Any]],
+) -> str:
+    base = (note or "").rstrip("\n")
+    marker = f"\n{_PENDING_LINES_MARKER}{json.dumps(lines, ensure_ascii=False)}"
+    return base + marker
 
 
 def _generate_order_number() -> str:
@@ -429,6 +468,17 @@ def create_orders(
 
         db.commit()
         db.refresh(orders)
+        notify_order_created(
+            db,
+            orders,
+            customer=customer,
+            total=sum(
+                float(m.quantity or 0) * float(m.unit_cost or 0)
+                + float(m.another_price or 0)
+                for m in movements
+            )
+            + float(orders_in.another_price or 0),
+        )
         return orders
     except HTTPException as e:
         print(f"Error creating order: {e.detail}")
@@ -490,33 +540,49 @@ def update_orders(
             cart_items_for_confirmation: list[models.CartItems] = []
 
             if len(movements) == 0 and not previous_is_validated:
-                if not orders.customer_id:
+                pending_lines = _pending_lines_from_note(orders.note)
+
+                if len(pending_lines) > 0:
+                    movements = [
+                        OrderMovementPayload(
+                            product_id=line['product_id'],
+                            variant_id=line.get('variant_id'),
+                            quantity=line['quantity'],
+                            unit_cost=line.get('unit_cost'),
+                            another_price=line.get('another_price'),
+                            other_price_reason=line.get('other_price_reason'),
+                        )
+                        for line in pending_lines
+                        if line.get('product_id') is not None
+                        and line.get('quantity') is not None
+                    ]
+                elif not orders.customer_id:
                     raise HTTPException(
                         status_code=422,
                         detail='customer_id is required to confirm order from cart',
                     )
-
-                cart_items_for_confirmation = crud.cart_items.get_multi_by_customer_id(
-                    db=db,
-                    customer_id=orders.customer_id,
-                )
-                if len(cart_items_for_confirmation) == 0:
-                    raise HTTPException(
-                        status_code=422,
-                        detail='Cart is empty for this customer',
+                else:
+                    cart_items_for_confirmation = crud.cart_items.get_multi_by_customer_id(
+                        db=db,
+                        customer_id=orders.customer_id,
                     )
+                    if len(cart_items_for_confirmation) == 0:
+                        raise HTTPException(
+                            status_code=422,
+                            detail='Cart is empty for this customer',
+                        )
 
-                movements = [
-                    OrderMovementPayload(
-                        product_id=item.product_id,
-                        variant_id=item.variant_id,
-                        quantity=item.quantity,
-                        unit_cost=item.unit_cost,
-                        another_price=item.another_price,
-                        other_price_reason=item.other_price_reason,
-                    )
-                    for item in cart_items_for_confirmation
-                ]
+                    movements = [
+                        OrderMovementPayload(
+                            product_id=item.product_id,
+                            variant_id=item.variant_id,
+                            quantity=item.quantity,
+                            unit_cost=item.unit_cost,
+                            another_price=item.another_price,
+                            other_price_reason=item.other_price_reason,
+                        )
+                        for item in cart_items_for_confirmation
+                    ]
 
             if len(movements) > 0:
                 movement_user_id = _resolve_movement_user_id(
@@ -547,8 +613,18 @@ def update_orders(
                     for item in cart_items_for_confirmation:
                         db.delete(item)
 
+            if len(_pending_lines_from_note(orders.note)) > 0:
+                orders.note = _strip_pending_lines(orders.note)
+
         db.commit()
         db.refresh(orders)
+        if next_status != previous_status:
+            notify_order_status_changed(
+                db,
+                orders,
+                previous_status=previous_status,
+                customer=customer,
+            )
         return orders
     except HTTPException as e:
         print(f"Error updating order: {e.detail}")

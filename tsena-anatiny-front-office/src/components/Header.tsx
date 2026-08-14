@@ -6,6 +6,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useCart } from "../contexts/CartContext";
 import { useCartDrawer } from "../contexts/CartDrawerContext";
 import { useMobileMenu } from "../contexts/MobileMenuContext";
+import { NotificationsBell } from "./NotificationsBell";
 import { cn } from "../lib/utils";
 
 export function Header() {
@@ -76,6 +77,7 @@ export function Header() {
 
             {isBooting ? null : customer ? (
               <div className="flex items-center gap-1.5">
+                <NotificationsBell />
                 <NavLink
                   to="/compte"
                   className={(isActive) =>

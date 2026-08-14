@@ -243,7 +243,7 @@ export function DashboardPage() {
 
   return (
     <Layout title="Vue d'ensemble">
-      <div className="animate-fade-up h-full min-h-0 space-y-6 overflow-y-auto pr-1">
+      <div className="animate-fade-up space-y-6 pr-1">
         {/* ── Hero ── */}
         <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-panel/80 p-5 shadow-[0_18px_36px_-28px_rgba(8,18,38,0.6)] sm:p-6">
           <div className="pointer-events-none absolute -right-16 -top-24 h-56 w-56 rounded-full bg-brand/10 blur-3xl" />

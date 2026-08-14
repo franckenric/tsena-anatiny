@@ -13,6 +13,7 @@ import { cartItemsService } from "../services/operations.service";
 interface CartContextValue {
   count: number;
   refresh: () => Promise<void>;
+  clear: () => void;
 }
 
 const CartContext = createContext<CartContextValue | null>(null);
@@ -34,11 +35,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, [customer]);
 
+  const clear = useCallback(() => setCount(0), []);
+
   useEffect(() => {
     if (!isBooting) void refresh();
   }, [isBooting, customer?.id, refresh]);
 
-  const value = useMemo(() => ({ count, refresh }), [count, refresh]);
+  const value = useMemo(() => ({ count, refresh, clear }), [count, refresh, clear]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }

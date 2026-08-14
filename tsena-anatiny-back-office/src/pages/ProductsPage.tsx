@@ -56,7 +56,8 @@ import {
   Layers,
   Tag,
   Camera,
-  Images
+  Images,
+  AlertTriangle
 } from "lucide-react";
 
 type ProductSubmitVariant = {
@@ -132,6 +133,28 @@ const getProductTotalStock = (product: Product): number => {
     0
   );
 };
+
+const getProductDangerReason = (product: Product): string | null => {
+  const stock = getProductTotalStock(product);
+  if (stock <= 0) return "Rupture de stock";
+
+  if (Number(product.selling_price ?? 0) > 0) return null;
+
+  const variants = product.variants ?? [];
+  if (variants.length > 0) {
+    const leafVariants = variants.filter(
+      (v) => !variants.some((other) => other.parent_id === v.id)
+    );
+    if (leafVariants.some((v) => Number(v.selling_price ?? 0) > 0)) {
+      return null;
+    }
+  }
+
+  return "Prix de vente manquant";
+};
+
+const isProductDanger = (product: Product): boolean =>
+  getProductDangerReason(product) !== null;
 
 function DraftImageThumb({ file }: { file: File }) {
   const url = useMemo(() => URL.createObjectURL(file), [file]);
@@ -2444,7 +2467,18 @@ export function ProductsPage() {
             </div>
           )}
           <div>
-            <p className="font-semibold text-ink">{name}</p>
+            <p className="flex items-center gap-1.5 font-semibold text-ink">
+              <span className="truncate">{name}</span>
+              {isProductDanger(row) && (
+                <span
+                  title={getProductDangerReason(row) ?? undefined}
+                  aria-label={getProductDangerReason(row) ?? undefined}
+                  className="shrink-0"
+                >
+                  <AlertTriangle className="h-4 w-4 text-warning" />
+                </span>
+              )}
+            </p>
             <p className="text-xs text-muted">{row.sku}</p>
           </div>
         </div>
@@ -2496,7 +2530,7 @@ export function ProductsPage() {
 
   return (
     <Layout title="Produits">
-      <div className="animate-fade-up flex h-full min-h-0 flex-col gap-6 overflow-hidden">
+      <div className="animate-fade-up flex flex-col gap-6">
         <div className="hidden items-center justify-between rounded-2xl border border-border/60 bg-panel/65 px-4 py-3 sm:flex">
           <div className="inline-flex items-center gap-2 text-sm font-semibold text-ink">
             <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-brand/15 text-brand ring-1 ring-brand/20">
@@ -2594,6 +2628,14 @@ export function ProductsPage() {
                       />
                       {isActive ? "Actif" : "Inactif"}
                     </span>
+                    {isProductDanger(prod) && (
+                      <span
+                        title={getProductDangerReason(prod) ?? undefined}
+                        className="absolute left-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-warning text-white shadow-sm"
+                      >
+                        <AlertTriangle className="h-4 w-4" />
+                      </span>
+                    )}
                   </div>
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-ink">

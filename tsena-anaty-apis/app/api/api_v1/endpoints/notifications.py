@@ -1,4 +1,5 @@
 from typing import Any, Optional, Set
+from datetime import datetime
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from sqlalchemy import func
@@ -197,4 +198,46 @@ def notify_order_status_changed(
     _persist_notifications(db, recipient_ids, "order.status_changed", data)
     connection_manager.broadcast_to(
         recipient_ids, {"type": "order.status_changed", "data": data}
+    )
+
+
+def notify_account_created(
+    db: Session,
+    customer: Any,
+    *,
+    otp: str,
+) -> None:
+    """Notify the back-office that a customer account was created.
+
+    The plain OTP is only carried by the WebSocket broadcast (so the
+    back-office can relay it by SMS from the local phone); it is NOT
+    persisted in the notifications table.
+    """
+    name = getattr(customer, "name", None)
+    phone = getattr(customer, "phone", None)
+    data = {
+        "account_id": getattr(customer, "id", None),
+        "customer_name": name,
+        "customer_phone": phone,
+        "otp": otp,
+        "created_at": datetime.utcnow().isoformat(),
+    }
+    recipient_ids = _admin_user_ids(db)
+
+    rows = [
+        models.Notifications(
+            user_id=user_id,
+            type="account.created",
+            title="Nouveau compte client",
+            message=f"Compte créé pour {name or 'un client'} ({phone or '-'}). "
+            "Envoi de l'OTP par SMS en cours.",
+            customer_name=name,
+            customer_phone=phone,
+        )
+        for user_id in recipient_ids
+    ]
+    db.add_all(rows)
+    db.commit()
+    connection_manager.broadcast_to(
+        recipient_ids, {"type": "account.created", "data": data}
     )

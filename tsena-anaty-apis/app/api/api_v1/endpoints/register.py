@@ -6,6 +6,8 @@ from sqlalchemy.orm import Session
 
 from app import crud, models, schemas
 from app.api import deps
+from app.api.api_v1.endpoints.notifications import notify_account_created
+from app.api.api_v1.endpoints.otp import issue_otp
 from app.core import security
 from app.core.config import settings
 
@@ -75,4 +77,13 @@ def register(
         expires_delta=access_token_expires,
     )
 
-    return schemas.RegisterResponse(access_token=token, customer=customer)
+    # Issue a verification OTP and notify the back-office so it can relay
+    # the code to the customer by SMS from the local phone.
+    otp = issue_otp(db, register_in.phone)
+    notify_account_created(db, customer, otp=otp)
+
+    return schemas.RegisterResponse(
+        access_token=token,
+        customer=customer,
+        otp_required=True,
+    )

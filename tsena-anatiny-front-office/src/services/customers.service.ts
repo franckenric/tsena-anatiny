@@ -1,10 +1,12 @@
-import { apiFetch, buildApiUrl } from "./api";
+import { apiFetch } from "./api";
 import type {
   Customer,
   CreateCustomerPayload,
   CustomerListResponse,
   RegisterPayload,
-  RegisterResponse
+  RegisterResponse,
+  VerifyOtpPayload,
+  VerifyOtpResponse
 } from "../types/customer";
 import { normalizePhone } from "../lib/utils";
 
@@ -28,28 +30,32 @@ export const customersService = {
   },
 
   async register(payload: RegisterPayload): Promise<RegisterResponse> {
-    const response = await fetch(buildApiUrl("/register/"), {
+    return apiFetch<RegisterResponse>("/register/", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     });
-    if (!response.ok) {
-      let message = `Erreur HTTP ${response.status}`;
-      try {
-        const json = (await response.json()) as { detail?: unknown };
-        if (typeof json.detail === "string") message = json.detail;
-      } catch {
-        // ignore
-      }
-      throw new Error(message);
-    }
-    return (await response.json()) as RegisterResponse;
   },
 
   async findOrCreate(payload: CreateCustomerPayload): Promise<Customer> {
     const existing = await this.findByPhone(payload.phone);
     if (existing) return existing;
     return this.create(payload);
+  },
+
+  async verifyOtp(payload: VerifyOtpPayload): Promise<VerifyOtpResponse> {
+    return apiFetch<VerifyOtpResponse>("/otp/verify", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+  },
+
+  async resendOtp(phone: string): Promise<VerifyOtpResponse> {
+    const response = await apiFetch<VerifyOtpResponse>("/otp/resend", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone })
+    });
+    return response;
   }
 };
 

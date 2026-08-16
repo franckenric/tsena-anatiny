@@ -204,6 +204,19 @@ export const dictionaries: Record<Language, Record<string, string>> = {
     "auth.loginError": "Erreur de connexion",
     "auth.notFound": "Aucun compte trouvé avec ce numéro. Créez votre compte.",
 
+    "otp.title": "Vérification du compte",
+    "otp.sub":
+      "Un code de vérification vous a été envoyé par SMS. Saisissez-le ci-dessous.",
+    "otp.codeLabel": "Code de vérification",
+    "otp.verify": "Vérifier mon compte",
+    "otp.verifying": "Vérification...",
+    "otp.resend": "Renvoyer le code",
+    "otp.resent": "Un nouveau code vous a été envoyé par SMS.",
+    "otp.success": "Compte vérifié avec succès.",
+    "otp.invalidCode": "Le code doit contenir 6 chiffres.",
+    "otp.missingPhone": "Numéro de téléphone manquant.",
+    "otp.error": "Erreur lors de la vérification",
+
     "account.loginTitle": "Connectez-vous",
     "account.loginSub": "Retrouvez vos commandes et suivez vos livraisons.",
     "account.profile": "Mon profil",
@@ -222,6 +235,10 @@ export const dictionaries: Record<Language, Record<string, string>> = {
     "account.prevPage": "Page précédente",
     "account.nextPage": "Page suivante",
     "account.errorOrders": "Erreur chargement commandes",
+
+    "account.otpRequired": "Vérification requise",
+    "account.otpRequiredSub": "Vous devez vérifier votre numéro de téléphone pour accéder à votre profil.",
+    "account.verifyPhone": "Vérifier mon téléphone",
 
     "notifications.title": "Mes notifications",
     "notifications.unread": "{count} non lue",
@@ -463,6 +480,19 @@ export const dictionaries: Record<Language, Record<string, string>> = {
     "auth.notFound":
       "Tsy hita ny kaonty misy ity laharana ity. Mamorona kaonty.",
 
+    "otp.title": "Fanamarinana ny kaonty",
+    "otp.sub":
+      "Nandefasana SMS anao ny kaody fanamarinana. Soraty eto ambany izy.",
+    "otp.codeLabel": "Kaody fanamarinana",
+    "otp.verify": "Hamarino ny kaontiko",
+    "otp.verifying": "Fanamarinana...",
+    "otp.resend": "Andefasana indray ny kaody",
+    "otp.resent": "Nandefasana SMS anao indray ny kaody.",
+    "otp.success": "Vita soa aman-tsara ny fanamarinana.",
+    "otp.invalidCode": "Tsy maintsy 6 isa ny kaody.",
+    "otp.missingPhone": "Tsy hita ny laharana finday.",
+    "otp.error": "Hadisoana nandritra ny fanamarinana",
+
     "account.loginTitle": "Hiditra",
     "account.loginSub":
       "Manandrama mividy entana, ary araho ny fandefasana azy.",
@@ -482,6 +512,10 @@ export const dictionaries: Record<Language, Record<string, string>> = {
     "account.prevPage": "Pejy taloha",
     "account.nextPage": "Pejy manaraka",
     "account.errorOrders": "Hadisoana tamin'ny fampidirana ny baiko",
+
+    "account.otpRequired": "Mila fanamarinana",
+    "account.otpRequiredSub": "Mila hamarino ny laharan'ny findainao ianao mba hahafahana miditra ao amin'ny kaontinao.",
+    "account.verifyPhone": "Hamarino ny findayko",
 
     "notifications.title": "Ny fampandrenesako",
     "notifications.unread": "{count} tsy voavaky",

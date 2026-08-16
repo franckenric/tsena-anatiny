@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Tsena Back Office</string>
+    <string name="title_activity_main">Tsena Back Office</string>
+    <string name="package_name">mg.tsenanatiny.backoffice</string>
+    <string name="custom_url_scheme">mg.tsenanatiny.backoffice</string>
+</resources>

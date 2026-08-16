@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Vendored copy of @byteowls/capacitor-sms (SPM support): keep its built JS for TS/web builds
+!vendor/byteowls-capacitor-sms/dist/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

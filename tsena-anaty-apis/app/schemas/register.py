@@ -30,3 +30,4 @@ class RegisterResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     customer: Customers
+    otp_required: Optional[bool] = True

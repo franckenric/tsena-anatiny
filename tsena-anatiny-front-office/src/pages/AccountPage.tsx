@@ -10,6 +10,7 @@ import {
   PackageCheck,
   PackageSearch,
   ShoppingCart,
+  ShieldCheck,
   Sparkles,
   UserRound
 } from "lucide-react";
@@ -142,6 +143,35 @@ export function AccountPage() {
               className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-brand px-6 py-3.5 text-sm font-bold text-white shadow-glow transition hover:bg-brand/90 active:scale-[0.98]"
             >
               {t("nav.createAccount")}
+            </Link>
+          </div>
+        </div>
+      </Page>
+    );
+  }
+
+  if (!customer.otpVerified) {
+    return (
+      <Page>
+        <div className="mx-auto flex min-h-[70vh] max-w-md flex-col items-center justify-center gap-5 px-4 text-center sm:px-6">
+          <div className="flex h-20 w-20 items-center justify-center rounded-[2rem] bg-warning/10 shadow-card">
+            <ShieldCheck className="h-10 w-10 text-warning" />
+          </div>
+          <div>
+            <h1 className="font-display text-2xl font-extrabold text-ink">
+              {t("account.otpRequired")}
+            </h1>
+            <p className="mt-2 text-sm leading-relaxed text-muted">
+              {t("account.otpRequiredSub")}
+            </p>
+          </div>
+          <div className="flex w-full flex-col gap-3">
+            <Link
+              to={{ pathname: "/verification", state: { phone: customer.phone, from: "/compte" } }}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-brand px-6 py-3.5 text-sm font-bold text-white shadow-glow transition hover:bg-brand/90 active:scale-[0.98]"
+            >
+              {t("account.verifyPhone")}
+              <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
         </div>

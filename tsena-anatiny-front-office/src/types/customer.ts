@@ -22,6 +22,17 @@ export interface RegisterResponse {
   access_token: string;
   token_type: string;
   customer: Customer;
+  otp_required?: boolean;
+}
+
+export interface VerifyOtpPayload {
+  phone: string;
+  code: string;
+}
+
+export interface VerifyOtpResponse {
+  success: boolean;
+  phone: string;
 }
 
 export interface CustomerListResponse {

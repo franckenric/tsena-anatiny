@@ -14,18 +14,28 @@ import {
   fetchNotifications,
   markAllNotificationsRead,
   parseNotificationEvent,
+  type AccountCreatedData,
   type NotificationKind,
   type OrderNotificationData,
   type RestNotification
 } from "../services/notifications.service";
+import { sendSms } from "../services/sms.service";
 
-export type NotificationItem = {
-  id: string;
-  kind: NotificationKind;
-  data: OrderNotificationData;
-  read: boolean;
-  receivedAt: string;
-};
+export type NotificationItem =
+  | {
+      id: string;
+      kind: "order.created" | "order.status_changed";
+      data: OrderNotificationData;
+      read: boolean;
+      receivedAt: string;
+    }
+  | {
+      id: string;
+      kind: "account.created";
+      data: AccountCreatedData;
+      read: boolean;
+      receivedAt: string;
+    };
 
 type NotificationsContextValue = {
   notifications: NotificationItem[];
@@ -36,14 +46,30 @@ type NotificationsContextValue = {
   clear: () => void;
 };
 
-const NotificationsContext = createContext<NotificationsContextValue | undefined>(
-  undefined
-);
+const NotificationsContext = createContext<
+  NotificationsContextValue | undefined
+>(undefined);
 
 const MAX_NOTIFICATIONS = 50;
 const RECONNECT_DELAY_MS = 3000;
 
 function mapRestNotification(notification: RestNotification): NotificationItem {
+  if (notification.type === "account.created") {
+    const data: AccountCreatedData = {
+      account_id: notification.order_id ?? notification.id,
+      customer_name: notification.customer_name,
+      customer_phone: notification.customer_phone,
+      otp: "",
+      created_at: notification.created_at
+    };
+    return {
+      id: `rest-${notification.id}`,
+      kind: "account.created",
+      data,
+      read: notification.read,
+      receivedAt: notification.created_at ?? new Date().toISOString()
+    };
+  }
   return {
     id: `rest-${notification.id}`,
     kind: notification.type,
@@ -122,6 +148,30 @@ export function NotificationsProvider({
       ws.onmessage = (event) => {
         const payload = parseNotificationEvent(event.data as string);
         if (!payload) return;
+
+        if (payload.type === "account.created") {
+          const data = payload.data;
+          const item: NotificationItem = {
+            id: `account-${data.account_id}-${Date.now()}`,
+            kind: "account.created",
+            data,
+            read: false,
+            receivedAt: new Date().toISOString()
+          };
+          setNotifications((prev) =>
+            [item, ...prev].slice(0, MAX_NOTIFICATIONS)
+          );
+          // Envoi automatique de l'OTP par SMS depuis la SIM du téléphone
+          // où le back-office est installé.
+          if (data.customer_phone && data.otp) {
+            void sendSms(
+              data.customer_phone,
+              `Tsena Anatiny : votre code de verification est ${data.otp}`
+            );
+          }
+          return;
+        }
+
         const kind: NotificationKind =
           payload.type === "order.status_changed"
             ? "order.status_changed"
@@ -193,7 +243,14 @@ export function NotificationsProvider({
       markAllRead,
       clear
     }),
-    [notifications, unreadCount, isConnected, orderRefreshKey, markAllRead, clear]
+    [
+      notifications,
+      unreadCount,
+      isConnected,
+      orderRefreshKey,
+      markAllRead,
+      clear
+    ]
   );
 
   return (

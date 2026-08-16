@@ -9,11 +9,25 @@ export type OrderNotificationData = {
   created_at: string | null;
 };
 
+export type AccountCreatedData = {
+  account_id: number;
+  customer_name: string | null;
+  customer_phone: string | null;
+  otp: string;
+  created_at: string | null;
+};
+
+export type NotificationData = OrderNotificationData | AccountCreatedData;
+
 export type OrderNotificationEvent =
   | { type: "order.created"; data: OrderNotificationData }
-  | { type: "order.status_changed"; data: OrderNotificationData };
+  | { type: "order.status_changed"; data: OrderNotificationData }
+  | { type: "account.created"; data: AccountCreatedData };
 
-export type NotificationKind = "order.created" | "order.status_changed";
+export type NotificationKind =
+  | "order.created"
+  | "order.status_changed"
+  | "account.created";
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "/api/v1").replace(
   /\/+$/,
@@ -39,7 +53,8 @@ export function parseNotificationEvent(
     if (
       !payload ||
       (payload.type !== "order.created" &&
-        payload.type !== "order.status_changed") ||
+        payload.type !== "order.status_changed" &&
+        payload.type !== "account.created") ||
       !payload.data
     ) {
       return null;

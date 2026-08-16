@@ -1,6 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { useHistory } from "react-router-dom";
-import { Bell, CheckCheck, ChevronRight, RefreshCw, ShoppingCart, X } from "lucide-react";
+import {
+  Bell,
+  CheckCheck,
+  ChevronRight,
+  RefreshCw,
+  ShoppingCart,
+  UserPlus,
+  X
+} from "lucide-react";
 import { useNotifications } from "../contexts/NotificationsContext";
 import { cn } from "../lib/utils";
 
@@ -25,13 +33,8 @@ const formatAr = (value: number) =>
 
 export function NotificationsBell() {
   const history = useHistory();
-  const {
-    notifications,
-    unreadCount,
-    isConnected,
-    markAllRead,
-    clear
-  } = useNotifications();
+  const { notifications, unreadCount, isConnected, markAllRead, clear } =
+    useNotifications();
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -78,7 +81,7 @@ export function NotificationsBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-12 z-50 flex max-h-[70vh] w-[min(calc(100vw-4.5rem),22rem)] flex-col overflow-hidden rounded-2xl border border-border/60 bg-panel shadow-2xl shadow-black/10">
+        <div className="fixed inset-x-3 top-14 z-50 flex max-h-[calc(100vh-5rem)] w-auto flex-col overflow-hidden rounded-2xl border border-border/60 bg-panel shadow-2xl shadow-black/10 sm:absolute sm:inset-x-auto sm:right-0 sm:top-12 sm:max-h-[70vh] sm:w-[min(calc(100vw-4.5rem),22rem)]">
           <div className="flex items-center justify-between gap-2 border-b border-border/50 px-3 py-2.5">
             <p className="text-sm font-bold text-ink">Notifications</p>
             <div className="flex items-center gap-1">
@@ -88,7 +91,7 @@ export function NotificationsBell() {
                 className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-muted transition hover:bg-bg hover:text-ink"
               >
                 <CheckCheck className="h-3.5 w-3.5" />
-                Tout lu
+                <span className="hidden sm:inline">Tout lu</span>
               </button>
               <button
                 type="button"
@@ -96,7 +99,7 @@ export function NotificationsBell() {
                 className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-muted transition hover:bg-bg hover:text-ink"
               >
                 <X className="h-3.5 w-3.5" />
-                Effacer
+                <span className="hidden sm:inline">Effacer</span>
               </button>
             </div>
           </div>
@@ -109,6 +112,40 @@ export function NotificationsBell() {
             ) : (
               <ul className="divide-y divide-border/40">
                 {notifications.map((notification) => {
+                  if (notification.kind === "account.created") {
+                    const account = notification.data;
+                    return (
+                      <li key={notification.id}>
+                        <div className="flex w-full items-start gap-2.5 px-2.5 py-2.5 text-left sm:gap-3 sm:px-3 sm:py-3">
+                          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-brand/15 text-brand sm:h-9 sm:w-9">
+                            <UserPlus className="h-4 w-4" />
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="flex items-start justify-between gap-1.5 sm:gap-2">
+                              <span className="truncate text-[13px] font-semibold text-ink sm:text-sm">
+                                Nouveau compte client
+                              </span>
+                              {!notification.read && (
+                                <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-brand" />
+                              )}
+                            </span>
+                            <span className="mt-0.5 block truncate text-[11px] text-muted sm:text-xs">
+                              {account.customer_name ?? "Client"}
+                              {account.customer_phone
+                                ? ` · ${account.customer_phone}`
+                                : ""}
+                            </span>
+                            <span className="mt-0.5 block text-[11px] font-medium text-ink sm:text-xs">
+                              OTP envoyé par SMS
+                            </span>
+                            <span className="mt-0.5 block text-[10px] text-muted sm:text-[11px]">
+                              {formatTime(notification.receivedAt)}
+                            </span>
+                          </span>
+                        </div>
+                      </li>
+                    );
+                  }
                   const isNewOrder = notification.kind === "order.created";
                   const previousLabel = notification.data.previous_status
                     ? STATUS_LABELS[notification.data.previous_status]
@@ -121,11 +158,11 @@ export function NotificationsBell() {
                       <button
                         type="button"
                         onClick={() => openOrder(notification.data.order_id)}
-                        className="flex w-full items-start gap-3 px-3 py-3 text-left transition hover:bg-brand/5"
+                        className="flex w-full items-start gap-2.5 px-2.5 py-2.5 text-left transition hover:bg-brand/5 sm:gap-3 sm:px-3 sm:py-3"
                       >
                         <span
                           className={cn(
-                            "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
+                            "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl sm:h-9 sm:w-9",
                             isNewOrder
                               ? "bg-brand/15 text-brand"
                               : "bg-warning/15 text-warning"
@@ -138,15 +175,17 @@ export function NotificationsBell() {
                           )}
                         </span>
                         <span className="min-w-0 flex-1">
-                          <span className="flex items-start justify-between gap-2">
-                            <span className="truncate text-sm font-semibold text-ink">
-                              {isNewOrder ? "Nouvelle commande" : "Statut modifié"}
+                          <span className="flex items-start justify-between gap-1.5 sm:gap-2">
+                            <span className="truncate text-[13px] font-semibold text-ink sm:text-sm">
+                              {isNewOrder
+                                ? "Nouvelle commande"
+                                : "Statut modifié"}
                             </span>
                             {!notification.read && (
                               <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-brand" />
                             )}
                           </span>
-                          <span className="mt-0.5 block truncate text-xs text-muted">
+                          <span className="mt-0.5 block truncate text-[11px] text-muted sm:text-xs">
                             {notification.data.order_number
                               ? `#${notification.data.order_number}`
                               : `#${notification.data.order_id}`}
@@ -154,14 +193,14 @@ export function NotificationsBell() {
                               ? ` · ${notification.data.customer_name}`
                               : ""}
                           </span>
-                          <span className="mt-0.5 block text-xs font-medium text-ink">
+                          <span className="mt-0.5 block text-[11px] font-medium text-ink sm:text-xs">
                             {isNewOrder
                               ? `${nextLabel ?? ""} · ${formatAr(notification.data.total)}`
                               : previousLabel && nextLabel
                                 ? `${previousLabel} → ${nextLabel}`
                                 : (nextLabel ?? "")}
                           </span>
-                          <span className="mt-0.5 block text-[11px] text-muted">
+                          <span className="mt-0.5 block text-[10px] text-muted sm:text-[11px]">
                             {formatTime(notification.receivedAt)}
                           </span>
                         </span>

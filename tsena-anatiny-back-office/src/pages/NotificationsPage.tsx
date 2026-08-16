@@ -5,7 +5,8 @@ import {
   ChevronRight,
   RefreshCw,
   ShoppingCart,
-  Trash2
+  Trash2,
+  UserPlus
 } from "lucide-react";
 import { useNotifications } from "../contexts/NotificationsContext";
 import { Button, Card, Layout } from "../components/index";
@@ -35,13 +36,8 @@ const formatDateTime = (iso: string): string => {
 
 export function NotificationsPage() {
   const history = useHistory();
-  const {
-    notifications,
-    unreadCount,
-    isConnected,
-    markAllRead,
-    clear
-  } = useNotifications();
+  const { notifications, unreadCount, isConnected, markAllRead, clear } =
+    useNotifications();
 
   const openOrder = (orderId: number) => {
     history.push("/orders", { openOrderId: orderId });
@@ -65,7 +61,8 @@ export function NotificationsPage() {
               disabled={notifications.length === 0}
             >
               <CheckCheck className="mr-1.5 h-4 w-4" />
-              Tout marquer comme lu
+              <span className="hidden sm:inline">Tout marquer comme lu</span>
+              <span className="sm:hidden">Tout lu</span>
             </Button>
             <Button
               variant="ghost"
@@ -74,7 +71,8 @@ export function NotificationsPage() {
               disabled={notifications.length === 0}
             >
               <Trash2 className="mr-1.5 h-4 w-4" />
-              Tout effacer
+              <span className="hidden sm:inline">Tout effacer</span>
+              <span className="sm:hidden">Effacer</span>
             </Button>
           </>
         }
@@ -89,13 +87,52 @@ export function NotificationsPage() {
               Aucune notification pour le moment.
             </p>
             <p className="max-w-sm text-sm text-muted">
-              Les nouvelles commandes et les changements de statut
-              apparaîtront ici en temps réel.
+              Les nouvelles commandes et les changements de statut apparaîtront
+              ici en temps réel.
             </p>
           </div>
         ) : (
           <ul className="divide-y divide-border/50">
             {notifications.map((notification) => {
+              if (notification.kind === "account.created") {
+                const account = notification.data;
+                return (
+                  <li key={notification.id}>
+                    <div
+                      className={cn(
+                        "flex w-full items-start gap-3 px-2.5 py-3 sm:gap-4 sm:px-3 sm:py-4 md:px-6",
+                        !notification.read && "bg-brand/5"
+                      )}
+                    >
+                      <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand/15 text-brand sm:h-10 sm:w-10">
+                        <UserPlus className="h-4 w-4 sm:h-5 sm:w-5" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-start justify-between gap-2 sm:gap-3">
+                          <span className="truncate text-[13px] font-bold text-ink sm:text-sm">
+                            Nouveau compte client
+                          </span>
+                          {!notification.read && (
+                            <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand" />
+                          )}
+                        </span>
+                        <span className="mt-0.5 block truncate text-[11px] text-muted sm:text-xs">
+                          {account.customer_name ?? "Client"}
+                          {account.customer_phone
+                            ? ` · ${account.customer_phone}`
+                            : ""}
+                        </span>
+                        <span className="mt-0.5 block text-[13px] font-medium text-ink sm:text-sm">
+                          OTP envoyé par SMS
+                        </span>
+                        <span className="mt-0.5 block text-[10px] text-muted sm:text-[11px]">
+                          {formatDateTime(notification.receivedAt)}
+                        </span>
+                      </span>
+                    </div>
+                  </li>
+                );
+              }
               const isNewOrder = notification.kind === "order.created";
               const previousLabel = notification.data.previous_status
                 ? STATUS_LABELS[notification.data.previous_status]
@@ -112,40 +149,40 @@ export function NotificationsPage() {
                     type="button"
                     onClick={() => openOrder(notification.data.order_id)}
                     className={cn(
-                      "flex w-full items-start gap-4 px-3 py-4 text-left transition hover:bg-brand/5 sm:px-6",
+                      "flex w-full items-start gap-3 px-2.5 py-3 text-left transition hover:bg-brand/5 sm:gap-4 sm:px-3 sm:py-4 md:px-6",
                       !notification.read && "bg-brand/5"
                     )}
                   >
                     <span
                       className={cn(
-                        "mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
+                        "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl sm:h-10 sm:w-10",
                         isNewOrder
                           ? "bg-brand/15 text-brand"
                           : "bg-warning/15 text-warning"
                       )}
                     >
                       {isNewOrder ? (
-                        <ShoppingCart className="h-5 w-5" />
+                        <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5" />
                       ) : (
-                        <RefreshCw className="h-5 w-5" />
+                        <RefreshCw className="h-4 w-4 sm:h-5 sm:w-5" />
                       )}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="flex items-start justify-between gap-3">
-                        <span className="truncate text-sm font-bold text-ink">
+                      <span className="flex items-start justify-between gap-2 sm:gap-3">
+                        <span className="truncate text-[13px] font-bold text-ink sm:text-sm">
                           {isNewOrder ? "Nouvelle commande" : "Statut modifié"}
                         </span>
                         {!notification.read && (
                           <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand" />
                         )}
                       </span>
-                      <span className="mt-0.5 block truncate text-xs text-muted">
+                      <span className="mt-0.5 block truncate text-[11px] text-muted sm:text-xs">
                         {reference}
                         {notification.data.customer_name
                           ? ` · ${notification.data.customer_name}`
                           : ""}
                       </span>
-                      <span className="mt-0.5 block text-sm font-medium text-ink">
+                      <span className="mt-0.5 block text-[13px] font-medium text-ink sm:text-sm">
                         {isNewOrder
                           ? `${nextLabel ?? ""} · ${formatAr(
                               notification.data.total
@@ -154,11 +191,11 @@ export function NotificationsPage() {
                             ? `${previousLabel} → ${nextLabel}`
                             : (nextLabel ?? "")}
                       </span>
-                      <span className="mt-0.5 block text-[11px] text-muted">
+                      <span className="mt-0.5 block text-[10px] text-muted sm:text-[11px]">
                         {formatDateTime(notification.receivedAt)}
                       </span>
                     </span>
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-soft text-brand">
+                    <span className="hidden sm:flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-soft text-brand">
                       <ChevronRight className="h-4 w-4" />
                     </span>
                   </button>

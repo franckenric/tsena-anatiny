@@ -17,3 +17,4 @@ from app.models.orders import Orders # noqa
 from app.models.customers import Customers # noqa
 from app.models.categories import Categories # noqa
 from app.models.roles import Roles # noqa
+from app.models.otp_codes import OtpCodes # noqa

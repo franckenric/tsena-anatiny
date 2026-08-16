@@ -1,6 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useHistory, useLocation } from "react-router-dom";
-import { IonContent, IonHeader, IonPage } from "@ionic/react";
 import {
   Bell,
   Boxes,
@@ -130,9 +129,12 @@ export function Layout({ children, title }: LayoutProps) {
   );
 
   return (
-    <IonPage className="bg-bg">
-      <IonHeader className="ion-no-border">
-        <div className="border-b border-border/70 bg-panel/90 pt-[env(safe-area-inset-top)] backdrop-blur-md">
+    <div
+      className="bg-bg fixed inset-0 flex flex-col"
+      style={{ paddingTop: "env(safe-area-inset-top)" }}
+    >
+      <header>
+        <div className="border-b border-border/70 bg-panel/90 backdrop-blur-md">
           <div className="flex h-14 items-center gap-2 px-3 sm:px-5">
             <button
               type="button"
@@ -161,19 +163,20 @@ export function Layout({ children, title }: LayoutProps) {
             </button>
           </div>
         </div>
-      </IonHeader>
+      </header>
 
-      <IonContent>
-        <main className="animate-fade-up flex min-h-full flex-col gap-6 px-3 pb-20 pt-3 sm:px-5">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-none">
+        <main className="animate-fade-up flex min-h-full flex-col gap-6 px-3 pt-3 sm:px-5">
           {children}
         </main>
-      </IonContent>
+      </div>
 
       <div
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-panel/95 backdrop-blur-md"
+        className="shrink-0 bg-panel/95 backdrop-blur-md"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
-        <div className="mx-auto flex h-11 max-w-7xl items-stretch">
+        <nav className="border-t border-border">
+          <div className="mx-auto flex h-11 max-w-7xl items-stretch">
           {tabItems.map((tab) => {
             const active = isActive(tab.href);
             return (
@@ -192,6 +195,7 @@ export function Layout({ children, title }: LayoutProps) {
             );
           })}
         </div>
+        </nav>
       </div>
 
       {menuOpen && (
@@ -239,6 +243,6 @@ export function Layout({ children, title }: LayoutProps) {
           </div>
         </div>
       )}
-    </IonPage>
+    </div>
   );
 }

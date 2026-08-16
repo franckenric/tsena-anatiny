@@ -16,6 +16,7 @@ export interface CustomerSession {
   name: string;
   phone: string;
   delivery_address?: string;
+  otpVerified: boolean;
 }
 
 const CUSTOMER_KEY = "fo.customer";
@@ -24,7 +25,12 @@ const API_USER_KEY = "fo.api.user";
 function readStoredCustomer(): CustomerSession | null {
   try {
     const raw = localStorage.getItem(CUSTOMER_KEY);
-    return raw ? (JSON.parse(raw) as CustomerSession) : null;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as CustomerSession;
+    if (parsed.otpVerified === undefined) {
+      parsed.otpVerified = true;
+    }
+    return parsed;
   } catch {
     return null;
   }
@@ -46,6 +52,7 @@ interface AuthContextValue {
   login: (phone: string) => Promise<CustomerSession>;
   register: (payload: RegisterPayload) => Promise<CustomerSession>;
   logout: () => void;
+  verifyOtp: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -96,7 +103,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         id: found.id,
         name: found.name,
         phone: found.phone,
-        delivery_address: found.delivery_address
+        delivery_address: found.delivery_address,
+        otpVerified: true
       };
       persistCustomer(session);
       return session;
@@ -113,7 +121,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         id: created.id,
         name: created.name,
         phone: created.phone,
-        delivery_address: created.delivery_address
+        delivery_address: created.delivery_address,
+        otpVerified: false
       };
       persistCustomer(session);
       return session;
@@ -126,9 +135,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setCustomer(null);
   }, []);
 
+  const verifyOtp = useCallback(() => {
+    setCustomer((prev) => {
+      if (!prev) return prev;
+      const updated = { ...prev, otpVerified: true };
+      localStorage.setItem(CUSTOMER_KEY, JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
+
   const value = useMemo(
-    () => ({ isBooting, apiUser, customer, login, register, logout }),
-    [isBooting, apiUser, customer, login, register, logout]
+    () => ({ isBooting, apiUser, customer, login, register, logout, verifyOtp }),
+    [isBooting, apiUser, customer, login, register, logout, verifyOtp]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

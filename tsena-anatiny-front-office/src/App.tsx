@@ -18,6 +18,7 @@ import { CheckoutPage } from "./pages/CheckoutPage";
 import { OrderSuccessPage } from "./pages/OrderSuccessPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { LoginPage } from "./pages/LoginPage";
+import { OtpPage } from "./pages/OtpPage";
 import { AccountPage } from "./pages/AccountPage";
 import { NotificationsPage } from "./pages/NotificationsPage";
 import { useI18n } from "./contexts/I18nContext";
@@ -56,6 +57,9 @@ export default function App() {
         </Route>
         <Route exact path="/connexion">
           <LoginPage />
+        </Route>
+        <Route exact path="/verification">
+          <OtpPage />
         </Route>
         <Route exact path="/compte">
           <AccountPage />

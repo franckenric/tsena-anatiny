@@ -10,6 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@byteowls/capacitor-sms": "file:vendor/byteowls-capacitor-sms",
+    "@capacitor/android": "^8.5.0",
     "@capacitor/core": "^8.5.0",
     "@capacitor/ios": "^8.5.0",
     "@ionic/react": "^8.8.17",

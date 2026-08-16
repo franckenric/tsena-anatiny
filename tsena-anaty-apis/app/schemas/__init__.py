@@ -42,6 +42,7 @@ from .notifications import (
   NotificationsUpdate,
   ResponseNotifications
 )
+from .otp import OtpRequest, OtpVerifyRequest, OtpVerifyResponse
 from .register import RegisterRequest, RegisterResponse
 from .orders import ( 
   Orders,  

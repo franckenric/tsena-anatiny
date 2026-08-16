@@ -6,6 +6,7 @@ from .lot_expenses import LotExpenses
 from .lots import Lots
 from .notifications import Notifications
 from .orders import Orders
+from .otp_codes import OtpCodes
 from .products import Products
 from .product_images import ProductImages
 from .product_variants import ProductVariants

@@ -18,8 +18,10 @@ import type { Category } from "../types/product";
 import { Page } from "../components/Page";
 import { cn } from "../lib/utils";
 import { categoryEmoji, categoryGradient } from "../lib/categories";
+import { useI18n } from "../contexts/I18nContext";
 
 export function CategoriesPage() {
+  const { t } = useI18n();
   const history = useHistory();
   const { search } = useLocation();
 
@@ -63,11 +65,11 @@ export function CategoriesPage() {
       }
       setCounts(map);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erreur chargement");
+      setError(err instanceof Error ? err.message : t("error.generic"));
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void load();
@@ -99,10 +101,10 @@ export function CategoriesPage() {
           <div className="flex items-center justify-between gap-3">
             <div>
               <h1 className="font-display text-2xl font-bold text-ink">
-                Toutes les catégories
+                {t("categories.all")}
               </h1>
               <p className="mt-1 text-sm text-muted">
-                Sélectionnez une ou plusieurs catégories.
+                {t("categories.select")}
               </p>
             </div>
             {!isLoading && !error && (
@@ -129,17 +131,17 @@ export function CategoriesPage() {
               className="mt-1 inline-flex items-center gap-2 rounded-2xl bg-ink px-5 py-2.5 text-sm font-bold text-white transition hover:bg-ink/90 active:scale-95"
             >
               <RefreshCcw className="h-4 w-4" />
-              Réessayer
+              {t("common.retry")}
             </button>
           </div>
         ) : categories.length === 0 ? (
           <div className="mx-4 mt-6 flex flex-col items-center gap-3 rounded-[1.75rem] border border-border bg-panel p-14 text-center sm:mx-6">
             <Store className="h-12 w-12 text-muted" />
             <p className="text-lg font-semibold text-ink">
-              Aucune catégorie
+              {t("categories.empty")}
             </p>
             <p className="max-w-md text-sm text-muted">
-              Les catégories apparaîtront ici dès qu'elles seront créées.
+              {t("categories.emptyHint")}
             </p>
           </div>
         ) : (
@@ -158,7 +160,7 @@ export function CategoriesPage() {
                 <ShoppingBag className="h-4 w-4" />
               </span>
               <span className="min-w-0 flex-1 text-[13px] font-bold text-ink">
-                Tout
+                {t("common.all")}
               </span>
               <span className="shrink-0 rounded-full bg-brand-soft px-1.5 py-0.5 text-[10px] font-bold text-brand">
                 {totalCount}
@@ -214,7 +216,7 @@ export function CategoriesPage() {
                 <Plus className="h-4 w-4" />
               </span>
               <span className="min-w-0 flex-1 text-[13px] font-bold text-ink">
-                Voir tous les produits
+                {t("categories.allProducts")}
               </span>
               <span className="shrink-0 text-[11px] font-semibold text-muted">
                 {totalCount}
@@ -236,7 +238,7 @@ export function CategoriesPage() {
                 className="flex w-full items-center justify-center gap-2 rounded-2xl bg-brand px-6 py-3.5 text-sm font-bold text-white shadow-glow transition hover:bg-brand/90 active:scale-[0.98]"
               >
                 <ShoppingBag className="h-4 w-4" />
-                Afficher les {selectedCount} produits sélectionnés
+                {t("categories.show", { count: selectedCount })}
               </button>
             </div>
           </div>

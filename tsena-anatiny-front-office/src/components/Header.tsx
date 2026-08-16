@@ -6,6 +6,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useCart } from "../contexts/CartContext";
 import { useCartDrawer } from "../contexts/CartDrawerContext";
 import { useMobileMenu } from "../contexts/MobileMenuContext";
+import { useI18n } from "../contexts/I18nContext";
 import { NotificationsBell } from "./NotificationsBell";
 import { cn } from "../lib/utils";
 
@@ -14,6 +15,7 @@ export function Header() {
   const { count } = useCart();
   const { openCart } = useCartDrawer();
   const { openMenu } = useMobileMenu();
+  const { t, language, setLanguage } = useI18n();
   const history = useHistory();
 
   const [query, setQuery] = useState("");
@@ -31,7 +33,7 @@ export function Header() {
           <button
             type="button"
             onClick={openMenu}
-            aria-label="Ouvrir le menu"
+            aria-label={t("header.openMenu")}
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-ink transition hover:bg-bg md:hidden"
           >
             <Menu className="h-5 w-5" />
@@ -55,17 +57,40 @@ export function Header() {
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Rechercher un produit..."
+              placeholder={t("header.searchPlaceholder")}
               className="h-10 w-full rounded-full border border-border bg-bg pl-10 pr-4 text-sm text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
             />
           </form>
 
           <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
+            <div
+              role="group"
+              aria-label="Langue"
+              className="flex items-center overflow-hidden rounded-full border border-border bg-bg"
+            >
+              {(["fr", "mg"] as const).map((lang) => (
+                <button
+                  key={lang}
+                  type="button"
+                  onClick={() => setLanguage(lang)}
+                  aria-pressed={language === lang}
+                  className={cn(
+                    "h-8 px-2.5 text-[11px] font-bold uppercase transition",
+                    language === lang
+                      ? "bg-brand text-white"
+                      : "text-muted hover:bg-bg hover:text-ink"
+                  )}
+                >
+                  {lang}
+                </button>
+              ))}
+            </div>
+
             <button
               type="button"
               onClick={openCart}
               className="relative flex h-10 w-10 items-center justify-center rounded-xl text-muted transition hover:bg-bg hover:text-ink"
-              aria-label="Ouvrir le panier"
+              aria-label={t("header.openCart")}
             >
               <ShoppingBag className="h-5 w-5" />
               {count > 0 && (
@@ -99,8 +124,8 @@ export function Header() {
                     history.push("/");
                   }}
                   className="hidden h-10 w-10 items-center justify-center rounded-xl text-muted transition hover:bg-bg hover:text-ink sm:flex"
-                  aria-label="Se déconnecter"
-                  title="Se déconnecter"
+                  aria-label={t("header.logout")}
+                  title={t("header.logout")}
                 >
                   <LogOut className="h-4 w-4" />
                 </button>
@@ -111,13 +136,13 @@ export function Header() {
                   to="/connexion"
                   className="flex h-10 items-center rounded-xl px-3 text-sm font-semibold text-ink transition hover:bg-bg"
                 >
-                  Connexion
+                  {t("nav.login")}
                 </Link>
                 <Link
                   to="/inscription"
                   className="flex h-10 items-center rounded-xl bg-brand px-3 text-sm font-semibold text-white shadow-glow transition hover:bg-brand/90"
                 >
-                  S'inscrire
+                  {t("nav.createAccount")}
                 </Link>
               </div>
             )}

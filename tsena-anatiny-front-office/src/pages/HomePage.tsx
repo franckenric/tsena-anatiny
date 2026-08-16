@@ -44,6 +44,7 @@ import {
   resolveImageUrl
 } from "../lib/utils";
 import { categoryEmoji, categoryGradient } from "../lib/categories";
+import { useI18n } from "../contexts/I18nContext";
 
 const PAGE_SIZE = 200;
 
@@ -53,12 +54,12 @@ function productPrice(product: Product): number {
   return getProductDisplayPrice(product);
 }
 
-const SORT_LABELS: Record<SortKey, string> = {
-  pertinence: "Pertinence",
-  "price-asc": "Prix croissant",
-  "price-desc": "Prix décroissant",
-  name: "Nom (A → Z)",
-  newest: "Nouveautés"
+const SORT_KEYS: Record<SortKey, string> = {
+  pertinence: "home.sort.pertinence",
+  "price-asc": "home.sort.priceAsc",
+  "price-desc": "home.sort.priceDesc",
+  name: "home.sort.name",
+  newest: "home.sort.newest"
 };
 
 function isAvailable(product: Product): boolean {
@@ -66,21 +67,22 @@ function isAvailable(product: Product): boolean {
   return getProductTotalStock(product) > 0;
 }
 
-function greetingLabel(): string {
+function greetingKey(): string {
   const h = new Date().getHours();
-  if (h < 5) return "Bonsoir";
-  if (h < 12) return "Bonjour";
-  if (h < 18) return "Bon après-midi";
-  return "Bonsoir";
+  if (h < 5) return "home.greeting.night";
+  if (h < 12) return "home.greeting.morning";
+  if (h < 18) return "home.greeting.afternoon";
+  return "home.greeting.evening";
 }
 
 const TRUST = [
-  { icon: Banknote, label: "Paiement à la réception" },
-  { icon: Truck, label: "Livraison rapide" },
-  { icon: ShieldCheck, label: "Retours faciles" }
+  { icon: Banknote, labelKey: "home.trust.cod" },
+  { icon: Truck, labelKey: "home.trust.fastDelivery" },
+  { icon: ShieldCheck, labelKey: "home.trust.easyReturns" }
 ];
 
 function AnnouncementBar() {
+  const { t } = useI18n();
   return (
     <div className="bg-gradient-to-r from-[#9a3412] via-brand to-[#9a3412] text-white">
       <div className="mx-auto flex max-w-7xl items-center justify-center gap-2 px-4 py-2 text-center text-xs font-semibold tracking-wide sm:text-sm">
@@ -89,7 +91,7 @@ function AnnouncementBar() {
           <span className="relative inline-flex h-2 w-2 rounded-full bg-accent" />
         </span>
         <Truck className="h-3.5 w-3.5 shrink-0" />
-        <span>Livraison à domicile — paiement à la réception</span>
+        <span>{t("home.announcement")}</span>
       </div>
     </div>
   );
@@ -105,6 +107,7 @@ function GreetingHero({
   onNewest: () => void;
 }) {
   const { customer, isBooting } = useAuth();
+  const { t } = useI18n();
   const history = useHistory();
   const [query, setQuery] = useState("");
   const firstName = (customer?.name ?? "").trim().split(" ")[0] ?? "";
@@ -137,23 +140,23 @@ function GreetingHero({
             </span>
             <div className="min-w-0">
               <p className="text-[10px] font-bold uppercase tracking-widest text-white/70">
-                {greetingLabel()}
+                {t(greetingKey())}
               </p>
               <p className="truncate text-base font-bold">
                 {!isBooting && firstName
                   ? `${firstName} 👋`
-                  : "Bienvenue chez Tsena Anatiny"}
+                  : t("home.welcome")}
               </p>
             </div>
           </div>
 
           <h1 className="mt-5 font-display text-[2rem] font-extrabold leading-[1.05] tracking-tight sm:text-4xl">
-            Vos produits,
+            {t("home.heroTitle1")}
             <br />
-            livrés chez vous.
+            {t("home.heroTitle2")}
           </h1>
           <p className="mt-2.5 max-w-sm text-sm leading-relaxed text-white/85">
-            Produits frais, de qualité. Paiement à la réception, sans avance.
+            {t("home.heroSub")}
           </p>
 
           <form onSubmit={handleSearch} className="mt-5 max-w-md">
@@ -163,7 +166,7 @@ function GreetingHero({
                 type="search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Rechercher un produit..."
+                placeholder={t("header.searchPlaceholder")}
                 className="w-full rounded-2xl bg-white py-3.5 pl-12 pr-4 text-[15px] font-medium text-ink shadow-lg outline-none transition placeholder:text-muted/70 focus:ring-4 focus:ring-white/25"
               />
             </div>
@@ -175,7 +178,7 @@ function GreetingHero({
               onClick={onExplore}
               className="inline-flex items-center gap-2 rounded-2xl bg-white px-6 py-3.5 text-sm font-bold text-brand shadow-lg transition hover:bg-white/90 active:scale-95"
             >
-              Explorer la boutique
+              {t("home.explore")}
               <ArrowRight className="h-4 w-4" />
             </button>
             <button
@@ -184,19 +187,19 @@ function GreetingHero({
               className="inline-flex items-center gap-2 rounded-2xl bg-white/10 px-5 py-3.5 text-sm font-bold text-white ring-1 ring-white/25 transition hover:bg-white/20 active:scale-95"
             >
               <Flame className="h-4 w-4 text-accent" />
-              Nouveautés
+              {t("home.new")}
             </button>
           </div>
 
           <div className="mt-6 grid grid-cols-3 gap-2">
-            {TRUST.map(({ icon: Icon, label }) => (
+            {TRUST.map(({ icon: Icon, labelKey }) => (
               <div
-                key={label}
+                key={labelKey}
                 className="flex flex-col items-center gap-1 rounded-2xl bg-white/10 px-2 py-2.5 text-center ring-1 ring-white/15 backdrop-blur-sm"
               >
                 <Icon className="h-4 w-4 text-white" />
                 <span className="text-[10px] font-semibold leading-tight text-white/85">
-                  {label}
+                  {t(labelKey)}
                 </span>
               </div>
             ))}
@@ -213,7 +216,7 @@ function GreetingHero({
             <div className="flex items-center justify-between gap-2 bg-white px-3 py-2">
               <div className="min-w-0">
                 <p className="text-[9px] font-bold uppercase tracking-wider text-muted">
-                  En vedette
+                  {t("home.featured")}
                 </p>
                 <p className="truncate text-xs font-bold text-ink">
                   {featured.name}
@@ -280,6 +283,7 @@ function CategoryRail({
   onClearCategories: () => void;
   onExplore?: () => void;
 }) {
+  const { t } = useI18n();
   if (categories.length === 0) return null;
 
   const visible = categories.slice(0, 2);
@@ -290,10 +294,10 @@ function CategoryRail({
   return (
     <section className="mt-5 animate-fade-up">
       <SectionHeader
-        title="Catégories"
+        title={t("home.categories")}
         icon={Store}
         action={
-          onExplore ? { label: "Tout voir", onPress: onExplore } : undefined
+          onExplore ? { label: t("common.seeAll"), onPress: onExplore } : undefined
         }
       />
       <div className="mx-4 mt-2.5 space-y-1 sm:mx-6">
@@ -311,7 +315,7 @@ function CategoryRail({
             <ShoppingBag className="h-4 w-4" />
           </span>
           <span className="min-w-0 flex-1 text-[13px] font-bold text-ink">
-            Tout
+            {t("common.all")}
           </span>
           <span className="shrink-0 rounded-full bg-brand-soft px-1.5 py-0.5 text-[10px] font-bold text-brand">
             {totalCount}
@@ -369,7 +373,7 @@ function CategoryRail({
               <Plus className="h-4 w-4" />
             </span>
             <span className="min-w-0 flex-1 text-[13px] font-bold text-ink">
-              Toutes les catégories
+              {t("home.allCategories")}
             </span>
             <span className="shrink-0 text-[11px] font-semibold text-muted">
               {categories.length}
@@ -445,6 +449,7 @@ function ProductRail({
 }
 
 function PromoBanner({ onPress }: { onPress: () => void }) {
+  const { t } = useI18n();
   return (
     <section className="mx-4 mt-6 animate-fade-up sm:mx-6">
       <div className="relative overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-accent via-[hsl(24_92%_45%)] to-[hsl(8_85%_40%)] p-6 text-white shadow-glow sm:p-8">
@@ -456,12 +461,12 @@ function PromoBanner({ onPress }: { onPress: () => void }) {
           <div className="min-w-0">
             <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-white/85">
               <BadgePercent className="h-4 w-4" />
-              Bonne affaire
+              {t("home.goodDeal")}
             </p>
             <h2 className="mt-1.5 font-display text-lg font-bold leading-snug sm:text-xl">
-              Commandez maintenant,
+              {t("home.promoTitle1")}
               <br />
-              payez à la réception.
+              {t("home.promoTitle2")}
             </h2>
           </div>
           <button
@@ -469,7 +474,7 @@ function PromoBanner({ onPress }: { onPress: () => void }) {
             onClick={onPress}
             className="shrink-0 rounded-2xl bg-white px-4 py-2.5 text-sm font-bold text-brand shadow-card transition hover:bg-white/90 active:scale-95"
           >
-            Découvrir
+            {t("home.discover")}
           </button>
         </div>
       </div>
@@ -478,6 +483,7 @@ function PromoBanner({ onPress }: { onPress: () => void }) {
 }
 
 export function HomePage() {
+  const { t } = useI18n();
   const history = useHistory();
   const { search } = useLocation();
   const searchParams = new URLSearchParams(search);
@@ -519,13 +525,13 @@ export function HomePage() {
       setPage(pageToLoad);
       return true;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erreur chargement catalogue");
+      setError(err instanceof Error ? err.message : t("home.errorCatalog"));
       return false;
     } finally {
       if (append) setIsLoadingMore(false);
       else setIsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     let cancelled = false;
@@ -685,11 +691,11 @@ export function HomePage() {
 
         {!hasActiveFilter && newestProducts.length > 0 && (
           <ProductRail
-            title="Nouveautés"
+            title={t("home.new")}
             icon={Flame}
             delay={40}
             action={{
-              label: "Tout voir",
+              label: t("common.seeAll"),
               onPress: () => history.push("/nouveautes")
             }}
             products={newestProducts}
@@ -707,7 +713,7 @@ export function HomePage() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <h2 className="font-display text-xl font-bold text-ink">
-                {hasActiveFilter ? "Résultats" : "Tous les produits"}
+                {hasActiveFilter ? t("home.results") : t("home.allProducts")}
               </h2>
               {!isLoading && (
                 <span className="rounded-full bg-brand-soft px-2.5 py-0.5 text-xs font-bold text-brand">
@@ -717,16 +723,16 @@ export function HomePage() {
             </div>
             <label className="flex items-center gap-2">
               <span className="hidden text-xs font-semibold uppercase tracking-widest text-muted sm:block">
-                Trier
+                {t("home.sort")}
               </span>
               <select
                 value={sort}
                 onChange={(e) => setSort(e.target.value as SortKey)}
                 className="h-10 rounded-xl border border-border bg-panel px-3 text-sm font-medium text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
               >
-                {(Object.keys(SORT_LABELS) as SortKey[]).map((key) => (
+                {(Object.keys(SORT_KEYS) as SortKey[]).map((key) => (
                   <option key={key} value={key}>
-                    {SORT_LABELS[key]}
+                    {t(SORT_KEYS[key])}
                   </option>
                 ))}
               </select>
@@ -748,7 +754,7 @@ export function HomePage() {
                   {name}
                   <button
                     type="button"
-                    aria-label={`Retirer ${name}`}
+                    aria-label={t("home.removeCategory", { name })}
                     onClick={() => {
                       const id = categories.find((c) => c.name === name)?.id;
                       if (id != null) toggleCategory(id);
@@ -761,7 +767,7 @@ export function HomePage() {
               ))}
               {!hasActiveFilter && sort !== "pertinence" && (
                 <span className="rounded-full border border-border bg-panel px-3 py-1 text-xs font-medium text-muted">
-                  Tri : {SORT_LABELS[sort].toLowerCase()}
+                  {t("home.sortLabel", { sort: t(SORT_KEYS[sort]) })}
                 </span>
               )}
             </div>
@@ -781,17 +787,17 @@ export function HomePage() {
                 className="mt-1 inline-flex items-center gap-2 rounded-2xl bg-ink px-5 py-2.5 text-sm font-bold text-white transition hover:bg-ink/90 active:scale-95"
               >
                 <RefreshCcw className="h-4 w-4" />
-                Réessayer
+                {t("common.retry")}
               </button>
             </div>
           ) : filtered.length === 0 ? (
             <div className="mt-4 flex flex-col items-center gap-3 rounded-[1.75rem] border border-border bg-panel p-14 text-center">
               <PackageSearch className="h-12 w-12 text-muted" />
               <p className="text-lg font-semibold text-ink">
-                Aucun produit trouvé
+                {t("home.noResults")}
               </p>
               <p className="max-w-md text-sm text-muted">
-                Essayez de modifier votre recherche ou de changer de catégorie.
+                {t("home.noResultsHint")}
               </p>
             </div>
           ) : (
@@ -813,11 +819,11 @@ export function HomePage() {
                     {isLoadingMore ? (
                       <>
                         <span className="h-4 w-4 shrink-0 animate-spin-slow rounded-full border-2 border-current border-t-transparent" />
-                        Chargement...
+                        {t("common.loading")}
                       </>
                     ) : (
                       <>
-                        Voir plus
+                        {t("home.loadMore")}
                         <ArrowDown className="h-4 w-4" />
                       </>
                     )}
@@ -832,13 +838,13 @@ export function HomePage() {
           <ProductRail
             title={
               recentProducts.length > 0
-                ? "Recommandé pour vous"
-                : "À découvrir"
+                ? t("home.recommended")
+                : t("home.toDiscover")
             }
             icon={Sparkles}
             delay={80}
             action={{
-              label: "Tout voir",
+              label: t("common.seeAll"),
               onPress: () => history.push("/recommandes")
             }}
             products={recommended}

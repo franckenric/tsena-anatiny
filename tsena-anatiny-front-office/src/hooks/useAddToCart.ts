@@ -4,6 +4,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useCart } from "../contexts/CartContext";
 import { useCartDrawer } from "../contexts/CartDrawerContext";
 import { useToast } from "../contexts/ToastContext";
+import { useI18n } from "../contexts/I18nContext";
 import { cartItemsService } from "../services/operations.service";
 import type { Product } from "../types/product";
 
@@ -18,6 +19,7 @@ export function useAddToCart() {
   const { refresh } = useCart();
   const { openCart } = useCartDrawer();
   const { success, error } = useToast();
+  const { t } = useI18n();
   const history = useHistory();
   const location = useLocation();
 
@@ -45,19 +47,15 @@ export function useAddToCart() {
           unit_cost: unitCost > 0 ? unitCost : undefined
         });
         await refresh();
-        success(
-          `${quantity} article${quantity > 1 ? "s" : ""} ajouté${
-            quantity > 1 ? "s" : ""
-          } au panier`
-        );
+        success(t("cart.added", { count: quantity }));
         openCart();
         return true;
       } catch (err) {
-        error(err instanceof Error ? err.message : "Erreur ajout panier");
+        error(err instanceof Error ? err.message : t("error.addCart"));
         return false;
       }
     },
-    [customer, requireCustomer, refresh, success, error, openCart]
+    [customer, requireCustomer, refresh, success, error, openCart, t]
   );
 
   const addLines = useCallback(
@@ -75,19 +73,15 @@ export function useAddToCart() {
           });
         }
         await refresh();
-        success(
-          `${totalQty} article${totalQty > 1 ? "s" : ""} ajouté${
-            totalQty > 1 ? "s" : ""
-          } au panier`
-        );
+        success(t("cart.added", { count: totalQty }));
         openCart();
         return true;
       } catch (err) {
-        error(err instanceof Error ? err.message : "Erreur ajout panier");
+        error(err instanceof Error ? err.message : t("error.addCart"));
         return false;
       }
     },
-    [customer, requireCustomer, refresh, success, error, openCart]
+    [customer, requireCustomer, refresh, success, error, openCart, t]
   );
 
   return { requireCustomer, addSingle, addLines };

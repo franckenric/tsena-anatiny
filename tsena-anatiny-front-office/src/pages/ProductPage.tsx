@@ -21,6 +21,7 @@ import type { Product } from "../types/product";
 import { useAuth } from "../contexts/AuthContext";
 import { useCartDrawer } from "../contexts/CartDrawerContext";
 import { useToast } from "../contexts/ToastContext";
+import { useI18n } from "../contexts/I18nContext";
 import { useAddToCart, type CartLine } from "../hooks/useAddToCart";
 import { ProductDetailSkeleton } from "../components/Skeletons";
 import { Page } from "../components/Page";
@@ -40,6 +41,7 @@ export function ProductPage() {
   const { customer, isBooting } = useAuth();
   const { closeCart } = useCartDrawer();
   const { error: toastError } = useToast();
+  const { t } = useI18n();
   const { addSingle, addLines } = useAddToCart();
 
   const [product, setProduct] = useState<Product | null>(null);
@@ -96,7 +98,9 @@ export function ProductPage() {
       })
       .catch((err) => {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Erreur produit");
+          setError(
+            err instanceof Error ? err.message : t("error.product")
+          );
         }
       })
       .finally(() => {
@@ -105,7 +109,7 @@ export function ProductPage() {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, t]);
 
   useEffect(() => {
     if (product && hasVariants) {
@@ -155,7 +159,7 @@ export function ProductPage() {
     if (!product) return false;
     if (hasVariants) {
       if (totalQty <= 0) {
-        toastError("Veuillez choisir une quantité");
+        toastError(t("product.chooseQuantity"));
         return false;
       }
       setIsSubmitting(true);
@@ -180,8 +184,8 @@ export function ProductPage() {
     <button
       type="button"
       onClick={handleGoBack}
-      aria-label="Retour"
-      title="Retour"
+      aria-label={t("product.back")}
+      title={t("product.back")}
       className="fixed left-4 top-20 z-50 flex h-11 w-11 items-center justify-center rounded-full border border-border/70 bg-panel/90 text-ink shadow-lg backdrop-blur-md transition hover:bg-panel active:scale-95 sm:left-6"
     >
       <ArrowLeft className="h-5 w-5" />
@@ -208,9 +212,8 @@ export function ProductPage() {
               to="/"
               className="mt-4 inline-block text-sm font-semibold text-brand"
             >
-              Retour à la boutique
-            </Link>
-          </div>
+              {t("common.backToShop")}
+            </Link>          </div>
         </div>
       </Page>
     );
@@ -263,7 +266,7 @@ export function ProductPage() {
                   >
                     <img
                       src={url}
-                      alt={`Aperçu ${product.name}`}
+                      alt={t("product.preview", { name: product.name })}
                       className="h-full w-full object-cover"
                     />
                   </button>
@@ -292,12 +295,12 @@ export function ProductPage() {
                 {stock > 0 ? (
                   <>
                     <PackageCheck className="h-3.5 w-3.5" />
-                    {stock} en stock
+                    {t("common.inStock", { count: stock })}
                   </>
                 ) : (
                   <>
                     <PackageX className="h-3.5 w-3.5" />
-                    Rupture de stock
+                    {t("common.outOfStock")}
                   </>
                 )}
               </span>
@@ -308,14 +311,16 @@ export function ProductPage() {
             </h1>
 
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
-              <span>SKU : {product.sku}</span>
-              {product.unit && <span>Unité : {product.unit}</span>}
+              <span>{t("product.sku", { sku: product.sku })}</span>
+              {product.unit && (
+                <span>{t("product.unit", { unit: product.unit })}</span>
+              )}
             </div>
 
             {product.description && (
               <div className="rounded-2xl border border-border/60 bg-bg/30 p-4">
                 <p className="mb-1.5 text-[11px] font-bold uppercase tracking-widest text-muted">
-                  Description
+                  {t("common.description")}
                 </p>
                 <p className="whitespace-pre-line text-sm leading-relaxed text-ink">
                   {product.description}
@@ -328,11 +333,11 @@ export function ProductPage() {
               <div className="space-y-3">
                 <div className="flex items-baseline justify-between gap-3">
                   <p className="text-xs font-semibold uppercase tracking-widest text-muted">
-                    Variantes
+                    {t("product.variants")}
                   </p>
                   {displayPrice > 0 && (
                     <p className="text-sm text-muted">
-                      À partir de{" "}
+                      {t("product.from")}{" "}
                       <span className="font-bold text-brand">
                         {formatAr(displayPrice)}
                       </span>
@@ -362,11 +367,11 @@ export function ProductPage() {
                         <p className="text-xs text-muted">
                           {soldOut ? (
                             <span className="font-semibold text-danger">
-                              Épuisé
+                              {t("common.exhausted")}
                             </span>
                           ) : (
                             <>
-                              Stock : {lineStock} ·{" "}
+                              {t("product.stock", { count: lineStock })} ·{" "}
                               <span className="font-semibold text-brand">
                                 {formatAr(line.unit_cost)}
                               </span>
@@ -390,7 +395,7 @@ export function ProductPage() {
             ) : (
               <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border bg-panel p-4">
                 <div>
-                  <p className="text-sm text-muted">Prix unitaire</p>
+                  <p className="text-sm text-muted">{t("product.unitPrice")}</p>
                   <p className="text-3xl font-bold text-brand">
                     {formatAr(displayPrice)}
                   </p>
@@ -410,8 +415,8 @@ export function ProductPage() {
               <div className="flex items-center gap-2 text-sm font-semibold text-brand">
                 <ShoppingBag className="h-4 w-4" />
                 {totalQty > 0
-                  ? `${totalQty} article${totalQty > 1 ? "s" : ""}`
-                  : "Total"}
+                  ? t("common.article", { count: totalQty })
+                  : t("common.total")}
               </div>
               <span className="text-xl font-bold text-brand">
                 {formatAr(total)}
@@ -427,7 +432,7 @@ export function ProductPage() {
                 className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-brand px-6 py-3.5 text-sm font-bold text-white shadow-glow transition hover:bg-brand/90 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <ShoppingBag className="h-4 w-4" />
-                {isSubmitting ? "Ajout en cours..." : "Ajouter au panier"}
+                {isSubmitting ? t("product.adding") : t("product.addToCart")}
               </button>
               <button
                 type="button"
@@ -441,20 +446,20 @@ export function ProductPage() {
                 }}
                 className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-ink px-6 py-3.5 text-sm font-bold text-ink transition hover:bg-ink hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Acheter maintenant
+                {t("product.buyNow")}
               </button>
             </div>
 
             <p className="flex items-center gap-1.5 text-xs text-muted">
               <Truck className="h-3.5 w-3.5" />
-              Livraison rapide · Paiement à la livraison
+              {t("product.quickDelivery")}
             </p>
 
             {!customer && !isBooting && (
               <p className="text-xs text-muted">
-                Vous devez avoir un compte pour commander.{" "}
+                {t("product.needAccount")}{" "}
                 <Link to="/inscription" className="font-semibold text-brand">
-                  Créer un compte
+                  {t("auth.createAccount")}
                 </Link>
               </p>
             )}
@@ -467,7 +472,7 @@ export function ProductPage() {
         <div className="flex items-center gap-3">
           <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-widest text-muted">
-              Total
+              {t("common.total")}
             </p>
             <p className="text-lg font-bold text-brand">{formatAr(total)}</p>
           </div>
@@ -479,10 +484,10 @@ export function ProductPage() {
           >
             <ShoppingBag className="h-4 w-4" />
             {hasVariants && totalQty <= 0 && stock > 0
-              ? "Choisir une variante"
+              ? t("product.chooseVariant")
               : isSubmitting
-                ? "Ajout en cours..."
-                : "Ajouter au panier"}
+                ? t("product.adding")
+                : t("product.addToCart")}
           </button>
         </div>
       </div>

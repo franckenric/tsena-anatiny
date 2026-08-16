@@ -15,10 +15,12 @@ import {
   type OrderLineItem
 } from "../lib/orders";
 import { useAuth } from "../contexts/AuthContext";
+import { useI18n } from "../contexts/I18nContext";
 
 export function OrderSuccessPage() {
   const { orderId } = useParams<{ orderId: string }>();
   const { customer } = useAuth();
+  const { t } = useI18n();
   const [order, setOrder] = useState<Order | null>(null);
   const [fallbackItems, setFallbackItems] = useState<OrderLineItem[] | null>(
     null
@@ -30,7 +32,7 @@ export function OrderSuccessPage() {
     let cancelled = false;
     const id = Number(orderId);
     if (!Number.isFinite(id)) {
-      setError("Commande introuvable");
+      setError(t("order.notFound"));
       setIsLoading(false);
       return;
     }
@@ -54,7 +56,7 @@ export function OrderSuccessPage() {
       })
       .catch((err) => {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Erreur chargement");
+          setError(err instanceof Error ? err.message : t("error.generic"));
         }
       })
       .finally(() => {
@@ -63,12 +65,12 @@ export function OrderSuccessPage() {
     return () => {
       cancelled = true;
     };
-  }, [orderId, customer]);
+  }, [orderId, customer, t]);
 
   if (isLoading) {
     return (
       <Page>
-        <PageLoader label="Chargement de la commande..." />
+        <PageLoader label={t("order.loading")} />
       </Page>
     );
   }
@@ -78,10 +80,10 @@ export function OrderSuccessPage() {
       <Page>
         <div className="mx-auto flex max-w-7xl flex-col items-center gap-4 px-4 py-20 text-center sm:px-6">
           <p className="text-2xl font-bold text-ink">
-            {error ?? "Commande introuvable"}
+            {error ?? t("order.notFound")}
           </p>
           <Link to="/" className="text-sm font-semibold text-brand">
-            Retour à la boutique
+            {t("common.backToShop")}
           </Link>
         </div>
       </Page>
@@ -116,32 +118,32 @@ export function OrderSuccessPage() {
         </div>
         <h1 className="mt-4 text-2xl font-bold text-ink">
           {isConfirmed
-            ? "Merci, votre commande est confirmée !"
-            : "Merci, votre commande a bien été enregistrée !"}
+            ? t("order.confirmedTitle")
+            : t("order.createdTitle")}
         </h1>
         <p className="mt-2 text-sm text-muted">
-          Commande{" "}
+          {t("order.cmd")}{" "}
           <span className="font-semibold text-ink">
             {order.order_number ?? `#${order.id}`}
           </span>{" "}
-          du {formatDate(order.created_at)}
+          {t("order.on")} {formatDate(order.created_at)}
         </p>
         <div className="mt-4 flex flex-col items-center justify-center gap-3">
           <StatusBadge status={status} />
           <p className="text-xs text-muted">
             {isConfirmed
-              ? "Le paiement s'effectue à la livraison."
-              : "Un conseiller vérifie votre commande avant validation."}
+              ? t("order.confirmedHint")
+              : t("order.draftHint")}
           </p>
         </div>
       </div>
 
       <div className="mt-6 rounded-3xl border border-border bg-panel p-6 shadow-card">
-        <h2 className="text-lg font-bold text-ink">Récapitulatif</h2>
+        <h2 className="text-lg font-bold text-ink">{t("order.title")}</h2>
         <ul className="mt-4 divide-y divide-border">
           {items.length === 0 && (
             <li className="py-3 text-sm text-muted">
-              Aucun article pour le moment.
+              {t("order.noItems")}
             </li>
           )}
           {items.map((item, index) => (
@@ -154,8 +156,8 @@ export function OrderSuccessPage() {
                   {item.product_name}
                 </p>
                 <p className="text-xs text-muted">
-                  {item.variant_name ? `Variante: ${item.variant_name} · ` : ""}
-                  Qté: {item.quantity}
+                  {item.variant_name ? `${t("common.variant")}: ${item.variant_name} · ` : ""}
+                  {t("common.quantity")}: {item.quantity}
                 </p>
               </div>
               <span className="shrink-0 font-semibold text-ink">
@@ -166,13 +168,13 @@ export function OrderSuccessPage() {
         </ul>
         <dl className="mt-4 space-y-2 border-t border-border pt-4 text-sm">
           <div className="flex justify-between">
-            <dt className="text-muted">Sous-total</dt>
+            <dt className="text-muted">{t("common.subtotal")}</dt>
             <dd className="font-semibold text-ink">{formatAr(productsTotal)}</dd>
           </div>
           {otherPrice > 0 && (
             <div className="flex justify-between">
               <dt className="max-w-[60%] text-muted">
-                Frais supplémentaires
+                {t("order.extraFees")}
                 {otherPriceReason ? ` (${otherPriceReason})` : ""}
               </dt>
               <dd className="font-semibold text-ink">
@@ -181,7 +183,7 @@ export function OrderSuccessPage() {
             </div>
           )}
           <div className="flex justify-between border-t border-border pt-3">
-            <span className="font-bold text-ink">Total</span>
+            <span className="font-bold text-ink">{t("common.total")}</span>
             <span className="text-xl font-bold text-brand">
               {formatAr(total)}
             </span>
@@ -191,7 +193,7 @@ export function OrderSuccessPage() {
 
       {order.customer?.delivery_address && (
         <div className="mt-6 rounded-3xl border border-border bg-panel p-6 shadow-card">
-          <h2 className="text-lg font-bold text-ink">Livraison</h2>
+          <h2 className="text-lg font-bold text-ink">{t("order.delivery")}</h2>
           <p className="mt-2 text-sm text-muted">
             {order.customer.delivery_address}
           </p>
@@ -204,10 +206,10 @@ export function OrderSuccessPage() {
           className="inline-flex items-center gap-2 rounded-2xl bg-brand px-6 py-3 text-sm font-bold text-white shadow-glow transition hover:bg-brand/90"
         >
           <PackageCheck className="h-4 w-4" />
-          Suivre mes commandes
+          {t("order.track")}
         </Link>
         <Link to="/" className="text-sm font-semibold text-muted hover:text-brand">
-          Continuer mes achats
+          {t("order.continue")}
         </Link>
       </div>
       </div>

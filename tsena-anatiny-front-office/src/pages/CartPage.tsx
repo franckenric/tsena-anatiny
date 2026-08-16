@@ -3,6 +3,7 @@ import { Link, useHistory } from "react-router-dom";
 import { ArrowRight, ShoppingCart, Trash2 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { useCart } from "../contexts/CartContext";
+import { useI18n } from "../contexts/I18nContext";
 import { cartItemsService } from "../services/operations.service";
 import type { CartItem } from "../types/operations";
 import { PageLoader } from "../components/Spinner";
@@ -13,6 +14,7 @@ import { formatAr, resolveImageUrl } from "../lib/utils";
 export function CartPage() {
   const { customer, isBooting } = useAuth();
   const { refresh } = useCart();
+  const { t } = useI18n();
   const history = useHistory();
 
   const [items, setItems] = useState<CartItem[]>([]);
@@ -28,11 +30,11 @@ export function CartPage() {
       const data = await cartItemsService.getCartItemsWithProducts(customer.id);
       setItems(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erreur chargement panier");
+      setError(err instanceof Error ? err.message : t("error.loadCart"));
     } finally {
       setIsLoading(false);
     }
-  }, [customer]);
+  }, [customer, t]);
 
   useEffect(() => {
     if (isBooting) return;
@@ -61,7 +63,7 @@ export function CartPage() {
       setItems((prev) =>
         prev.map((i) => (i.id === item.id ? { ...i, quantity: previous } : i))
       );
-      setError(err instanceof Error ? err.message : "Erreur mise à jour");
+      setError(err instanceof Error ? err.message : t("error.update"));
     } finally {
       setIsUpdatingId(null);
     }
@@ -75,7 +77,7 @@ export function CartPage() {
       await cartItemsService.deleteCartItem(id);
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erreur suppression");
+      setError(err instanceof Error ? err.message : t("error.delete"));
       await load();
     } finally {
       setIsUpdatingId(null);
@@ -100,22 +102,20 @@ export function CartPage() {
       <Page>
         <div className="mx-auto flex max-w-7xl flex-col items-center gap-4 px-4 py-20 text-center sm:px-6">
           <ShoppingCart className="h-12 w-12 text-muted" />
-          <h1 className="text-2xl font-bold text-ink">Votre panier est vide</h1>
-          <p className="max-w-md text-muted">
-            Connectez-vous ou créez un compte pour commencer vos achats.
-          </p>
+          <h1 className="text-2xl font-bold text-ink">{t("cart.empty")}</h1>
+          <p className="max-w-md text-muted">{t("cart.loginHint")}</p>
           <div className="flex gap-3">
             <Link
               to="/connexion"
               className="rounded-2xl bg-ink px-6 py-3 text-sm font-bold text-white transition hover:bg-ink/90"
             >
-              Se connecter
+              {t("nav.login")}
             </Link>
             <Link
               to="/inscription"
               className="rounded-2xl bg-brand px-6 py-3 text-sm font-bold text-white transition hover:bg-brand/90"
             >
-              Créer un compte
+              {t("nav.createAccount")}
             </Link>
           </div>
         </div>
@@ -126,7 +126,7 @@ export function CartPage() {
   if (isLoading) {
     return (
       <Page>
-        <PageLoader label="Chargement du panier..." />
+        <PageLoader label={t("common.loading")} />
       </Page>
     );
   }
@@ -136,15 +136,13 @@ export function CartPage() {
       <Page>
         <div className="mx-auto flex max-w-7xl flex-col items-center gap-4 px-4 py-20 text-center sm:px-6">
           <ShoppingCart className="h-12 w-12 text-muted" />
-          <h1 className="text-2xl font-bold text-ink">Votre panier est vide</h1>
-          <p className="max-w-md text-muted">
-            Parcourez la boutique et ajoutez des produits à votre panier.
-          </p>
+          <h1 className="text-2xl font-bold text-ink">{t("cart.empty")}</h1>
+          <p className="max-w-md text-muted">{t("cart.browseHint")}</p>
           <Link
             to="/"
             className="inline-flex items-center gap-2 rounded-2xl bg-brand px-6 py-3 text-sm font-bold text-white shadow-glow transition hover:bg-brand/90"
           >
-            Voir la boutique
+            {t("common.seeShop")}
             <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
@@ -155,7 +153,9 @@ export function CartPage() {
   return (
     <Page>
       <div className="mx-auto max-w-7xl px-4 py-10 pb-12 sm:px-6">
-      <h1 className="text-2xl font-bold text-ink sm:text-3xl">Mon panier</h1>
+      <h1 className="text-2xl font-bold text-ink sm:text-3xl">
+        {t("cart.myCart")}
+      </h1>
 
       {error && (
         <div className="mt-4 rounded-xl border border-danger/30 bg-danger/5 px-3 py-2.5 text-sm text-danger">
@@ -199,7 +199,7 @@ export function CartPage() {
                   </Link>
                   {variantName && (
                     <p className="mt-0.5 text-xs text-muted">
-                      Variante: {variantName}
+                      {t("common.variant")}: {variantName}
                     </p>
                   )}
                   <p className="mt-1 text-sm font-bold text-brand">
@@ -222,7 +222,7 @@ export function CartPage() {
                   type="button"
                   onClick={() => handleRemove(item.id)}
                   disabled={isUpdatingId === item.id}
-                  aria-label="Retirer du panier"
+                  aria-label={t("cart.remove")}
                   className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-muted transition hover:bg-danger/10 hover:text-danger disabled:opacity-40"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -233,18 +233,22 @@ export function CartPage() {
         </div>
 
         <div className="h-fit rounded-3xl border border-border bg-panel p-6 shadow-card lg:sticky lg:top-24">
-          <h2 className="text-lg font-bold text-ink">Récapitulatif</h2>
+          <h2 className="text-lg font-bold text-ink">
+            {t("order.title")}
+          </h2>
           <dl className="mt-4 space-y-2 text-sm">
             <div className="flex justify-between">
-              <dt className="text-muted">Sous-total</dt>
+              <dt className="text-muted">{t("common.subtotal")}</dt>
               <dd className="font-semibold text-ink">{formatAr(subtotal)}</dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-muted">Livraison</dt>
-              <dd className="font-semibold text-ink">À convenir</dd>
+              <dt className="text-muted">{t("common.delivery")}</dt>
+              <dd className="font-semibold text-ink">
+                {t("common.toConvene")}
+              </dd>
             </div>
             <div className="flex justify-between border-t border-border pt-3">
-              <dt className="font-bold text-ink">Total</dt>
+              <dt className="font-bold text-ink">{t("common.total")}</dt>
               <dd className="text-xl font-bold text-brand">
                 {formatAr(subtotal)}
               </dd>
@@ -255,14 +259,14 @@ export function CartPage() {
             onClick={() => history.push("/commande")}
             className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-brand px-6 py-3.5 text-sm font-bold text-white shadow-glow transition hover:bg-brand/90"
           >
-            Passer commande
+            {t("cart.checkout")}
             <ArrowRight className="h-4 w-4" />
           </button>
           <Link
             to="/"
             className="mt-3 block text-center text-sm font-semibold text-muted transition hover:text-brand"
           >
-            Continuer mes achats
+            {t("common.continueShopping")}
           </Link>
         </div>
       </div>

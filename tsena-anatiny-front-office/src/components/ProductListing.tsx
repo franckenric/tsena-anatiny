@@ -3,6 +3,7 @@ import { ArrowLeft, PackageSearch } from "lucide-react";
 import { Page } from "./Page";
 import { ProductCard } from "./ProductCard";
 import { ProductGridSkeleton } from "./Skeletons";
+import { useI18n } from "../contexts/I18nContext";
 import type { Product } from "../types/product";
 
 interface ProductListingProps {
@@ -24,6 +25,7 @@ export function ProductListing({
   error,
   onRetry
 }: ProductListingProps) {
+  const { t } = useI18n();
   return (
     <Page>
       <div className="mx-auto max-w-7xl px-4 py-6 pb-12 sm:px-6">
@@ -32,7 +34,7 @@ export function ProductListing({
           className="inline-flex items-center gap-1.5 text-sm font-medium text-muted transition hover:text-ink"
         >
           <ArrowLeft className="h-4 w-4" />
-          Retour à la boutique
+          {t("common.backToShop")}
         </Link>
 
         <header className="mt-4 flex flex-wrap items-center justify-between gap-3">
@@ -63,7 +65,7 @@ export function ProductListing({
                 onClick={onRetry}
                 className="inline-flex items-center gap-2 rounded-2xl bg-ink px-5 py-2.5 text-sm font-bold text-white transition hover:bg-ink/90 active:scale-95"
               >
-                Réessayer
+                {t("common.retry")}
               </button>
             )}
           </div>
@@ -75,7 +77,7 @@ export function ProductListing({
               to="/"
               className="inline-flex items-center gap-2 rounded-2xl bg-brand px-5 py-2.5 text-sm font-bold text-white shadow-glow transition hover:bg-brand/90 active:scale-95"
             >
-              Découvrir la boutique
+              {t("common.discoverShop")}
             </Link>
           </div>
         ) : (

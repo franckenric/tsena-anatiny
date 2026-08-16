@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Link, useHistory, useLocation } from "react-router-dom";
 import { UserPlus } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
+import { useI18n } from "../contexts/I18nContext";
 import { PhoneInput } from "../components/PhoneInput";
 import { Spinner } from "../components/Spinner";
 import { Page } from "../components/Page";
@@ -13,6 +14,7 @@ import {
 
 export function RegisterPage() {
   const { register } = useAuth();
+  const { t } = useI18n();
   const history = useHistory();
   const location = useLocation();
   const from =
@@ -30,15 +32,15 @@ export function RegisterPage() {
     setError(null);
 
     if (!name.trim()) {
-      setError("Veuillez saisir votre nom.");
+      setError(t("auth.needName"));
       return;
     }
     if (isPhonePrefixOnly(phone) || !PHONE_FORMAT_REGEX.test(phone)) {
-      setError("Numéro de téléphone invalide.");
+      setError(t("auth.invalidPhone"));
       return;
     }
     if (password.length < 6) {
-      setError("Le mot de passe doit contenir au moins 6 caractères.");
+      setError(t("auth.passwordShort"));
       return;
     }
 
@@ -52,7 +54,9 @@ export function RegisterPage() {
       });
       history.replace(from);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erreur lors de l'inscription");
+      setError(
+        err instanceof Error ? err.message : t("auth.registerError")
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -66,10 +70,10 @@ export function RegisterPage() {
           <UserPlus className="h-6 w-6 text-brand" />
         </div>
         <h1 className="mt-4 text-center text-2xl font-bold text-ink">
-          Créer un compte
+          {t("auth.registerTitle")}
         </h1>
         <p className="mt-1 text-center text-sm text-muted">
-          Enregistrez vos informations pour passer commande.
+          {t("auth.registerSub")}
         </p>
 
         {error && (
@@ -84,7 +88,7 @@ export function RegisterPage() {
               htmlFor="name"
               className="text-xs font-semibold uppercase tracking-widest text-muted"
             >
-              Nom complet
+              {t("auth.fullName")}
             </label>
             <input
               id="name"
@@ -102,7 +106,7 @@ export function RegisterPage() {
               htmlFor="phone"
               className="text-xs font-semibold uppercase tracking-widest text-muted"
             >
-              Téléphone
+              {t("auth.phone")}
             </label>
             <div className="mt-2">
               <PhoneInput
@@ -119,14 +123,14 @@ export function RegisterPage() {
               htmlFor="password"
               className="text-xs font-semibold uppercase tracking-widest text-muted"
             >
-              Mot de passe
+              {t("auth.password")}
             </label>
             <input
               id="password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Au moins 6 caractères"
+              placeholder={t("auth.passwordHint")}
               autoComplete="new-password"
               className="mt-2 h-11 w-full rounded-xl border border-border bg-bg px-3 text-sm text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
             />
@@ -137,7 +141,7 @@ export function RegisterPage() {
               htmlFor="address"
               className="text-xs font-semibold uppercase tracking-widest text-muted"
             >
-              Adresse de livraison (optionnel)
+              {t("auth.addressOptional")}
             </label>
             <input
               id="address"
@@ -158,21 +162,21 @@ export function RegisterPage() {
             {isSubmitting ? (
               <>
                 <Spinner className="h-4 w-4" />
-                Création...
+                {t("auth.creating")}
               </>
             ) : (
-              "Créer mon compte"
+              t("auth.createMyAccount")
             )}
           </button>
         </form>
 
         <p className="mt-6 text-center text-sm text-muted">
-          Déjà inscrit ?{" "}
+          {t("auth.alreadyRegistered")}{" "}
           <Link
             to={{ pathname: "/connexion", state: { from } }}
             className="font-semibold text-brand hover:underline"
           >
-            Se connecter
+            {t("auth.loginBtn")}
           </Link>
         </p>
       </div>

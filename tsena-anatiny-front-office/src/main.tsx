@@ -17,6 +17,7 @@ import "@ionic/react/css/display.css";
 
 import "./index.css";
 import App from "./App";
+import { I18nProvider } from "./contexts/I18nContext";
 import { AuthProvider } from "./contexts/AuthContext";
 import { NotificationsProvider } from "./contexts/NotificationsContext";
 import { CartProvider } from "./contexts/CartContext";
@@ -30,19 +31,21 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <IonApp>
       <IonReactRouter>
-        <AuthProvider>
-          <NotificationsProvider>
-            <CartProvider>
-              <ToastProvider>
-                <CartDrawerProvider>
-                  <MobileMenuProvider>
-                    <App />
-                  </MobileMenuProvider>
-                </CartDrawerProvider>
-              </ToastProvider>
-            </CartProvider>
-          </NotificationsProvider>
-        </AuthProvider>
+        <I18nProvider>
+          <AuthProvider>
+            <NotificationsProvider>
+              <CartProvider>
+                <ToastProvider>
+                  <CartDrawerProvider>
+                    <MobileMenuProvider>
+                      <App />
+                    </MobileMenuProvider>
+                  </CartDrawerProvider>
+                </ToastProvider>
+              </CartProvider>
+            </NotificationsProvider>
+          </AuthProvider>
+        </I18nProvider>
       </IonReactRouter>
     </IonApp>
   </StrictMode>

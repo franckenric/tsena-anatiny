@@ -1,4 +1,5 @@
 import { cn } from "../lib/utils";
+import { useI18n } from "../contexts/I18nContext";
 
 interface QuantityInputProps {
   value: number;
@@ -17,6 +18,7 @@ export function QuantityInput({
   disabled,
   className
 }: QuantityInputProps) {
+  const { t } = useI18n();
   const safeValue = Number.isFinite(value) ? value : min;
 
   const clamp = (next: number) => {
@@ -39,7 +41,7 @@ export function QuantityInput({
         type="button"
         onClick={() => update(safeValue - 1)}
         disabled={disabled || safeValue <= min}
-        aria-label="Diminuer"
+        aria-label={t("cart.decrease")}
         className="flex h-8 w-8 items-center justify-center rounded-lg text-ink transition hover:bg-bg disabled:cursor-not-allowed disabled:opacity-40"
       >
         −
@@ -57,7 +59,7 @@ export function QuantityInput({
         type="button"
         onClick={() => update(safeValue + 1)}
         disabled={disabled || (max != null && safeValue >= max)}
-        aria-label="Augmenter"
+        aria-label={t("cart.increase")}
         className="flex h-8 w-8 items-center justify-center rounded-lg text-ink transition hover:bg-bg disabled:cursor-not-allowed disabled:opacity-40"
       >
         +

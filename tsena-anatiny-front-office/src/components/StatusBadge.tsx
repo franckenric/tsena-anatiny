@@ -1,33 +1,35 @@
 import { cn } from "../lib/utils";
+import { useI18n } from "../contexts/I18nContext";
 import type { OrderStatus } from "../types/operations";
 
 const STATUS_META: Record<
   OrderStatus,
-  { label: string; className: string; dot: string }
+  { labelKey: string; className: string; dot: string }
 > = {
   draft: {
-    label: "En cours",
+    labelKey: "status.draft",
     className: "bg-blue-100 text-blue-700",
     dot: "bg-blue-600"
   },
   confirmed: {
-    label: "Confirmée",
+    labelKey: "status.confirmed",
     className: "bg-brand-soft text-brand",
     dot: "bg-brand"
   },
   delivered: {
-    label: "Livrée",
+    labelKey: "status.delivered",
     className: "bg-sky-100 text-sky-700",
     dot: "bg-sky-600"
   },
   cancelled: {
-    label: "Annulée",
+    labelKey: "status.cancelled",
     className: "bg-red-100 text-red-700",
     dot: "bg-red-600"
   }
 };
 
 export function StatusBadge({ status }: { status?: OrderStatus }) {
+  const { t } = useI18n();
   const meta = STATUS_META[status ?? "draft"] ?? STATUS_META.draft;
   return (
     <span
@@ -37,7 +39,7 @@ export function StatusBadge({ status }: { status?: OrderStatus }) {
       )}
     >
       <span className={cn("h-1.5 w-1.5 rounded-full", meta.dot)} />
-      {meta.label}
+      {t(meta.labelKey)}
     </span>
   );
 }

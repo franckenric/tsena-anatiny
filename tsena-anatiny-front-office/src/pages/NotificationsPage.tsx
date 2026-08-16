@@ -10,15 +10,16 @@ import {
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { useNotifications } from "../contexts/NotificationsContext";
+import { useI18n } from "../contexts/I18nContext";
 import { PageLoader } from "../components/Spinner";
 import { Page } from "../components/Page";
 import { cn, formatAr, formatDate } from "../lib/utils";
 
-const STATUS_LABELS: Record<string, string> = {
-  draft: "En cours",
-  confirmed: "Confirmée",
-  delivered: "Livrée",
-  cancelled: "Annulée"
+const STATUS_KEYS: Record<string, string> = {
+  draft: "status.draft",
+  confirmed: "status.confirmed",
+  delivered: "status.delivered",
+  cancelled: "status.cancelled"
 };
 
 const formatTime = (iso?: string | null): string => {
@@ -33,6 +34,7 @@ const formatTime = (iso?: string | null): string => {
 
 export function NotificationsPage() {
   const history = useHistory();
+  const { t } = useI18n();
   const { customer, isBooting } = useAuth();
   const { notifications, unreadCount, isLoading, refresh, markAllRead, clear } =
     useNotifications();
@@ -58,10 +60,10 @@ export function NotificationsPage() {
           </div>
           <div>
             <h1 className="font-display text-2xl font-extrabold text-ink">
-              Connectez-vous
+              {t("notifications.loginTitle")}
             </h1>
             <p className="mt-2 text-sm leading-relaxed text-muted">
-              Suivez l'évolution de vos commandes.
+              {t("notifications.loginSub")}
             </p>
           </div>
           <div className="flex w-full flex-col gap-3">
@@ -69,14 +71,14 @@ export function NotificationsPage() {
               to="/connexion"
               className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-ink px-6 py-3.5 text-sm font-bold text-white transition hover:bg-ink/90 active:scale-[0.98]"
             >
-              Se connecter
+              {t("nav.login")}
               <ArrowRight className="h-4 w-4" />
             </Link>
             <Link
               to="/inscription"
               className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-brand px-6 py-3.5 text-sm font-bold text-white shadow-glow transition hover:bg-brand/90 active:scale-[0.98]"
             >
-              Créer un compte
+              {t("nav.createAccount")}
             </Link>
           </div>
         </div>
@@ -96,12 +98,12 @@ export function NotificationsPage() {
                 </span>
                 <div>
                   <h1 className="font-display text-lg font-bold text-ink">
-                    Mes notifications
+                    {t("notifications.title")}
                   </h1>
                   <p className="text-xs text-muted">
                     {unreadCount > 0
-                      ? `${unreadCount} non lue${unreadCount > 1 ? "s" : ""}`
-                      : "Tout est à jour"}
+                      ? t("notifications.unread", { count: unreadCount })
+                      : t("notifications.upToDate")}
                   </p>
                 </div>
               </div>
@@ -113,7 +115,7 @@ export function NotificationsPage() {
                   className="inline-flex items-center gap-1.5 rounded-xl bg-brand-soft px-3 py-2 text-xs font-bold text-brand transition hover:bg-brand/15 active:scale-95 disabled:pointer-events-none disabled:opacity-50"
                 >
                   <CheckCheck className="h-3.5 w-3.5" />
-                  Tout marquer comme lu
+                  {t("notifications.markAllRead")}
                 </button>
                 <button
                   type="button"
@@ -122,7 +124,7 @@ export function NotificationsPage() {
                   className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-panel px-3 py-2 text-xs font-bold text-muted transition hover:bg-bg hover:text-ink active:scale-95 disabled:pointer-events-none disabled:opacity-50"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
-                  Effacer
+                  {t("notifications.clear")}
                 </button>
               </div>
             </div>
@@ -139,10 +141,10 @@ export function NotificationsPage() {
                   <Bell className="h-7 w-7 text-brand" />
                 </div>
                 <p className="font-semibold text-ink">
-                  Aucune notification pour le moment.
+                  {t("notifications.empty")}
                 </p>
                 <p className="max-w-sm text-sm text-muted">
-                  Les changements de statut de vos commandes apparaîtront ici.
+                  {t("notifications.emptyHint")}
                 </p>
               </div>
             ) : (
@@ -150,10 +152,10 @@ export function NotificationsPage() {
                 {notifications.map((notification) => {
                   const isNewOrder = notification.type === "order.created";
                   const previousLabel = notification.previous_status
-                    ? STATUS_LABELS[notification.previous_status]
+                    ? t(STATUS_KEYS[notification.previous_status] ?? "status.draft")
                     : undefined;
                   const nextLabel = notification.status
-                    ? STATUS_LABELS[notification.status]
+                    ? t(STATUS_KEYS[notification.status] ?? "status.draft")
                     : notification.status;
                   const reference = notification.order_number
                     ? `#${notification.order_number}`
@@ -194,8 +196,8 @@ export function NotificationsPage() {
                           <span className="flex items-start justify-between gap-2">
                             <span className="truncate text-sm font-bold text-ink">
                               {isNewOrder
-                                ? "Nouvelle commande"
-                                : "Statut modifié"}
+                                ? t("notifications.newOrder")
+                                : t("notifications.statusChanged")}
                             </span>
                             {!notification.read && (
                               <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-brand" />

@@ -22,6 +22,7 @@ import {
   X
 } from "lucide-react";
 import { useAuth } from "./AuthContext";
+import { useI18n } from "../contexts/I18nContext";
 import { cn } from "../lib/utils";
 
 interface MobileMenuContextValue {
@@ -34,6 +35,7 @@ const MobileMenuContext = createContext<MobileMenuContextValue | null>(null);
 
 export function MobileMenuProvider({ children }: { children: ReactNode }) {
   const { customer, logout } = useAuth();
+  const { t } = useI18n();
   const history = useHistory();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -102,7 +104,7 @@ export function MobileMenuProvider({ children }: { children: ReactNode }) {
           Tsena Anatiny
         </p>
         <p className="font-display text-base font-bold leading-none text-ink">
-          Boutique
+          {t("nav.brandSub")}
         </p>
       </div>
     </div>
@@ -116,7 +118,7 @@ export function MobileMenuProvider({ children }: { children: ReactNode }) {
         <div className="fixed inset-0 z-[65]" role="dialog" aria-modal="true">
           <button
             type="button"
-            aria-label="Fermer le menu"
+            aria-label={t("common.closeMenu")}
             onClick={closeMenu}
             className="animate-fade-in absolute inset-0 h-full w-full bg-black/50 backdrop-blur-sm"
           />
@@ -126,7 +128,7 @@ export function MobileMenuProvider({ children }: { children: ReactNode }) {
               <button
                 type="button"
                 onClick={closeMenu}
-                aria-label="Fermer le menu"
+                aria-label={t("common.closeMenu")}
                 className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-panel text-muted transition hover:border-brand/40 hover:text-brand active:scale-95"
               >
                 <X className="h-5 w-5" />
@@ -150,40 +152,45 @@ export function MobileMenuProvider({ children }: { children: ReactNode }) {
             )}
 
             <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-3">
-              {sectionLabel("Boutique")}
-              {navLink("/", "Accueil", <Home className="h-4 w-4 shrink-0" />, true)}
+              {sectionLabel(t("nav.shop"))}
+              {navLink(
+                "/",
+                t("nav.home"),
+                <Home className="h-4 w-4 shrink-0" />,
+                true
+              )}
               {navLink(
                 "/nouveautes",
-                "Nouveautés",
+                t("nav.new"),
                 <Sparkles className="h-4 w-4 shrink-0" />
               )}
               {navLink(
                 "/recommandes",
-                "Recommandés",
+                t("nav.recommended"),
                 <Star className="h-4 w-4 shrink-0" />
               )}
               {navLink(
                 "/categories",
-                "Catégories",
+                t("nav.categories"),
                 <Shapes className="h-4 w-4 shrink-0" />
               )}
               {navLink(
                 "/panier",
-                "Mon panier",
+                t("nav.myCart"),
                 <ShoppingCart className="h-4 w-4 shrink-0" />
               )}
 
-              {sectionLabel("Compte")}
+              {sectionLabel(t("nav.account"))}
               {customer ? (
                 <>
                   {navLink(
                     "/compte",
-                    "Mes commandes",
+                    t("nav.myOrders"),
                     <UserRound className="h-4 w-4 shrink-0" />
                   )}
                   {navLink(
                     "/notifications",
-                    "Mes notifications",
+                    t("nav.myNotifications"),
                     <Bell className="h-4 w-4 shrink-0" />
                   )}
                 </>
@@ -191,12 +198,12 @@ export function MobileMenuProvider({ children }: { children: ReactNode }) {
                 <>
                   {navLink(
                     "/connexion",
-                    "Se connecter",
+                    t("nav.login"),
                     <UserRound className="h-4 w-4 shrink-0" />
                   )}
                   {navLink(
                     "/inscription",
-                    "Créer un compte",
+                    t("nav.createAccount"),
                     <Package className="h-4 w-4 shrink-0" />
                   )}
                 </>
@@ -215,7 +222,7 @@ export function MobileMenuProvider({ children }: { children: ReactNode }) {
                   className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-border bg-panel px-3 text-sm font-semibold text-ink transition hover:border-brand/40 hover:bg-brand-soft/35 active:scale-[0.98]"
                 >
                   <LogOut className="h-4 w-4" />
-                  Se déconnecter
+                  {t("nav.logout")}
                 </button>
               ) : (
                 <>
@@ -224,14 +231,14 @@ export function MobileMenuProvider({ children }: { children: ReactNode }) {
                     onClick={closeMenu}
                     className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-brand px-3 text-sm font-semibold text-white shadow-lg shadow-brand/35 transition duration-200 hover:-translate-y-0.5 hover:bg-brand/90"
                   >
-                    Se connecter
+                    {t("nav.login")}
                   </Link>
                   <Link
                     to="/inscription"
                     onClick={closeMenu}
                     className="inline-flex h-11 w-full items-center justify-center rounded-xl border border-border bg-panel/80 px-3 text-sm font-semibold text-ink transition duration-200 hover:-translate-y-0.5 hover:border-brand/35 hover:bg-panel"
                   >
-                    Créer un compte
+                    {t("nav.createAccount")}
                   </Link>
                 </>
               )}

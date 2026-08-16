@@ -20,8 +20,10 @@ import { RegisterPage } from "./pages/RegisterPage";
 import { LoginPage } from "./pages/LoginPage";
 import { AccountPage } from "./pages/AccountPage";
 import { NotificationsPage } from "./pages/NotificationsPage";
+import { useI18n } from "./contexts/I18nContext";
 
 export default function App() {
+  const { t } = useI18n();
   return (
     <IonTabs>
       <IonRouterOutlet>
@@ -69,15 +71,15 @@ export default function App() {
       <IonTabBar slot="bottom">
         <IonTabButton tab="boutique" href="/">
           <IonIcon icon={home} />
-          <IonLabel>Boutique</IonLabel>
+          <IonLabel>{t("nav.shop")}</IonLabel>
         </IonTabButton>
         <IonTabButton tab="panier" href="/panier">
           <IonIcon icon={cart} />
-          <IonLabel>Panier</IonLabel>
+          <IonLabel>{t("nav.cart")}</IonLabel>
         </IonTabButton>
         <IonTabButton tab="compte" href="/compte">
           <IonIcon icon={person} />
-          <IonLabel>Compte</IonLabel>
+          <IonLabel>{t("nav.account")}</IonLabel>
         </IonTabButton>
       </IonTabBar>
     </IonTabs>

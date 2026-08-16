@@ -5,8 +5,10 @@ import {
 } from "../services/products.service";
 import type { Product } from "../types/product";
 import { ProductListing } from "../components/ProductListing";
+import { useI18n } from "../contexts/I18nContext";
 
 export function NouveautesPage() {
+  const { t } = useI18n();
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -26,11 +28,11 @@ export function NouveautesPage() {
       );
       setProducts(sorted);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erreur chargement");
+      setError(err instanceof Error ? err.message : t("error.generic"));
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void load();
@@ -38,13 +40,13 @@ export function NouveautesPage() {
 
   return (
     <ProductListing
-      title="Nouveautés"
-      subtitle="Les derniers produits arrivés en boutique."
+      title={t("pages.new.title")}
+      subtitle={t("pages.new.subtitle")}
       products={products}
       isLoading={isLoading}
       error={error}
       onRetry={load}
-      emptyMessage="Aucun produit disponible pour le moment."
+      emptyMessage={t("pages.new.empty")}
     />
   );
 }

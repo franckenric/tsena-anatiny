@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "./AuthContext";
 import { useCart } from "./CartContext";
+import { useI18n } from "../contexts/I18nContext";
 import { cartItemsService } from "../services/operations.service";
 import type { CartItem } from "../types/operations";
 import { formatAr, resolveImageUrl } from "../lib/utils";
@@ -34,6 +35,7 @@ const CartDrawerContext = createContext<CartDrawerContextValue | null>(null);
 export function CartDrawerProvider({ children }: { children: ReactNode }) {
   const { customer } = useAuth();
   const { count, refresh } = useCart();
+  const { t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
   const [items, setItems] = useState<CartItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -126,7 +128,7 @@ export function CartDrawerProvider({ children }: { children: ReactNode }) {
         <div className="fixed inset-0 z-[60]" role="dialog" aria-modal="true">
           <button
             type="button"
-            aria-label="Fermer le panier"
+            aria-label={t("cart.close")}
             onClick={closeCart}
             className="animate-fade-in absolute inset-0 h-full w-full bg-[radial-gradient(circle_at_20%_10%,rgba(0,0,0,0.2),rgba(0,0,0,0.55))] backdrop-blur-sm"
           />
@@ -139,11 +141,11 @@ export function CartDrawerProvider({ children }: { children: ReactNode }) {
                 </span>
                 <div className="min-w-0">
                   <h2 className="truncate font-display text-lg font-semibold text-ink">
-                    Mon panier
+                    {t("cart.myCart")}
                   </h2>
                   {count > 0 && (
                     <p className="text-xs text-muted">
-                      {count} article{count > 1 ? "s" : ""}
+                      {t("common.article", { count })}
                     </p>
                   )}
                 </div>
@@ -151,7 +153,7 @@ export function CartDrawerProvider({ children }: { children: ReactNode }) {
               <button
                 type="button"
                 onClick={closeCart}
-                aria-label="Fermer"
+                aria-label={t("common.close")}
                 className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-border bg-panel text-muted transition hover:border-brand/35 hover:bg-brand/10 hover:text-ink"
               >
                 <X className="h-4 w-4" />
@@ -166,11 +168,10 @@ export function CartDrawerProvider({ children }: { children: ReactNode }) {
                   </span>
                   <div>
                     <p className="font-display text-lg font-semibold text-ink">
-                      Connectez-vous
+                      {t("cart.loginTitle")}
                     </p>
                     <p className="mt-1 max-w-xs text-sm leading-relaxed text-muted">
-                      Retrouvez les articles ajoutés depuis votre téléphone ou
-                      votre ordinateur.
+                      {t("cart.loginSub")}
                     </p>
                   </div>
                   <div className="flex w-full flex-col gap-2">
@@ -179,7 +180,7 @@ export function CartDrawerProvider({ children }: { children: ReactNode }) {
                       onClick={closeCart}
                       className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand px-5 text-sm font-semibold text-white shadow-lg shadow-brand/35 transition duration-200 hover:-translate-y-0.5 hover:bg-brand/90"
                     >
-                      Se connecter
+                      {t("nav.login")}
                       <ArrowRight className="h-4 w-4" />
                     </Link>
                     <Link
@@ -187,7 +188,7 @@ export function CartDrawerProvider({ children }: { children: ReactNode }) {
                       onClick={closeCart}
                       className="inline-flex h-12 w-full items-center justify-center rounded-xl border border-border bg-panel/80 px-5 text-sm font-semibold text-ink transition duration-200 hover:-translate-y-0.5 hover:border-brand/35 hover:bg-panel"
                     >
-                      Créer un compte
+                      {t("nav.createAccount")}
                     </Link>
                   </div>
                 </div>
@@ -211,10 +212,10 @@ export function CartDrawerProvider({ children }: { children: ReactNode }) {
                   </span>
                   <div>
                     <p className="font-display text-lg font-semibold text-ink">
-                      Votre panier est vide
+                      {t("cart.empty")}
                     </p>
                     <p className="mt-1 text-sm text-muted">
-                      Découvrez nos produits et ajoutez vos coups de cœur.
+                      {t("cart.emptySub")}
                     </p>
                   </div>
                   <Link
@@ -222,7 +223,7 @@ export function CartDrawerProvider({ children }: { children: ReactNode }) {
                     onClick={closeCart}
                     className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand px-5 text-sm font-semibold text-white shadow-lg shadow-brand/35 transition duration-200 hover:-translate-y-0.5 hover:bg-brand/90"
                   >
-                    Découvrir la boutique
+                    {t("common.discoverShop")}
                     <ArrowRight className="h-4 w-4" />
                   </Link>
                 </div>
@@ -263,7 +264,7 @@ export function CartDrawerProvider({ children }: { children: ReactNode }) {
                             <button
                               type="button"
                               onClick={() => handleRemove(item.id)}
-                              aria-label="Retirer"
+                              aria-label={t("cart.removeShort")}
                               className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-muted transition hover:bg-warning/10 hover:text-warning"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
@@ -284,7 +285,7 @@ export function CartDrawerProvider({ children }: { children: ReactNode }) {
                                   handleUpdateQuantity(item.id, quantity - 1)
                                 }
                                 disabled={quantity <= 1}
-                                aria-label="Diminuer la quantité"
+                                aria-label={t("cart.decreaseQty")}
                                 className="flex h-7 w-7 items-center justify-center rounded-lg text-muted transition hover:bg-brand/10 hover:text-brand disabled:pointer-events-none disabled:opacity-40"
                               >
                                 <Minus className="h-3.5 w-3.5" />
@@ -297,7 +298,7 @@ export function CartDrawerProvider({ children }: { children: ReactNode }) {
                                 onClick={() =>
                                   handleUpdateQuantity(item.id, quantity + 1)
                                 }
-                                aria-label="Augmenter la quantité"
+                                aria-label={t("cart.increaseQty")}
                                 className="flex h-7 w-7 items-center justify-center rounded-lg text-muted transition hover:bg-brand/10 hover:text-brand"
                               >
                                 <Plus className="h-3.5 w-3.5" />
@@ -308,7 +309,7 @@ export function CartDrawerProvider({ children }: { children: ReactNode }) {
                                 {formatAr(unitPrice * quantity)}
                               </p>
                               <p className="text-[11px] text-muted">
-                                {formatAr(unitPrice)} / unité
+                                {formatAr(unitPrice)} {t("cart.perUnit")}
                               </p>
                             </div>
                           </div>
@@ -324,14 +325,14 @@ export function CartDrawerProvider({ children }: { children: ReactNode }) {
               <div className="border-t border-border/50 bg-bg/35 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 sm:px-6">
                 <div className="flex items-center justify-between rounded-2xl border border-border/70 bg-panel/80 px-4 py-3">
                   <span className="text-sm font-semibold text-muted">
-                    Sous-total
+                    {t("common.subtotal")}
                   </span>
                   <div className="text-right">
                     <p className="text-xl font-extrabold text-brand">
                       {formatAr(subtotal)}
                     </p>
                     <p className="text-[11px] text-muted">
-                      Frais de livraison calculés à la commande
+                      {t("cart.deliveryNote")}
                     </p>
                   </div>
                 </div>
@@ -341,7 +342,7 @@ export function CartDrawerProvider({ children }: { children: ReactNode }) {
                     onClick={closeCart}
                     className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand px-5 text-sm font-semibold text-white shadow-lg shadow-brand/35 transition duration-200 hover:-translate-y-0.5 hover:bg-brand/90"
                   >
-                    Passer commande
+                    {t("cart.checkout")}
                     <ArrowRight className="h-4 w-4" />
                   </Link>
                   <Link
@@ -349,12 +350,12 @@ export function CartDrawerProvider({ children }: { children: ReactNode }) {
                     onClick={closeCart}
                     className="inline-flex h-12 w-full items-center justify-center rounded-xl border border-border bg-panel/80 px-5 text-sm font-semibold text-ink transition duration-200 hover:-translate-y-0.5 hover:border-brand/35 hover:bg-panel"
                   >
-                    Voir le panier
+                    {t("cart.seeCart")}
                   </Link>
                 </div>
                 <p className="mt-3 flex items-center justify-center gap-1.5 text-[11px] text-muted">
                   <Lock className="h-3 w-3" />
-                  Vos informations restent privées et sécurisées
+                  {t("cart.secure")}
                 </p>
               </div>
             )}

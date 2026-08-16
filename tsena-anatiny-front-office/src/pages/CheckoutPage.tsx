@@ -3,6 +3,7 @@ import { Link, useHistory } from "react-router-dom";
 import { ArrowLeft, Lock } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { useCart } from "../contexts/CartContext";
+import { useI18n } from "../contexts/I18nContext";
 import { cartItemsService } from "../services/operations.service";
 import { PageLoader, Spinner } from "../components/Spinner";
 import { Page } from "../components/Page";
@@ -11,6 +12,7 @@ import { formatAr, formatPhoneMadagascar } from "../lib/utils";
 export function CheckoutPage() {
   const { customer, isBooting, apiUser } = useAuth();
   const { clear } = useCart();
+  const { t } = useI18n();
   const history = useHistory();
 
   const [items, setItems] = useState<Awaited<
@@ -38,7 +40,7 @@ export function CheckoutPage() {
       .catch((err) => {
         if (!cancelled) {
           setError(
-            err instanceof Error ? err.message : "Erreur chargement panier"
+            err instanceof Error ? err.message : t("error.loadCart")
           );
         }
       })
@@ -60,7 +62,7 @@ export function CheckoutPage() {
     if (!customer) return;
     if (items.length === 0) return;
     if (!apiUser) {
-      setError("Session API invalide. Rechargez la page.");
+      setError(t("checkout.sessionInvalid"));
       return;
     }
 
@@ -79,7 +81,9 @@ export function CheckoutPage() {
       clear();
       history.push(`/succes/${order.id}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erreur lors de la commande");
+      setError(
+        err instanceof Error ? err.message : t("checkout.errorOrder")
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -88,7 +92,7 @@ export function CheckoutPage() {
   if (isBooting || isLoading) {
     return (
       <Page>
-        <PageLoader label="Préparation de la commande..." />
+        <PageLoader label={t("checkout.prepare")} />
       </Page>
     );
   }
@@ -99,9 +103,9 @@ export function CheckoutPage() {
     return (
       <Page>
         <div className="mx-auto flex max-w-7xl flex-col items-center gap-4 px-4 py-20 text-center sm:px-6">
-          <p className="text-2xl font-bold text-ink">Votre panier est vide</p>
+          <p className="text-2xl font-bold text-ink">{t("cart.empty")}</p>
           <Link to="/" className="text-sm font-semibold text-brand">
-            Voir la boutique
+            {t("common.seeShop")}
           </Link>
         </div>
       </Page>
@@ -116,11 +120,11 @@ export function CheckoutPage() {
         className="inline-flex items-center gap-1.5 text-sm font-medium text-muted transition hover:text-ink"
       >
         <ArrowLeft className="h-4 w-4" />
-        Retour au panier
+        {t("checkout.backToCart")}
       </Link>
 
       <h1 className="mt-4 text-2xl font-bold text-ink sm:text-3xl">
-        Finaliser la commande
+        {t("checkout.title")}
       </h1>
 
       {error && (
@@ -132,11 +136,13 @@ export function CheckoutPage() {
       <div className="mt-6 grid gap-8 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           <section className="rounded-3xl border border-border bg-panel p-6 shadow-card">
-            <h2 className="text-lg font-bold text-ink">Livraison</h2>
+            <h2 className="text-lg font-bold text-ink">
+              {t("checkout.delivery")}
+            </h2>
             <div className="mt-4 space-y-4">
               <div>
                 <label className="text-xs font-semibold uppercase tracking-widest text-muted">
-                  Client
+                  {t("checkout.customer")}
                 </label>
                 <p className="mt-1 text-sm font-semibold text-ink">
                   {customer.name}
@@ -150,7 +156,7 @@ export function CheckoutPage() {
                   htmlFor="address"
                   className="text-xs font-semibold uppercase tracking-widest text-muted"
                 >
-                  Adresse de livraison
+                  {t("checkout.address")}
                 </label>
                 <input
                   id="address"
@@ -166,14 +172,14 @@ export function CheckoutPage() {
                   htmlFor="note"
                   className="text-xs font-semibold uppercase tracking-widest text-muted"
                 >
-                  Note (optionnel)
+                  {t("checkout.note")}
                 </label>
                 <textarea
                   id="note"
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
                   rows={3}
-                  placeholder="Instructions de livraison..."
+                  placeholder={t("checkout.notePlaceholder")}
                   className="mt-2 w-full rounded-xl border border-border bg-bg px-3 py-2.5 text-sm text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
                 />
               </div>
@@ -181,7 +187,9 @@ export function CheckoutPage() {
           </section>
 
           <section className="rounded-3xl border border-border bg-panel p-6 shadow-card">
-            <h2 className="text-lg font-bold text-ink">Articles</h2>
+            <h2 className="text-lg font-bold text-ink">
+              {t("checkout.items")}
+            </h2>
             <ul className="mt-4 divide-y divide-border">
               {items.map((item) => (
                 <li key={item.id} className="flex items-center justify-between gap-4 py-3 text-sm">
@@ -190,8 +198,8 @@ export function CheckoutPage() {
                       {item.product?.name ?? `Produit #${item.product_id}`}
                     </p>
                     <p className="text-xs text-muted">
-                      {item.variant?.name ? `Variante: ${item.variant.name} · ` : ""}
-                      Qté: {item.quantity}
+                      {item.variant?.name ? `${t("common.variant")}: ${item.variant.name} · ` : ""}
+                      {t("common.quantity")}: {item.quantity}
                     </p>
                   </div>
                   <span className="shrink-0 font-semibold text-ink">
@@ -204,23 +212,25 @@ export function CheckoutPage() {
         </div>
 
         <div className="h-fit rounded-3xl border border-border bg-panel p-6 shadow-card lg:sticky lg:top-24">
-          <h2 className="text-lg font-bold text-ink">Paiement</h2>
+          <h2 className="text-lg font-bold text-ink">
+            {t("checkout.payment")}
+          </h2>
           <p className="mt-2 text-xs text-muted">
-            Le paiement s'effectue à la livraison. En confirmant, votre commande
-            est transmise pour vérification et le stock est réservé après
-            validation.
+            {t("checkout.paymentHint")}
           </p>
           <dl className="mt-4 space-y-2 text-sm">
             <div className="flex justify-between">
-              <dt className="text-muted">Sous-total</dt>
+              <dt className="text-muted">{t("common.subtotal")}</dt>
               <dd className="font-semibold text-ink">{formatAr(subtotal)}</dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-muted">Livraison</dt>
-              <dd className="font-semibold text-ink">À convenir</dd>
+              <dt className="text-muted">{t("common.delivery")}</dt>
+              <dd className="font-semibold text-ink">
+                {t("common.toConvene")}
+              </dd>
             </div>
             <div className="flex justify-between border-t border-border pt-3">
-              <dt className="font-bold text-ink">Total</dt>
+              <dt className="font-bold text-ink">{t("common.total")}</dt>
               <dd className="text-xl font-bold text-brand">
                 {formatAr(subtotal)}
               </dd>
@@ -235,12 +245,12 @@ export function CheckoutPage() {
             {isSubmitting ? (
               <>
                 <Spinner className="h-4 w-4" />
-                Enregistrement...
+                {t("checkout.saving")}
               </>
             ) : (
               <>
                 <Lock className="h-4 w-4" />
-                Confirmer la commande
+                {t("checkout.confirm")}
               </>
             )}
           </button>

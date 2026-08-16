@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Link, useHistory, useLocation } from "react-router-dom";
 import { LogIn } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
+import { useI18n } from "../contexts/I18nContext";
 import { PhoneInput } from "../components/PhoneInput";
 import { Spinner } from "../components/Spinner";
 import { Page } from "../components/Page";
@@ -13,6 +14,7 @@ import {
 
 export function LoginPage() {
   const { login } = useAuth();
+  const { t } = useI18n();
   const history = useHistory();
   const location = useLocation();
   const from =
@@ -27,7 +29,7 @@ export function LoginPage() {
     setError(null);
 
     if (isPhonePrefixOnly(phone) || !PHONE_FORMAT_REGEX.test(phone)) {
-      setError("Numéro de téléphone invalide.");
+      setError(t("auth.invalidPhone"));
       return;
     }
 
@@ -36,7 +38,13 @@ export function LoginPage() {
       await login(normalizePhone(phone));
       history.replace(from);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erreur de connexion");
+      setError(
+        err instanceof Error && err.message.startsWith("Aucun compte")
+          ? t("auth.notFound")
+          : err instanceof Error
+            ? err.message
+            : t("auth.loginError")
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -50,10 +58,10 @@ export function LoginPage() {
           <LogIn className="h-6 w-6 text-brand" />
         </div>
         <h1 className="mt-4 text-center text-2xl font-bold text-ink">
-          Connexion
+          {t("auth.loginTitle")}
         </h1>
         <p className="mt-1 text-center text-sm text-muted">
-          Retrouvez votre compte avec votre numéro de téléphone.
+          {t("auth.loginSub")}
         </p>
 
         {error && (
@@ -68,7 +76,7 @@ export function LoginPage() {
               htmlFor="phone"
               className="text-xs font-semibold uppercase tracking-widest text-muted"
             >
-              Téléphone
+              {t("auth.phone")}
             </label>
             <div className="mt-2">
               <PhoneInput
@@ -88,21 +96,21 @@ export function LoginPage() {
             {isSubmitting ? (
               <>
                 <Spinner className="h-4 w-4" />
-                Connexion...
+                {t("auth.loginLoading")}
               </>
             ) : (
-              "Se connecter"
+              t("auth.loginBtn")
             )}
           </button>
         </form>
 
         <p className="mt-6 text-center text-sm text-muted">
-          Pas encore de compte ?{" "}
+          {t("auth.noAccount")}{" "}
           <Link
             to={{ pathname: "/inscription", state: { from } }}
             className="font-semibold text-brand hover:underline"
           >
-            Créer un compte
+            {t("auth.createAccount")}
           </Link>
         </p>
       </div>

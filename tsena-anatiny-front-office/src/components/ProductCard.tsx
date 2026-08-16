@@ -9,8 +9,10 @@ import {
   getProductDisplayPrice
 } from "../services/products.service";
 import { useAddToCart } from "../hooks/useAddToCart";
+import { useI18n } from "../contexts/I18nContext";
 
 export function ProductCard({ product }: { product: Product }) {
+  const { t } = useI18n();
   const stock = getProductTotalStock(product);
   const variants = selectableVariants(product);
   const hasVariants = (product.variants ?? []).length > 0;
@@ -57,7 +59,7 @@ export function ProductCard({ product }: { product: Product }) {
         )}
         {outOfStock && (
           <span className="absolute left-2 top-2 rounded-full bg-ink/85 px-2 py-0.5 text-[11px] font-semibold text-white">
-            Rupture
+            {t("common.rupture")}
           </span>
         )}
       </div>
@@ -68,10 +70,10 @@ export function ProductCard({ product }: { product: Product }) {
         </h3>
         <p className="text-xs text-muted">
           {hasVariants
-            ? `${variants.length} variante${variants.length > 1 ? "s" : ""}`
+            ? t("product.variantsCount", { count: variants.length })
             : outOfStock
-              ? "Rupture de stock"
-              : `${stock} en stock`}
+              ? t("common.outOfStock")
+              : t("common.inStock", { count: stock })}
         </p>
         <div className="mt-auto flex items-center justify-between gap-2 pt-1">
           <span className="text-base font-bold text-brand sm:text-lg">
@@ -83,10 +85,14 @@ export function ProductCard({ product }: { product: Product }) {
             disabled={outOfStock || isAdding}
             aria-label={
               hasVariants
-                ? `Choisir une variante pour ${product.name}`
-                : `Ajouter ${product.name} au panier`
+                ? t("product.variantFor", { name: product.name })
+                : t("product.addFor", { name: product.name })
             }
-            title={hasVariants ? "Choisir une variante" : "Ajouter au panier"}
+            title={
+              hasVariants
+                ? t("product.chooseVariant")
+                : t("product.addToCart")
+            }
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-soft text-brand transition group-hover:bg-brand group-hover:text-white active:scale-90 disabled:cursor-not-allowed disabled:opacity-40"
           >
             {isAdding ? (

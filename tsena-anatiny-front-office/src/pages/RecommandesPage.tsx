@@ -6,8 +6,10 @@ import {
 import type { Product } from "../types/product";
 import { ProductListing } from "../components/ProductListing";
 import { getRecentProductIds } from "../lib/utils";
+import { useI18n } from "../contexts/I18nContext";
 
 export function RecommandesPage() {
+  const { t } = useI18n();
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -29,11 +31,11 @@ export function RecommandesPage() {
       const fill = available.filter((p) => !recentSet.has(p.id));
       setProducts([...recent, ...fill]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erreur chargement");
+      setError(err instanceof Error ? err.message : t("error.generic"));
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void load();
@@ -41,13 +43,13 @@ export function RecommandesPage() {
 
   return (
     <ProductListing
-      title="Recommandé pour vous"
-      subtitle="Une sélection basée sur vos dernières consultations."
+      title={t("pages.rec.title")}
+      subtitle={t("pages.rec.subtitle")}
       products={products}
       isLoading={isLoading}
       error={error}
       onRetry={load}
-      emptyMessage="Aucun produit recommandé pour le moment."
+      emptyMessage={t("pages.rec.empty")}
     />
   );
 }

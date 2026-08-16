@@ -19,6 +19,7 @@ export interface CreateLotPayload {
 export interface UpdateLotPayload {
   reference?: string;
   total_expense?: number;
+  received_at?: string;
 }
 
 export interface LotListResponse {

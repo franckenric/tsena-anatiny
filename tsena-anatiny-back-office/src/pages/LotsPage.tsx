@@ -8,6 +8,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Package,
+  Pencil,
   Plus,
   ScanBarcode
 } from "lucide-react";
@@ -32,19 +33,29 @@ function generateRef(date?: string): string {
 function CreateLotForm({
   onSubmit,
   onCancel,
-  isLoading
+  isLoading,
+  initialLot
 }: {
   onSubmit: (p: CreateLotPayload) => Promise<void>;
   onCancel: () => void;
   isLoading: boolean;
+  initialLot?: Lot | null;
 }) {
   const today = new Date().toISOString().split("T")[0];
-  const [form, setForm] = useState({
-    reference: generateRef(),
-    received_at: today
+  const [form, setForm] = useState(() => {
+    if (initialLot) {
+      const received = initialLot.received_at
+        ? new Date(initialLot.received_at).toISOString().split("T")[0]
+        : today;
+      return {
+        reference: initialLot.reference ?? generateRef(received),
+        received_at: received
+      };
+    }
+    return { reference: generateRef(), received_at: today };
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [refManuallyEdited, setRefManuallyEdited] = useState(false);
+  const [refManuallyEdited, setRefManuallyEdited] = useState(Boolean(initialLot));
 
   const handleDateChange = (val: string) => {
     setForm((p) => ({
@@ -134,7 +145,7 @@ function CreateLotForm({
           variant="primary"
           className="flex-1"
         >
-          Créer le lot
+          {initialLot ? "Enregistrer" : "Créer le lot"}
         </Button>
         <Button
           type="button"
@@ -159,8 +170,13 @@ export function LotsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isFormLoading, setIsFormLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showCreateLot, setShowCreateLot] = useState(false);
+  const [lotModal, setLotModal] = useState<
+    { mode: "create" } | { mode: "edit"; lot: Lot } | null
+  >(null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(() =>
+    new Date().toISOString().split("T")[0]
+  );
 
   const load = async () => {
     try {
@@ -183,11 +199,15 @@ export function LotsPage() {
     void load();
   }, []);
 
-  const handleCreateLot = async (payload: CreateLotPayload) => {
+  const handleSubmitLot = async (payload: CreateLotPayload) => {
     setIsFormLoading(true);
     try {
-      await lotsService.createLot(payload);
-      setShowCreateLot(false);
+      if (lotModal?.mode === "edit") {
+        await lotsService.updateLot(lotModal.lot.id, payload);
+      } else {
+        await lotsService.createLot(payload);
+      }
+      setLotModal(null);
       await load();
     } finally {
       setIsFormLoading(false);
@@ -254,18 +274,24 @@ export function LotsPage() {
   for (let i = 0; i < firstDay; i++) calendarDays.push(null);
   for (let i = 1; i <= daysInMonth; i++) calendarDays.push(i);
 
-  const daysWithLots = calendarDays.flatMap((day) => {
-    if (day === null) return [];
-    const dateStr = new Date(
+  const changeMonth = (delta: number) => {
+    const newMonth = new Date(
       currentMonth.getFullYear(),
-      currentMonth.getMonth(),
-      day
-    )
-      .toISOString()
-      .split("T")[0];
-    const dayLots = lotsGroupedByDate[dateStr] ?? [];
-    return dayLots.length > 0 ? [{ day, dateStr, dayLots }] : [];
-  });
+      currentMonth.getMonth() + delta
+    );
+    setCurrentMonth(newMonth);
+    setSelectedDate(
+      new Date(newMonth.getFullYear(), newMonth.getMonth(), 1)
+        .toISOString()
+        .split("T")[0]
+    );
+  };
+
+  const selectedDayLots = lotsGroupedByDate[selectedDate] ?? [];
+  const selectedDateLabel = new Date(selectedDate).toLocaleDateString(
+    "fr-FR",
+    { weekday: "long", day: "numeric", month: "long" }
+  );
 
   return (
     <Layout title="Lots">
@@ -287,14 +313,17 @@ export function LotsPage() {
         <Card
           title="Calendrier des lots"
           description="Cliquez sur un lot pour ouvrir le détail"
-          hideHeaderOnMobile
           plainOnMobile
           className="flex min-h-0 flex-1 flex-col"
           bodyClassName="min-h-0 flex-1 overflow-auto"
           headerAction={
-            <Button variant="primary" onClick={() => setShowCreateLot(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Nouveau lot
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={() => setLotModal({ mode: "create" })}
+              aria-label="Nouveau lot"
+            >
+              <Plus className="h-4 w-4" />
             </Button>
           }
         >
@@ -303,14 +332,7 @@ export function LotsPage() {
               <Button
                 size="sm"
                 variant="secondary"
-                onClick={() =>
-                  setCurrentMonth(
-                    new Date(
-                      currentMonth.getFullYear(),
-                      currentMonth.getMonth() - 1
-                    )
-                  )
-                }
+                onClick={() => changeMonth(-1)}
                 disabled={isLoading}
               >
                 <ChevronLeft className="h-4 w-4" />
@@ -319,14 +341,7 @@ export function LotsPage() {
               <Button
                 size="sm"
                 variant="secondary"
-                onClick={() =>
-                  setCurrentMonth(
-                    new Date(
-                      currentMonth.getFullYear(),
-                      currentMonth.getMonth() + 1
-                    )
-                  )
-                }
+                onClick={() => changeMonth(1)}
                 disabled={isLoading}
               >
                 <ChevronRight className="h-4 w-4" />
@@ -374,11 +389,20 @@ export function LotsPage() {
                   return (
                     <div
                       key={day}
-                      className={`flex min-h-10 flex-col items-center justify-center rounded-xl border-2 px-1 py-1 transition sm:min-h-24 sm:px-2 sm:py-2 md:min-h-28 ${
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setSelectedDate(dateStr)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setSelectedDate(dateStr);
+                        }
+                      }}
+                      className={`flex min-h-10 cursor-pointer flex-col items-center justify-center rounded-xl border-2 px-1 py-1 transition sm:min-h-24 sm:px-2 sm:py-2 md:min-h-28 ${
                         dayLots.length > 0
                           ? "border-warning/50 bg-panel"
                           : "border-border/40 bg-bg/30"
-                      }`}
+                      } ${selectedDate === dateStr ? "ring-2 ring-brand/60" : ""}`}
                     >
                       <span
                         className={`text-sm font-bold sm:text-base ${
@@ -413,13 +437,16 @@ export function LotsPage() {
                           </span>
                           <div className="mt-1 hidden w-full flex-wrap justify-center gap-1 sm:flex">
                             {dayLots.slice(0, 2).map((lot) => (
-                              <button
-                                key={lot.id}
-                                type="button"
-                                className="rounded-full border border-brand/30 bg-brand/10 px-2 py-0.5 text-[11px] font-semibold text-brand hover:bg-brand/20"
-                                onClick={() => openLotDetails(lot)}
-                                disabled={isLoading}
-                              >
+                            <button
+                              key={lot.id}
+                              type="button"
+                              className="rounded-full border border-brand/30 bg-brand/10 px-2 py-0.5 text-[11px] font-semibold text-brand hover:bg-brand/20"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openLotDetails(lot);
+                              }}
+                              disabled={isLoading}
+                            >
                                 Lot #{lot.id}
                               </button>
                             ))}
@@ -437,26 +464,30 @@ export function LotsPage() {
               </div>
 
               <div className="mt-4 space-y-2 sm:hidden">
-                {daysWithLots.length > 0 ? (
-                  daysWithLots.map(({ day, dateStr, dayLots }) => (
-                    <div
-                      key={dateStr}
-                      className="rounded-xl border border-border/50 bg-bg/30 px-3 py-2.5"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-sm font-bold text-ink">
-                          {day} {monthName}
-                        </span>
-                        <span className="text-xs font-semibold text-warning">
-                          {dayLots.length} lot{dayLots.length > 1 ? "s" : ""}
-                        </span>
-                      </div>
-                      <div className="mt-1.5 flex flex-wrap gap-1.5">
-                        {dayLots.map((lot) => (
+                {selectedDayLots.length === 0 ? (
+                  <p className="py-2 text-center text-sm text-muted">
+                    Aucun lot à cette date
+                  </p>
+                ) : (
+                  <div className="rounded-xl border border-border/50 bg-bg/30 px-3 py-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-bold capitalize text-ink">
+                        {selectedDateLabel}
+                      </span>
+                      <span className="text-xs font-semibold text-warning">
+                        {selectedDayLots.length} lot
+                        {selectedDayLots.length > 1 ? "s" : ""}
+                      </span>
+                    </div>
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      {selectedDayLots.map((lot) => (
+                        <div
+                          key={lot.id}
+                          className="inline-flex items-center gap-0.5 rounded-full border border-brand/30 bg-brand/10 py-1 pl-2.5 pr-1 text-[11px] font-semibold text-brand"
+                        >
                           <button
-                            key={lot.id}
                             type="button"
-                            className="inline-flex items-center gap-1.5 rounded-full border border-brand/30 bg-brand/10 px-2.5 py-1 text-[11px] font-semibold text-brand hover:bg-brand/20"
+                            className="inline-flex items-center gap-1.5"
                             onClick={() => openLotDetails(lot)}
                             disabled={isLoading}
                           >
@@ -464,14 +495,19 @@ export function LotsPage() {
                             Lot #{lot.id}
                             {lot.reference ? ` · ${lot.reference}` : ""}
                           </button>
-                        ))}
-                      </div>
+                          <button
+                            type="button"
+                            aria-label={`Modifier le lot #${lot.id}`}
+                            onClick={() => setLotModal({ mode: "edit", lot })}
+                            disabled={isLoading}
+                            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-brand transition hover:bg-brand/20"
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
                     </div>
-                  ))
-                ) : (
-                  <p className="py-2 text-center text-sm text-muted">
-                    Aucun lot ce mois-ci
-                  </p>
+                  </div>
                 )}
               </div>
             </div>
@@ -480,14 +516,20 @@ export function LotsPage() {
       </div>
 
       <Modal
-        isOpen={showCreateLot}
-        onClose={() => setShowCreateLot(false)}
-        title="Nouveau lot d'achat"
+        isOpen={lotModal !== null}
+        onClose={() => setLotModal(null)}
+        title={
+          lotModal?.mode === "edit"
+            ? `Modifier le lot #${lotModal.lot.id}`
+            : "Nouveau lot d'achat"
+        }
         contentClassName="max-w-lg"
       >
         <CreateLotForm
-          onSubmit={handleCreateLot}
-          onCancel={() => setShowCreateLot(false)}
+          key={lotModal?.mode === "edit" ? `edit-${lotModal.lot.id}` : "create"}
+          initialLot={lotModal?.mode === "edit" ? lotModal.lot : null}
+          onSubmit={handleSubmitLot}
+          onCancel={() => setLotModal(null)}
           isLoading={isFormLoading}
         />
       </Modal>

@@ -8,6 +8,7 @@ import {
   type ReactNode
 } from "react";
 import { CheckCircle2, Info, X, XCircle } from "lucide-react";
+import { useI18n } from "../contexts/I18nContext";
 
 type ToastKind = "success" | "error" | "info";
 
@@ -43,6 +44,7 @@ const KIND_STYLES: Record<ToastKind, { icon: ReactNode; className: string }> = {
 const TOAST_DURATION_MS = 3500;
 
 export function ToastProvider({ children }: { children: ReactNode }) {
+  const { t } = useI18n();
   const [toasts, setToasts] = useState<Toast[]>([]);
   const nextId = useRef(1);
 
@@ -87,7 +89,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               <button
                 type="button"
                 onClick={() => dismiss(toast.id)}
-                aria-label="Fermer"
+                aria-label={t("common.close")}
                 className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-muted transition hover:bg-bg hover:text-ink"
               >
                 <X className="h-4 w-4" />

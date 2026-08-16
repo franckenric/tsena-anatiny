@@ -35,7 +35,7 @@ export function Card({
             hideHeaderOnMobile ? "hidden sm:block" : ""
           }`}
         >
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+          <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               {title && (
                 <h3 className="font-display text-lg font-semibold text-ink">

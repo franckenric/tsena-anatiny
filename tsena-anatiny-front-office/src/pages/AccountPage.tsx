@@ -14,6 +14,7 @@ import {
   UserRound
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
+import { useI18n } from "../contexts/I18nContext";
 import { ordersService } from "../services/operations.service";
 import type { Order, OrderStatus } from "../types/operations";
 import { PageLoader } from "../components/Spinner";
@@ -47,6 +48,7 @@ function paginationItems(
 
 export function AccountPage() {
   const { customer, isBooting, logout } = useAuth();
+  const { t } = useI18n();
   const [orders, setOrders] = useState<Order[]>([]);
   const [allOrders, setAllOrders] = useState<Order[]>([]);
   const [totalOrders, setTotalOrders] = useState(0);
@@ -69,13 +71,13 @@ export function AccountPage() {
         setTotalOrders(data.total);
       } catch (err) {
         setError(
-          err instanceof Error ? err.message : "Erreur chargement commandes"
+          err instanceof Error ? err.message : t("account.errorOrders")
         );
       } finally {
         setIsLoadingOrders(false);
       }
     },
-    [customer]
+    [customer, t]
   );
 
   const loadAllOrders = useCallback(async () => {
@@ -121,10 +123,10 @@ export function AccountPage() {
           </div>
           <div>
             <h1 className="font-display text-2xl font-extrabold text-ink">
-              Connectez-vous
+              {t("account.loginTitle")}
             </h1>
             <p className="mt-2 text-sm leading-relaxed text-muted">
-              Retrouvez vos commandes et suivez vos livraisons.
+              {t("account.loginSub")}
             </p>
           </div>
           <div className="flex w-full flex-col gap-3">
@@ -132,14 +134,14 @@ export function AccountPage() {
               to="/connexion"
               className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-ink px-6 py-3.5 text-sm font-bold text-white transition hover:bg-ink/90 active:scale-[0.98]"
             >
-              Se connecter
+              {t("nav.login")}
               <ArrowRight className="h-4 w-4" />
             </Link>
             <Link
               to="/inscription"
               className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-brand px-6 py-3.5 text-sm font-bold text-white shadow-glow transition hover:bg-brand/90 active:scale-[0.98]"
             >
-              Créer un compte
+              {t("nav.createAccount")}
             </Link>
           </div>
         </div>
@@ -173,19 +175,19 @@ export function AccountPage() {
 
   const stats = [
     {
-      label: "Commandes",
+      label: t("account.orders"),
       value: String(totalOrders),
       icon: ShoppingCart,
       className: "text-brand bg-brand/10"
     },
     {
-      label: "En cours",
+      label: t("account.inProgress"),
       value: String(inProgressCount),
       icon: PackageSearch,
       className: "text-sky-600 bg-sky-100"
     },
     {
-      label: "Total dépensé",
+      label: t("account.totalSpent"),
       value: formatAr(totalSpent),
       icon: Banknote,
       className: "text-success bg-success/10",
@@ -212,7 +214,7 @@ export function AccountPage() {
                 <div className="min-w-0">
                   <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-white/70">
                     <Sparkles className="h-3.5 w-3.5" />
-                    Mon profil
+                    {t("account.profile")}
                   </p>
                   <h1 className="truncate text-xl font-bold sm:text-2xl">
                     {firstName}
@@ -236,7 +238,7 @@ export function AccountPage() {
                 className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-white px-6 py-3 text-sm font-bold text-brand shadow-lg transition hover:bg-white/90 active:scale-[0.98] sm:w-auto"
               >
                 <LogOut className="h-4 w-4" />
-                Se déconnecter
+                {t("nav.logout")}
               </button>
             </div>
           </section>
@@ -274,14 +276,14 @@ export function AccountPage() {
                 <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-brand-soft">
                   <PackageCheck className="h-4 w-4 text-brand" />
                 </span>
-                Mes commandes
+                {t("account.myOrders")}
               </h2>
               <Link
                 to="/"
                 className="inline-flex items-center gap-1.5 rounded-xl bg-brand-soft px-2.5 py-1.5 text-xs font-bold text-brand transition hover:bg-brand/15 active:scale-95"
               >
                 <ShoppingCart className="h-3.5 w-3.5" />
-                Nouvelle commande
+                {t("account.newOrder")}
               </Link>
             </div>
 
@@ -303,13 +305,13 @@ export function AccountPage() {
                   <PackageSearch className="h-7 w-7 text-brand" />
                 </div>
                 <p className="font-semibold text-ink">
-                  Vous n'avez pas encore de commande.
+                  {t("account.noOrders")}
                 </p>
                 <Link
                   to="/"
                   className="inline-flex items-center gap-2 rounded-2xl bg-brand px-5 py-2.5 text-sm font-bold text-white shadow-glow transition hover:bg-brand/90 active:scale-95"
                 >
-                  Découvrir la boutique
+                  {t("common.discoverShop")}
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
@@ -323,7 +325,8 @@ export function AccountPage() {
                   const hasOtherPrice =
                     orderOtherPrice > 0 ||
                     lines.some((line) => Number(line.another_price || 0) > 0);
-                  const firstProduct = lines[0]?.product_name ?? "Commande";
+                  const firstProduct =
+                    lines[0]?.product_name ?? t("account.orderFallback");
                   const firstVariant = lines[0]?.variant_name;
                   const extraCount = lines.length - 1;
                   const reference = order.order_number ?? `#${order.id}`;
@@ -341,7 +344,8 @@ export function AccountPage() {
                             <p className="mt-1 line-clamp-1 text-xs text-muted">
                               {firstProduct}
                               {firstVariant ? ` — ${firstVariant}` : ""}
-                              {extraCount > 0 && ` +${extraCount} autre(s)`}
+                              {extraCount > 0 &&
+                                t("account.extra", { count: extraCount })}
                             </p>
                           </div>
                           <StatusBadge
@@ -357,8 +361,10 @@ export function AccountPage() {
                             {hasOtherPrice && (
                               <p className="mt-0.5 text-[11px] font-semibold text-accent">
                                 {otherPriceReason
-                                  ? `Frais suppl. — ${otherPriceReason}`
-                                  : "Frais supplémentaires inclus"}
+                                  ? t("account.extraFees", {
+                                      reason: otherPriceReason
+                                    })
+                                  : t("account.extraFeesIncluded")}
                               </p>
                             )}
                             <p className="mt-0.5 text-base font-extrabold text-brand">
@@ -379,14 +385,18 @@ export function AccountPage() {
             {totalOrders > 0 && (
               <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
                 <p className="text-xs text-muted">
-                  Affichage {startIndex}–{endIndex} sur {totalOrders} commandes
+                  {t("account.showing", {
+                    start: startIndex,
+                    end: endIndex,
+                    total: totalOrders
+                  })}
                 </p>
                 <nav className="flex items-center gap-1.5">
                   <button
                     type="button"
                     onClick={() => goToPage(page - 1)}
                     disabled={page <= 1}
-                    aria-label="Page précédente"
+                    aria-label={t("account.prevPage")}
                     className="flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-panel text-ink transition hover:border-brand/40 hover:text-brand active:scale-95 disabled:pointer-events-none disabled:opacity-40"
                   >
                     <ChevronLeft className="h-4 w-4" />
@@ -420,7 +430,7 @@ export function AccountPage() {
                     type="button"
                     onClick={() => goToPage(page + 1)}
                     disabled={page >= totalPages}
-                    aria-label="Page suivante"
+                    aria-label={t("account.nextPage")}
                     className="flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-panel text-ink transition hover:border-brand/40 hover:text-brand active:scale-95 disabled:pointer-events-none disabled:opacity-40"
                   >
                     <ChevronRight className="h-4 w-4" />

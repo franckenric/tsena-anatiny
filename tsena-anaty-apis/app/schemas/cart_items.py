@@ -69,5 +69,6 @@ class CartCheckoutRequest(BaseModel):
     delivery_address: Optional[str] = None
     another_price: Optional[float] = 0
     other_price_reason: Optional[str] = None
+    promo_code: Optional[str] = None
     status: Optional[ProductStatusEnum] = ProductStatusEnum.draft
     note: Optional[str] = None

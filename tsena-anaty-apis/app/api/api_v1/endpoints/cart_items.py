@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app import crud, models, schemas
 from app.api import deps
 from app.api.api_v1.endpoints.notifications import notify_order_created
+from app.crud.crud_promo_codes import InvalidPromoCode
 from app.enum.product_status import ProductStatusEnum
 from app.schemas.orders import OrderMovementPayload
 from app.api.api_v1.endpoints.orders import (
@@ -271,6 +272,24 @@ def checkout_cart(
     if len(cart_items) == 0:
         raise HTTPException(status_code=422, detail='Cart is empty for this customer')
 
+    # Promo code validation against the cart subtotal.
+    promo_code_obj = None
+    promo_code_str = (checkout_in.promo_code or "").strip().upper()
+    discount_amount = 0.0
+    if promo_code_str:
+        subtotal = sum(
+            float(item.quantity or 0) * float(item.unit_cost or 0)
+            for item in cart_items
+        )
+        try:
+            promo_code_obj, discount_amount = crud.promo_codes.validate_for_subtotal(
+                db=db,
+                code=promo_code_str,
+                subtotal=subtotal,
+            )
+        except InvalidPromoCode as exc:
+            raise HTTPException(status_code=422, detail=f'Promo code invalide: {exc.reason}')
+
     order_status = checkout_in.status or ProductStatusEnum.draft
     resolved_order_number = (checkout_in.order_number or "").strip() or _generate_order_number()
     order_payload = schemas.OrdersCreateRequest(
@@ -282,6 +301,8 @@ def checkout_cart(
         delivery_address=checkout_in.delivery_address or customer.delivery_address,
         another_price=checkout_in.another_price,
         other_price_reason=checkout_in.other_price_reason,
+        promo_code=promo_code_str if discount_amount > 0 else None,
+        discount=discount_amount,
         status=order_status,
         note=checkout_in.note,
         movements=[
@@ -348,16 +369,25 @@ def checkout_cart(
 
         db.commit()
         db.refresh(order)
+
+        if promo_code_obj is not None and discount_amount > 0:
+            promo_code_obj.used_count = (promo_code_obj.used_count or 0) + 1
+            db.commit()
+
         notify_order_created(
             db,
             order,
             customer=customer,
-            total=sum(
-                float(item.quantity or 0) * float(item.unit_cost or 0)
-                + float(item.another_price or 0)
-                for item in cart_items
-            )
-            + float(checkout_in.another_price or 0),
+            total=max(
+                0.0,
+                sum(
+                    float(item.quantity or 0) * float(item.unit_cost or 0)
+                    + float(item.another_price or 0)
+                    for item in cart_items
+                )
+                + float(checkout_in.another_price or 0)
+                - float(discount_amount or 0),
+            ),
         )
         return order
     except HTTPException:

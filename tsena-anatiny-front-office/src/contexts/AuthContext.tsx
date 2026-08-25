@@ -9,6 +9,7 @@ import {
 } from "react";
 import { customersService } from "../services/customers.service";
 import { getApiUser, setApiToken, type ApiUser } from "../services/api";
+import { registerPlugin, type Plugin } from "@capacitor/core";
 import type { RegisterPayload } from "../types/customer";
 
 export interface CustomerSession {
@@ -51,6 +52,10 @@ interface AuthContextValue {
   customer: CustomerSession | null;
   login: (phone: string) => Promise<CustomerSession>;
   register: (payload: RegisterPayload) => Promise<CustomerSession>;
+  loginWithFacebook: () => void;
+  handleFacebookCallback: (code: string) => Promise<CustomerSession>;
+  loginWithGoogle: () => Promise<CustomerSession>;
+  handleGoogleCallback: (code: string) => Promise<CustomerSession>;
   logout: () => void;
   verifyOtp: () => void;
 }
@@ -130,6 +135,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [persistCustomer]
   );
 
+  const fbAppId = import.meta.env.VITE_FACEBOOK_APP_ID ?? "";
+
+  const getFacebookRedirectUri = useCallback(() => {
+    return window.location.origin + "/connexion";
+  }, []);
+
+  const loginWithFacebook = useCallback(() => {
+    const redirectUri = getFacebookRedirectUri();
+    const url = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${fbAppId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=email,public_profile&response_type=code&state=facebook`;
+    window.location.href = url;
+  }, [fbAppId, getFacebookRedirectUri]);
+
+  const handleFacebookCallback = useCallback(
+    async (code: string): Promise<CustomerSession> => {
+      const redirectUri = getFacebookRedirectUri();
+      const result = await customersService.facebookLogin(code, redirectUri);
+      setApiToken(result.access_token);
+
+      const tokenPayload = await getApiUser();
+      const session: CustomerSession = {
+        id: tokenPayload.id,
+        name: tokenPayload.email ?? "Utilisateur Facebook",
+        phone: "",
+        otpVerified: true
+      };
+      persistCustomer(session);
+      return session;
+    },
+    [getFacebookRedirectUri, persistCustomer]
+  );
+
+  const loginWithGoogle = useCallback(async () => {
+    const GoogleAuth = registerPlugin<Plugin & {
+      signIn: () => Promise<{ authentication: { idToken: string }; name?: string }>;
+    }>("GoogleAuth");
+    const result = await GoogleAuth.signIn();
+    const idToken = result.authentication.idToken;
+
+    const apiResult = await customersService.googleLogin(idToken);
+    setApiToken(apiResult.access_token);
+
+    const tokenPayload = await getApiUser();
+    const session: CustomerSession = {
+      id: tokenPayload.id,
+      name: result.name || (tokenPayload.email ?? "Utilisateur Google"),
+      phone: "",
+      otpVerified: true
+    };
+    persistCustomer(session);
+    return session;
+  }, [persistCustomer]);
+
+  const handleGoogleCallback = useCallback(
+    async (_code: string): Promise<CustomerSession> => {
+      return loginWithGoogle();
+    },
+    [loginWithGoogle]
+  );
+
   const logout = useCallback(() => {
     localStorage.removeItem(CUSTOMER_KEY);
     setCustomer(null);
@@ -145,8 +209,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ isBooting, apiUser, customer, login, register, logout, verifyOtp }),
-    [isBooting, apiUser, customer, login, register, logout, verifyOtp]
+    () => ({ isBooting, apiUser, customer, login, register, loginWithFacebook, handleFacebookCallback, loginWithGoogle, handleGoogleCallback, logout, verifyOtp }),
+    [isBooting, apiUser, customer, login, register, loginWithFacebook, handleFacebookCallback, loginWithGoogle, handleGoogleCallback, logout, verifyOtp]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

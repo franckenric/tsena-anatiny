@@ -9,6 +9,7 @@ class ProductVariantBase(BaseModel):
     quantity: Optional[int] = 0
     unit_cost: Optional[float] = None
     selling_price: Optional[float] = None
+    discount_price: Optional[float] = None
     image: Optional[str] = None
     parent_id: Optional[int] = None
 
@@ -20,6 +21,7 @@ class ProductVariantCreate(BaseModel):
     quantity: Optional[int] = 0
     unit_cost: Optional[float] = None
     selling_price: Optional[float] = None
+    discount_price: Optional[float] = None
     image: Optional[str] = None
     parent_id: Optional[int] = None
 
@@ -30,6 +32,7 @@ class ProductVariantUpdate(BaseModel):
     quantity: Optional[int] = None
     unit_cost: Optional[float] = None
     selling_price: Optional[float] = None
+    discount_price: Optional[float] = None
     image: Optional[str] = None
     parent_id: Optional[int] = None
 

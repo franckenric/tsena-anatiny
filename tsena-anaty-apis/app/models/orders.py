@@ -18,6 +18,9 @@ class Orders(Base):
     customer_id = Column(Integer, ForeignKey('customers.id'), nullable=False)
     another_price = Column(Float, default=0)
     other_price_reason = Column(Text)
+    promo_code_id = Column(Integer, ForeignKey('promo_codes.id'))
+    promo_code = Column(String(64))
+    discount = Column(Float, nullable=False, default=0)
     status = Column(Enum(ProductStatusEnum))
     note = Column(Text)
 
@@ -30,6 +33,7 @@ class Orders(Base):
     user = relationship('Users', foreign_keys=[user_id])
     customer = relationship('Customers', foreign_keys=[customer_id], overlaps='orders')
     stock_movements = relationship('StockMovements', back_populates='order')
+    promo_code_ref = relationship('PromoCodes', foreign_keys=[promo_code_id], back_populates='orders')
 
 
 # begin #

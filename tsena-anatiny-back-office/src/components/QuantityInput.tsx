@@ -70,7 +70,7 @@ export function QuantityInput({
           placeholder={placeholder}
           disabled={disabled}
           className={cn(
-            "flex h-12 w-full rounded-xl border border-border bg-panel/85 px-3.5 text-center text-sm text-ink placeholder:text-muted/80 outline-none transition focus-visible:border-brand/70 focus-visible:ring-2 focus-visible:ring-brand/25 disabled:cursor-not-allowed disabled:opacity-50",
+            "flex h-12 w-full rounded-xl border border-border bg-panel/85 px-3.5 text-center text-sm text-ink placeholder:text-muted/80 outline-none transition focus-visible:border-brand/70 focus-visible:ring-2 focus-visible:ring-brand/25 disabled:cursor-not-allowed disabled:opacity-50 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]",
             error && "border-warning/60"
           )}
         />

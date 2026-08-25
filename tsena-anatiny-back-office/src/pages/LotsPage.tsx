@@ -1,9 +1,13 @@
 import { useState, useEffect } from "react";
 import { useHistory } from "react-router-dom";
-import type { Lot, CreateLotPayload, StockMovement } from "../types/operations";
+import type { Lot, StockMovement } from "../types/operations";
 import { lotsService, stockMovementsService } from "../services/operations.service";
-import { Layout, Card, Button, Input } from "../components/index";
-import { Modal } from "../components/Modal";
+import {
+  Layout,
+  Card,
+  Button,
+  FloatingActionButton
+} from "../components/index";
 import {
   ChevronLeft,
   ChevronRight,
@@ -12,154 +16,6 @@ import {
   Plus,
   ScanBarcode
 } from "lucide-react";
-import { Calendar as CalendarIcon } from "lucide-react";
-import { format } from "date-fns";
-import { fr } from "date-fns/locale";
-import { Calendar } from "../components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger
-} from "../components/ui/popover";
-
-function generateRef(date?: string): string {
-  const d = date ? new Date(date) : new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `ACHAT-${y}${m}${day}`;
-}
-
-function CreateLotForm({
-  onSubmit,
-  onCancel,
-  isLoading,
-  initialLot
-}: {
-  onSubmit: (p: CreateLotPayload) => Promise<void>;
-  onCancel: () => void;
-  isLoading: boolean;
-  initialLot?: Lot | null;
-}) {
-  const today = new Date().toISOString().split("T")[0];
-  const [form, setForm] = useState(() => {
-    if (initialLot) {
-      const received = initialLot.received_at
-        ? new Date(initialLot.received_at).toISOString().split("T")[0]
-        : today;
-      return {
-        reference: initialLot.reference ?? generateRef(received),
-        received_at: received
-      };
-    }
-    return { reference: generateRef(), received_at: today };
-  });
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [refManuallyEdited, setRefManuallyEdited] = useState(Boolean(initialLot));
-
-  const handleDateChange = (val: string) => {
-    setForm((p) => ({
-      ...p,
-      received_at: val,
-      reference: refManuallyEdited ? p.reference : generateRef(val)
-    }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await onSubmit({
-        reference: form.reference.trim(),
-        received_at: form.received_at
-          ? new Date(form.received_at).toISOString()
-          : undefined
-      });
-    } catch (err) {
-      setErrors({ submit: err instanceof Error ? err.message : "Erreur" });
-    }
-  };
-
-  return (
-    <form className="space-y-4" onSubmit={handleSubmit}>
-      {errors.submit && (
-        <div className="rounded-xl border border-warning/50 bg-warning/10 px-3 py-2 text-sm text-ink">
-          {errors.submit}
-        </div>
-      )}
-
-      <div className="space-y-1.5">
-        <label className="block text-sm font-semibold text-ink">
-          Date d'arrivée
-        </label>
-        <Popover>
-          <PopoverTrigger asChild>
-            <button
-              type="button"
-              className="flex h-12 w-full items-center justify-between rounded-xl border border-border bg-panel px-3.5 text-sm text-ink outline-none transition focus-visible:border-brand/70 focus-visible:ring-2 focus-visible:ring-brand/25 disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={isLoading}
-            >
-              <span>
-                {form.received_at
-                  ? format(new Date(form.received_at), "PPP", { locale: fr })
-                  : "Sélectionner une date"}
-              </span>
-              <CalendarIcon className="h-4 w-4 text-muted" />
-            </button>
-          </PopoverTrigger>
-          <PopoverContent
-            className="w-[var(--radix-popover-trigger-width)] p-0"
-            align="start"
-          >
-            <Calendar
-              className="w-full"
-              mode="single"
-              selected={
-                form.received_at ? new Date(form.received_at) : undefined
-              }
-              onSelect={(date) => {
-                if (!date) return;
-                handleDateChange(format(date, "yyyy-MM-dd"));
-              }}
-              locale={fr}
-            />
-          </PopoverContent>
-        </Popover>
-      </div>
-
-      <Input
-        label="Référence lot"
-        value={form.reference}
-        onChange={(e) => {
-          setRefManuallyEdited(true);
-          setForm((p) => ({ ...p, reference: e.target.value }));
-        }}
-        placeholder="ACHAT-20260608"
-        disabled={isLoading}
-        error={errors.reference}
-      />
-
-      <div className="flex gap-3 pt-2">
-        <Button
-          type="submit"
-          isLoading={isLoading}
-          variant="primary"
-          className="flex-1"
-        >
-          {initialLot ? "Enregistrer" : "Créer le lot"}
-        </Button>
-        <Button
-          type="button"
-          onClick={onCancel}
-          variant="secondary"
-          className="flex-1"
-          disabled={isLoading}
-        >
-          Annuler
-        </Button>
-      </div>
-    </form>
-  );
-}
 
 export function LotsPage() {
   const history = useHistory();
@@ -168,11 +24,7 @@ export function LotsPage() {
     []
   );
   const [isLoading, setIsLoading] = useState(true);
-  const [isFormLoading, setIsFormLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [lotModal, setLotModal] = useState<
-    { mode: "create" } | { mode: "edit"; lot: Lot } | null
-  >(null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(() =>
     new Date().toISOString().split("T")[0]
@@ -198,21 +50,6 @@ export function LotsPage() {
   useEffect(() => {
     void load();
   }, []);
-
-  const handleSubmitLot = async (payload: CreateLotPayload) => {
-    setIsFormLoading(true);
-    try {
-      if (lotModal?.mode === "edit") {
-        await lotsService.updateLot(lotModal.lot.id, payload);
-      } else {
-        await lotsService.createLot(payload);
-      }
-      setLotModal(null);
-      await load();
-    } finally {
-      setIsFormLoading(false);
-    }
-  };
 
   const openLotDetails = (lot: Lot) => {
     history.push(`/lots/${lot.id}`);
@@ -295,6 +132,10 @@ export function LotsPage() {
 
   return (
     <Layout title="Lots">
+      <FloatingActionButton
+        label="Nouveau lot"
+        onClick={() => history.push("/lots/new")}
+      />
       <div className="animate-fade-up flex flex-col gap-6">
         <div className="hidden items-center justify-between rounded-2xl border border-border/60 bg-panel/65 px-4 py-3 sm:flex">
           <div className="inline-flex items-center gap-2 text-sm font-semibold text-ink">
@@ -320,7 +161,7 @@ export function LotsPage() {
             <Button
               size="sm"
               variant="primary"
-              onClick={() => setLotModal({ mode: "create" })}
+              onClick={() => history.push("/lots/new")}
               aria-label="Nouveau lot"
             >
               <Plus className="h-4 w-4" />
@@ -498,7 +339,7 @@ export function LotsPage() {
                           <button
                             type="button"
                             aria-label={`Modifier le lot #${lot.id}`}
-                            onClick={() => setLotModal({ mode: "edit", lot })}
+                            onClick={() => history.push(`/lots/${lot.id}/edit`)}
                             disabled={isLoading}
                             className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-brand transition hover:bg-brand/20"
                           >
@@ -514,25 +355,6 @@ export function LotsPage() {
           </div>
         </Card>
       </div>
-
-      <Modal
-        isOpen={lotModal !== null}
-        onClose={() => setLotModal(null)}
-        title={
-          lotModal?.mode === "edit"
-            ? `Modifier le lot #${lotModal.lot.id}`
-            : "Nouveau lot d'achat"
-        }
-        contentClassName="max-w-lg"
-      >
-        <CreateLotForm
-          key={lotModal?.mode === "edit" ? `edit-${lotModal.lot.id}` : "create"}
-          initialLot={lotModal?.mode === "edit" ? lotModal.lot : null}
-          onSubmit={handleSubmitLot}
-          onCancel={() => setLotModal(null)}
-          isLoading={isFormLoading}
-        />
-      </Modal>
     </Layout>
   );
 }

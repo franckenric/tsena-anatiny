@@ -64,19 +64,60 @@ function StockForm({
   onCancel: () => void;
   isLoading: boolean;
 }) {
-  const [form, setForm] = useState({
-    product_id: stock?.product_id ?? (products[0]?.id || 0),
-    lot_id: lots[0]?.id || 0,
-    quantity: stock?.quantity ?? 0,
-    reserved: stock?.reserved ?? false,
-    reference: ""
+  const selectedProduct = products.find((p) => p.id === (stock?.product_id ?? (products[0]?.id || 0)));
+  const productVariants = selectedProduct?.variants ?? [];
+  const leafVariants = productVariants.filter(
+    (v) => !productVariants.some((other) => other.parent_id === v.id)
+  );
+  const hasVariants = !stock && leafVariants.length > 0;
+
+  const [form, setForm] = useState(() => {
+    const variantQtys: Record<number, number> = {};
+    const variantPricing: Record<number, { unit_cost: number; selling_price: number; discount_price: number }> = {};
+    if (!stock) {
+      for (const v of leafVariants) {
+        variantQtys[v.id] = 0;
+        variantPricing[v.id] = {
+          unit_cost: v.unit_cost ?? 0,
+          selling_price: v.selling_price ?? 0,
+          discount_price: v.discount_price ?? 0
+        };
+      }
+    }
+    return {
+      product_id: stock?.product_id ?? (products[0]?.id || 0),
+      lot_id: lots[0]?.id || 0,
+      variantQtys,
+      variantPricing,
+      quantity: stock?.quantity ?? 0,
+      reserved: stock?.reserved ?? false,
+      unit_cost: 0,
+      selling_price: 0,
+      discount_price: 0,
+      reference: ""
+    };
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const getVariantLabel = (v: (typeof productVariants)[number]): string => {
+    const parent =
+      v.parent_id != null
+        ? productVariants.find((p) => p.id === v.parent_id)
+        : undefined;
+    const base = v.name || `Variante #${v.id}`;
+    return parent?.name ? `${base} (${parent.name})` : base;
+  };
+
+  const totalVariantQty = hasVariants
+    ? Object.values(form.variantQtys).reduce((s, q) => s + q, 0)
+    : 0;
 
   const stockValidation = (() => {
     const issues: string[] = [];
     if (!form.product_id) issues.push("Produit requis");
     if (!stock && !form.lot_id) issues.push("Lot requis");
+    if (!stock && hasVariants && totalVariantQty <= 0) issues.push("Quantité requise pour au moins une variante");
+    if (!stock && !hasVariants && form.quantity <= 0) issues.push("Quantité requise");
     return issues;
   })();
 
@@ -98,13 +139,55 @@ function StockForm({
           setErrors({ lot_id: "Lot requis" });
           return;
         }
-
-        await onSubmit({
-          product_id: form.product_id,
-          quantity: form.quantity,
-          lot_id: form.lot_id,
-          reference: form.reference || undefined
-        });
+        if (hasVariants) {
+          for (const v of leafVariants) {
+            const qty = form.variantQtys[v.id] ?? 0;
+            if (qty > 0) {
+              await onSubmit({
+                product_id: form.product_id,
+                quantity: qty,
+                lot_id: form.lot_id,
+                reference: form.reference || undefined,
+                variant_id: v.id,
+                unit_cost: form.variantPricing[v.id]?.unit_cost ?? 0
+              } as StockArrivalPayload);
+            }
+          }
+          for (const v of leafVariants) {
+            const qty = form.variantQtys[v.id] ?? 0;
+            if (qty > 0) {
+              const pricing = form.variantPricing[v.id];
+              if (pricing && (pricing.selling_price > 0 || pricing.discount_price > 0)) {
+                try {
+                  await productsService.updateVariant(v.id, {
+                    selling_price: pricing.selling_price || undefined,
+                    discount_price: pricing.discount_price || undefined,
+                    unit_cost: pricing.unit_cost || undefined
+                  });
+                } catch {
+                  // silently ignore pricing update failures
+                }
+              }
+            }
+          }
+        } else {
+          await onSubmit({
+            product_id: form.product_id,
+            quantity: form.quantity,
+            lot_id: form.lot_id,
+            reference: form.reference || undefined
+          } as StockArrivalPayload);
+          if (selectedProduct && (form.selling_price > 0 || form.discount_price > 0)) {
+            try {
+              await productsService.updateProduct(selectedProduct.id, {
+                selling_price: form.selling_price || undefined,
+                discount_price: form.discount_price || undefined
+              });
+            } catch {
+              // silently ignore
+            }
+          }
+        }
       }
     } catch (err) {
       setErrors({ submit: err instanceof Error ? err.message : "Erreur" });
@@ -132,9 +215,7 @@ function StockForm({
           <Select
             label="Produit"
             value={String(form.product_id)}
-            onValueChange={(value) =>
-              setForm((p) => ({ ...p, product_id: parseInt(value) }))
-            }
+            onValueChange={(value) => setForm((p) => ({ ...p, product_id: parseInt(value) }))}
             options={products.map((p) => ({
               label: `${p.name} (${p.sku})`,
               value: String(p.id)
@@ -154,32 +235,73 @@ function StockForm({
               Détails stock
             </p>
           </div>
-          <QuantityInput
-            label="Quantité"
-            value={form.quantity}
-            onChange={(value) => setForm((p) => ({ ...p, quantity: value }))}
-            placeholder="0"
-            disabled={isLoading}
-            min={0}
-          />
           {stock ? (
-            <label className="inline-flex cursor-pointer items-center gap-3">
-              <span className="text-sm font-semibold text-ink">Réservé</span>
-              <span className="relative inline-flex h-7 w-12 items-center">
-                <input
-                  type="checkbox"
-                  className="peer sr-only"
-                  checked={form.reserved}
-                  onChange={(e) =>
-                    setForm((p) => ({ ...p, reserved: e.target.checked }))
-                  }
-                  disabled={isLoading}
-                />
-                <span className="absolute inset-0 rounded-full bg-border transition peer-checked:bg-brand peer-disabled:opacity-60" />
-                <span className="absolute left-1 h-5 w-5 rounded-full bg-white shadow transition peer-checked:translate-x-5" />
-              </span>
-            </label>
+            <>
+              <QuantityInput
+                label="Quantité"
+                value={form.quantity}
+                onChange={(value) => setForm((p) => ({ ...p, quantity: value }))}
+                placeholder="0"
+                disabled={isLoading}
+                min={0}
+              />
+              <label className="inline-flex cursor-pointer items-center gap-3">
+                <span className="text-sm font-semibold text-ink">Réservé</span>
+                <span className="relative inline-flex h-7 w-12 items-center">
+                  <input
+                    type="checkbox"
+                    className="peer sr-only"
+                    checked={form.reserved}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, reserved: e.target.checked }))
+                    }
+                    disabled={isLoading}
+                  />
+                  <span className="absolute inset-0 rounded-full bg-border transition peer-checked:bg-brand peer-disabled:opacity-60" />
+                  <span className="absolute left-1 h-5 w-5 rounded-full bg-white shadow transition peer-checked:translate-x-5" />
+                </span>
+              </label>
+            </>
+          ) : hasVariants ? (
+            <div className="space-y-3">
+              <p className="text-xs font-semibold text-muted">Quantité par variante</p>
+              {leafVariants.map((v) => (
+                <div key={v.id} className="flex items-center gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-ink">{getVariantLabel(v)}</p>
+                    <p className="text-[11px] text-muted">Stock actuel: {v.quantity ?? 0}</p>
+                  </div>
+                  <div className="w-28 shrink-0">
+                    <QuantityInput
+                      value={form.variantQtys[v.id] ?? 0}
+                      onChange={(qty) =>
+                        setForm((p) => ({
+                          ...p,
+                          variantQtys: { ...p.variantQtys, [v.id]: qty }
+                        }))
+                      }
+                      placeholder="0"
+                      disabled={isLoading}
+                      min={0}
+                    />
+                  </div>
+                </div>
+              ))}
+              {totalVariantQty > 0 && (
+                <p className="text-xs font-semibold text-brand">Total à ajouter: {totalVariantQty}</p>
+              )}
+            </div>
           ) : (
+            <QuantityInput
+              label="Quantité"
+              value={form.quantity}
+              onChange={(value) => setForm((p) => ({ ...p, quantity: value }))}
+              placeholder="0"
+              disabled={isLoading}
+              min={0}
+            />
+          )}
+          {!stock && (
             <>
               <Select
                 label="Lot"
@@ -203,6 +325,120 @@ function StockForm({
             </>
           )}
         </div>
+
+        {!stock && (
+          <div className="rounded-2xl border border-border/60 bg-bg/30 p-4 space-y-4">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand/10 text-brand">
+                <Package className="h-4 w-4" />
+              </div>
+              <p className="text-xs font-bold uppercase tracking-widest text-ink">
+                Tarification
+              </p>
+            </div>
+            {hasVariants ? (
+              <div className="space-y-4">
+                {leafVariants.map((v) => (
+                  <div key={v.id} className="rounded-xl border border-border/40 bg-bg/20 p-3 space-y-3">
+                    <p className="text-sm font-semibold text-ink">{getVariantLabel(v)}</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      <Input
+                        label="Coût unitaire (Ar)"
+                        type="number"
+                        value={form.variantPricing[v.id]?.unit_cost ?? 0}
+                        onChange={(e) =>
+                          setForm((p) => ({
+                            ...p,
+                            variantPricing: {
+                              ...p.variantPricing,
+                              [v.id]: {
+                                ...p.variantPricing[v.id],
+                                unit_cost: parseFloat(e.target.value) || 0
+                              }
+                            }
+                          }))
+                        }
+                        placeholder="0"
+                        disabled={isLoading}
+                      />
+                      <Input
+                        label="Prix vente (Ar)"
+                        type="number"
+                        value={form.variantPricing[v.id]?.selling_price ?? 0}
+                        onChange={(e) =>
+                          setForm((p) => ({
+                            ...p,
+                            variantPricing: {
+                              ...p.variantPricing,
+                              [v.id]: {
+                                ...p.variantPricing[v.id],
+                                selling_price: parseFloat(e.target.value) || 0
+                              }
+                            }
+                          }))
+                        }
+                        placeholder="0"
+                        disabled={isLoading}
+                      />
+                      <Input
+                        label="Prix promo (Ar)"
+                        type="number"
+                        value={form.variantPricing[v.id]?.discount_price ?? 0}
+                        onChange={(e) =>
+                          setForm((p) => ({
+                            ...p,
+                            variantPricing: {
+                              ...p.variantPricing,
+                              [v.id]: {
+                                ...p.variantPricing[v.id],
+                                discount_price: parseFloat(e.target.value) || 0
+                              }
+                            }
+                          }))
+                        }
+                        placeholder="0"
+                        disabled={isLoading}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-3">
+                <Input
+                  label="Coût unitaire (Ar)"
+                  type="number"
+                  value={form.unit_cost}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, unit_cost: parseFloat(e.target.value) || 0 }))
+                  }
+                  placeholder="0"
+                  disabled={isLoading}
+                />
+                <Input
+                  label="Prix vente (Ar)"
+                  type="number"
+                  value={form.selling_price}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, selling_price: parseFloat(e.target.value) || 0 }))
+                  }
+                  placeholder="0"
+                  disabled={isLoading}
+                />
+                <Input
+                  label="Prix promo (Ar)"
+                  type="number"
+                  value={form.discount_price}
+                  onChange={(e) =>
+                    setForm((p) => ({ ...p, discount_price: parseFloat(e.target.value) || 0 }))
+                  }
+                  placeholder="0"
+                  disabled={isLoading}
+                />
+              </div>
+            )}
+          </div>
+        )}
 
         {stockValidation.length > 0 && (
           <ul className="space-y-0.5 rounded-xl border border-warning/40 bg-warning/8 px-3 py-2">
@@ -356,9 +592,16 @@ export function StockPage() {
       render: (_, row) => {
         const product =
           row.product ?? products.find((p) => p.id === row.product_id);
-        return product?.selling_price
-          ? Number(product.selling_price).toLocaleString("fr-FR") + " Ar"
-          : "-";
+        if (!product?.selling_price) return "-";
+        if (product.discount_price != null && product.discount_price > 0 && Number(product.discount_price) < Number(product.selling_price)) {
+          return (
+            <span>
+              <span className="font-semibold">{Number(product.discount_price).toLocaleString("fr-FR") + " Ar"}</span>
+              <span className="ml-1 text-xs text-muted line-through">{Number(product.selling_price).toLocaleString("fr-FR") + " Ar"}</span>
+            </span>
+          );
+        }
+        return Number(product.selling_price).toLocaleString("fr-FR") + " Ar";
       }
     },
     {
@@ -465,13 +708,22 @@ export function StockPage() {
                       <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
                         Prix de vente
                       </p>
-                      <p className="mt-0.5 text-sm font-bold text-brand">
-                        {product?.selling_price
-                          ? Number(product.selling_price).toLocaleString(
-                              "fr-FR"
-                            ) + " Ar"
-                          : "—"}
-                      </p>
+                      {product?.discount_price != null && product.discount_price > 0 && Number(product.selling_price ?? 0) > 0 && Number(product.discount_price) < Number(product.selling_price) ? (
+                        <p className="mt-0.5 text-sm font-bold text-brand">
+                          <span>{Number(product.discount_price).toLocaleString("fr-FR") + " Ar"}</span>
+                          <span className="ml-1 text-xs text-muted line-through">
+                            {Number(product.selling_price).toLocaleString("fr-FR") + " Ar"}
+                          </span>
+                        </p>
+                      ) : (
+                        <p className="mt-0.5 text-sm font-bold text-brand">
+                          {product?.selling_price
+                            ? Number(product.selling_price).toLocaleString(
+                                "fr-FR"
+                              ) + " Ar"
+                            : "—"}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>

@@ -7,7 +7,7 @@ from typing import Any, List, Optional
 from pydantic import BaseModel, ConfigDict, field_validator
 from app.enum.status import StatusEnum
 from .categories import Categories
-from .product_variants import ProductVariantNode
+from .product_variants import ProductVariant, ProductVariantNode
 from .product_images import ProductImages
 
 
@@ -19,6 +19,7 @@ class ProductsBase(BaseModel):
     image: Optional[str] = None
     unit: Optional[str] = None
     selling_price: Optional[float] = None
+    discount_price: Optional[float] = None
     low_stock_alert: Optional[int] = None
     status: Optional[StatusEnum] = None
 
@@ -69,7 +70,7 @@ class ProductCommercialAssignmentLite(BaseModel):
 class ProductsWithRelation(ProductsInDBBase):
     categorie: Optional[Categories] = None
     stock: Optional[List[ProductStockLite]] = None
-    variants: Optional[List[ProductVariantNode]] = None
+    variants: Optional[List[ProductVariant]] = None
     commercial_assignment: Optional[ProductCommercialAssignmentLite] = None
     images: Optional[List[ProductImages]] = None
     unit_cost: Optional[float] = None

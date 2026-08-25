@@ -6,6 +6,7 @@ export interface ProductVariant {
   quantity?: number;
   unit_cost?: number | null;
   selling_price?: number | null;
+  discount_price?: number | null;
 }
 
 export interface ProductImage {
@@ -24,6 +25,7 @@ export interface Product {
   image?: string;
   unit?: string;
   selling_price?: number;
+  discount_price?: number | null;
   unit_cost?: number | null;
   status?: string;
   categorie?: { id: number; name?: string } | null;

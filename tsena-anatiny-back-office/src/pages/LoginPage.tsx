@@ -1,15 +1,35 @@
-import { useState } from "react";
-import { Redirect } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Redirect, useHistory, useLocation } from "react-router-dom";
 import { IonContent, IonPage } from "@ionic/react";
 import { Eye, EyeOff, LockKeyhole, Package, Phone } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 
 export function LoginPage() {
-  const { login, token, isLoading } = useAuth();
+  const { login, loginWithFacebook, handleFacebookCallback, token, isLoading } = useAuth();
+  const history = useHistory();
+  const location = useLocation();
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isFacebookLoading, setIsFacebookLoading] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const code = params.get("code");
+    if (!code) return;
+
+    setIsFacebookLoading(true);
+    handleFacebookCallback(code)
+      .then(() => {
+        history.replace("/dashboard");
+      })
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : "Erreur connexion Facebook");
+        history.replace("/login");
+      })
+      .finally(() => setIsFacebookLoading(false));
+  }, []);
 
   if (token) {
     return <Redirect to="/dashboard" />;
@@ -32,6 +52,11 @@ export function LoginPage() {
     }
   }
 
+  async function handleFacebookLogin() {
+    setError(null);
+    loginWithFacebook();
+  }
+
   return (
     <IonPage className="bg-bg">
       <IonContent>
@@ -42,9 +67,7 @@ export function LoginPage() {
 
           <div className="mx-auto w-full max-w-md">
             <div className="mb-8 flex flex-col items-center gap-3 text-center">
-              <div className="grid h-16 w-16 place-items-center rounded-3xl bg-gradient-to-br from-brand to-warning text-white shadow-lg shadow-brand/35">
-                <Package className="h-7 w-7" />
-              </div>
+              <img src="/logo.png" alt="Tsena Anatiny" className="h-16 w-16 rounded-3xl object-contain shadow-lg shadow-brand/35" />
               <div>
                 <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted">
                   Tsena Anatiny
@@ -135,6 +158,31 @@ export function LoginPage() {
                 {isLoading ? "Connexion..." : "Accéder au tableau de bord"}
               </button>
             </form>
+
+            <div className="relative mt-5">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-border/60" />
+              </div>
+              <div className="relative flex justify-center text-xs">
+                <span className="bg-transparent px-2 text-muted">ou</span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleFacebookLogin}
+              disabled={isFacebookLoading || isLoading}
+              className="mt-4 flex w-full items-center justify-center gap-3 rounded-2xl border border-border/70 bg-panel/90 px-6 py-3 text-sm font-bold text-ink shadow-sm backdrop-blur transition hover:bg-panel active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isFacebookLoading ? (
+                <span className="h-4 w-4 shrink-0 animate-spin-slow rounded-full border-2 border-current border-t-transparent" />
+              ) : (
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="#1877F2">
+                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                </svg>
+              )}
+              Se connecter avec Facebook
+            </button>
 
             <p className="mt-6 text-center text-xs text-muted">
               Réservé au personnel autorisé de Tsena Anatiny

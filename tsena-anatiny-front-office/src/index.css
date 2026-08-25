@@ -15,6 +15,7 @@
     --brand: 16 82% 45%;
     --brand-soft: 22 95% 92%;
     --accent: 6 78% 45%;
+    --accent-soft: 30 100% 88%;
     --success: 161 94% 26%;
     --warning: 38 92% 50%;
     --danger: 0 72% 51%;
@@ -110,6 +111,22 @@
     animation: fade-in 0.25s ease-out both;
   }
 
+  @keyframes pulse-soft {
+    0%,
+    100% {
+      opacity: 0.6;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.08);
+    }
+  }
+
+  .animate-pulse-slow {
+    animation: pulse-soft 6s ease-in-out infinite;
+  }
+
   .animate-slide-in-right {
     animation: slide-in-right 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
@@ -171,11 +188,12 @@ ion-toolbar {
 
 ion-tab-bar {
   --background: hsl(var(--panel));
-  --border: 1px solid hsl(var(--border));
+  --border: 1px solid hsl(var(--border) / 0.4);
   --color: hsl(var(--muted));
   --color-selected: hsl(var(--brand));
   --ion-tab-bar-padding-bottom: env(safe-area-inset-bottom);
-  height: 44px;
+  height: 48px;
+  backdrop-filter: blur(12px);
 }
 
 ion-tab-button {
@@ -183,14 +201,28 @@ ion-tab-button {
   --color-selected: hsl(var(--brand));
   --padding-top: 4px;
   --padding-bottom: 2px;
-  --min-height: 44px;
+  --min-height: 48px;
+  position: relative;
 }
 
 ion-tab-button ion-icon {
-  font-size: 20px;
+  font-size: 21px;
 }
 
 ion-tab-button ion-label {
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+ion-tab-button[tab-selected]::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 2px;
+  background: hsl(var(--brand));
+  border-radius: 0 0 2px 2px;
 }

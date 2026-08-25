@@ -14,6 +14,7 @@ export default {
           soft: "hsl(var(--brand-soft) / <alpha-value>)"
         },
         accent: "hsl(var(--accent) / <alpha-value>)",
+        "accent-soft": "hsl(var(--accent-soft) / <alpha-value>)",
         success: "hsl(var(--success) / <alpha-value>)",
         warning: "hsl(var(--warning) / <alpha-value>)",
         danger: "hsl(var(--danger) / <alpha-value>)"

@@ -14,6 +14,7 @@ class ProductVariants(Base):
     quantity = Column(Integer, nullable=False, default=0)
     unit_cost = Column(Float)
     selling_price = Column(Float)
+    discount_price = Column(Float)
     image = Column(String(255))
 
     # default column

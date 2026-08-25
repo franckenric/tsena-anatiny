@@ -102,7 +102,7 @@ def _order_summary(
         total = float(getattr(order, "another_price", 0) or 0)
 
     created_at = getattr(order, "created_at", None) or getattr(order, "updated_at", None)
-    return {
+    summary = {
         "order_id": getattr(order, "id", None),
         "order_number": getattr(order, "order_number", None),
         "status": _serialize_status(getattr(order, "status", None)),
@@ -111,6 +111,11 @@ def _order_summary(
         "total": total,
         "created_at": created_at.isoformat() if created_at else None,
     }
+    promo_code = getattr(order, "promo_code", None)
+    if promo_code:
+        summary["promo_code"] = promo_code
+        summary["discount"] = float(getattr(order, "discount", 0) or 0)
+    return summary
 
 
 def _status_label(status: Optional[str]) -> str:
@@ -123,6 +128,11 @@ def _build_message(event_type: str, data: dict[str, Any]) -> tuple[str, str]:
         title = "Nouvelle commande"
         customer = data.get("customer_name") or "client"
         message = f"Commande {order_number} de {customer}"
+        if data.get("promo_code"):
+            message += (
+                f" (code promo {data['promo_code']}"
+                f" -{data.get('discount', 0):g})"
+            )
     else:
         title = "Statut modifié"
         previous = _status_label(data.get("previous_status"))

@@ -64,10 +64,25 @@ function clearStoredToken(): void {
   localStorage.removeItem(TOKEN_STORAGE_KEY);
 }
 
+async function facebookLogin(code: string, redirectUri: string): Promise<AuthToken> {
+  const response = await fetch(buildUrl("/login/facebook"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ code, redirect_uri: redirectUri })
+  });
+
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+
+  return (await response.json()) as AuthToken;
+}
+
 export const authService = {
   login,
   testToken,
   saveToken,
   getStoredToken,
-  clearStoredToken
+  clearStoredToken,
+  facebookLogin
 };

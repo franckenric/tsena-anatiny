@@ -37,7 +37,9 @@ export function useAddToCart() {
   const addSingle = useCallback(
     async (product: Product, quantity: number): Promise<boolean> => {
       if (!customer || !requireCustomer()) return false;
-      const unitCost = Number(product.selling_price ?? 0);
+      const price = Number(product.selling_price ?? 0);
+      const discount = Number(product.discount_price ?? 0);
+      const unitCost = discount > 0 && discount < price ? discount : price;
       try {
         await cartItemsService.createCartItem({
           customer_id: customer.id,

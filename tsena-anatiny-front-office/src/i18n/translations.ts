@@ -94,6 +94,15 @@ export const dictionaries: Record<Language, Record<string, string>> = {
     "home.removeCategory": "Retirer {name}",
     "home.errorCatalog": "Erreur chargement catalogue",
 
+    "promo.title": "Code promo",
+    "promo.hint": "Vous avez un code ? Profitez de votre remise.",
+    "promo.placeholder": "Ex : BIENVENUE10",
+    "promo.apply": "Appliquer",
+    "promo.checking": "Vérification...",
+    "promo.applied": "Code appliqué",
+    "promo.remove": "Retirer",
+    "checkout.discount": "Remise ({code})",
+
     "categories.all": "Toutes les catégories",
     "categories.select": "Sélectionnez une ou plusieurs catégories.",
     "categories.empty": "Aucune catégorie",
@@ -202,6 +211,8 @@ export const dictionaries: Record<Language, Record<string, string>> = {
     "auth.needName": "Veuillez saisir votre nom.",
     "auth.registerError": "Erreur lors de l'inscription",
     "auth.loginError": "Erreur de connexion",
+    "auth.loginWithFacebook": "Se connecter avec Facebook",
+    "auth.loginWithGoogle": "Se connecter avec Google",
     "auth.notFound": "Aucun compte trouvé avec ce numéro. Créez votre compte.",
 
     "otp.title": "Vérification du compte",
@@ -366,6 +377,15 @@ export const dictionaries: Record<Language, Record<string, string>> = {
     "home.removeCategory": "Esory {name}",
     "home.errorCatalog": "Hadisoana tamin'ny fampidirana ny katalaogy",
 
+    "promo.title": "Kaody vidy tsara",
+    "promo.hint": "Manana kaody ve ianao ? Mandray fihenam-bidy.",
+    "promo.placeholder": "Oh : BIENVENUE10",
+    "promo.apply": "Ampiharina",
+    "promo.checking": "Fanamarinana...",
+    "promo.applied": "Voa ampiharina ny kaody",
+    "promo.remove": "Esory",
+    "checkout.discount": "Fihenam-bidy ({code})",
+
     "categories.all": "Ny sokajy rehetra",
     "categories.select": "Misafidiana sokajy iray na maromaro.",
     "categories.empty": "Tsy misy sokajy",
@@ -477,6 +497,8 @@ export const dictionaries: Record<Language, Record<string, string>> = {
     "auth.needName": "Ampidiro ny anaranao.",
     "auth.registerError": "Hadisoana nandritra ny fisoratana",
     "auth.loginError": "Hadisoana tamin'ny fidirana",
+    "auth.loginWithFacebook": "Miditra amin'ny Facebook",
+    "auth.loginWithGoogle": "Miditra amin'ny Google",
     "auth.notFound":
       "Tsy hita ny kaonty misy ity laharana ity. Mamorona kaonty.",
 

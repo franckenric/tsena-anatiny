@@ -26,6 +26,8 @@ class OrdersBase(BaseModel):
     customer_id: int
     another_price: Optional[float] = 0
     other_price_reason: Optional[str] = None
+    promo_code: Optional[str] = None
+    discount: Optional[float] = 0
     status: Optional[ProductStatusEnum] = None
     note: Optional[str] = None
 
@@ -139,6 +141,7 @@ class OrdersWithRelation(OrdersInDBBase):
     user: Optional[Users] = None
     customer: Optional[Customers] = None
     stock_movements: Optional[List[StockMovementsWithRelation]] = None
+    promo_code: Optional[str] = None
 
 
 class OrdersInDB(OrdersInDBBase):

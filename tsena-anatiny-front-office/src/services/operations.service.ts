@@ -2,12 +2,22 @@ import { apiFetch } from "./api";
 import { productsService } from "./products.service";
 import type {
   CartItem,
+  PromoCodeValidation,
   CreateCartItemPayload,
   UpdateCartItemPayload,
   CheckoutPayload,
   Order,
   OrderListResponse
 } from "../types/operations";
+
+export const promoCodesService = {
+  async validate(code: string, subtotal?: number): Promise<PromoCodeValidation> {
+    return apiFetch<PromoCodeValidation>("/promo_codes/validate", {
+      method: "POST",
+      body: JSON.stringify({ code: code.trim(), subtotal })
+    });
+  }
+};
 
 export const cartItemsService = {
   async getCartItems(customerId: number): Promise<CartItem[]> {

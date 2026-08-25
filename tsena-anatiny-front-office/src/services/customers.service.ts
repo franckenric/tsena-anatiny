@@ -10,6 +10,11 @@ import type {
 } from "../types/customer";
 import { normalizePhone } from "../lib/utils";
 
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "/api/v1").replace(
+  /\/$/,
+  ""
+);
+
 export const customersService = {
   async findByPhone(phone: string): Promise<Customer | null> {
     const where = JSON.stringify([
@@ -56,6 +61,32 @@ export const customersService = {
       body: JSON.stringify({ phone })
     });
     return response;
+  },
+
+  async facebookLogin(code: string, redirectUri: string): Promise<{ access_token: string; token_type: string }> {
+    const response = await fetch(`${API_BASE_URL}/login/facebook`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code, redirect_uri: redirectUri })
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ detail: "Erreur connexion Facebook" }));
+      throw new Error(err.detail || "Erreur connexion Facebook");
+    }
+    return response.json();
+  },
+
+  async googleLogin(idToken: string): Promise<{ access_token: string; token_type: string }> {
+    const response = await fetch(`${API_BASE_URL}/login/google`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id_token: idToken })
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ detail: "Erreur connexion Google" }));
+      throw new Error(err.detail || "Erreur connexion Google");
+    }
+    return response.json();
   }
 };
 

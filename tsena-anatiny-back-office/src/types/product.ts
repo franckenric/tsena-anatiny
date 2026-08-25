@@ -23,6 +23,7 @@ export interface Product {
   image?: string;
   unit?: string;
   selling_price?: number;
+  discount_price?: number | null;
   unit_cost?: number | null;
   low_stock_alert?: number;
   status?: ProductStatus;
@@ -38,6 +39,7 @@ export interface Product {
     quantity?: number;
     unit_cost?: number | null;
     selling_price?: number | null;
+    discount_price?: number | null;
   }>;
   commercial_assignment?: {
     user_id?: number;
@@ -60,6 +62,7 @@ export interface CreateProductPayload {
   description?: string;
   unit?: string;
   selling_price?: number;
+  discount_price?: number | null;
   low_stock_alert?: number;
   status?: ProductStatus;
 }
@@ -73,6 +76,7 @@ export interface UpdateProductPayload {
   description?: string;
   unit?: string;
   selling_price?: number;
+  discount_price?: number | null;
   low_stock_alert?: number;
   status?: ProductStatus;
 }
@@ -159,6 +163,7 @@ export interface ProductVariantNode {
   quantity: number;
   unit_cost?: number | null;
   selling_price?: number | null;
+  discount_price?: number | null;
   image?: string | null;
   children: ProductVariantNode[];
 }
@@ -172,6 +177,7 @@ export interface ProductVariant {
   quantity: number;
   unit_cost?: number | null;
   selling_price?: number | null;
+  discount_price?: number | null;
   image?: string | null;
 }
 
@@ -182,6 +188,7 @@ export interface CreateVariantPayload {
   sku?: string;
   unit_cost?: number | null;
   selling_price?: number | null;
+  discount_price?: number | null;
   image?: string | null;
 }
 
@@ -192,6 +199,7 @@ export interface UpdateVariantPayload {
   sku?: string;
   unit_cost?: number | null;
   selling_price?: number | null;
+  discount_price?: number | null;
   image?: string | null;
 }
 
@@ -200,5 +208,6 @@ export interface DraftVariant {
   quantity: string;
   unit_cost: string;
   selling_price: string;
+  discount_price: string;
   image?: File | null;
 }

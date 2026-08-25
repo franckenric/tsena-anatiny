@@ -5,12 +5,15 @@ from app.api.api_v1.endpoints import cart_items
 from app.api.api_v1.endpoints import commercial_assignments
 from app.api.api_v1.endpoints import customers
 from app.api.api_v1.endpoints import login
+from app.api.api_v1.endpoints import login_facebook
+from app.api.api_v1.endpoints import login_google
 from app.api.api_v1.endpoints import lot_expenses
 from app.api.api_v1.endpoints import lots
 from app.api.api_v1.endpoints import notifications_api
 from app.api.api_v1.endpoints import orders
 from app.api.api_v1.endpoints import otp
 from app.api.api_v1.endpoints import products
+from app.api.api_v1.endpoints import promo_codes
 from app.api.api_v1.endpoints import product_variants
 from app.api.api_v1.endpoints import register
 from app.api.api_v1.endpoints import roles
@@ -24,12 +27,15 @@ api_router.include_router(cart_items.router, prefix="/cart_items", tags=["cart_i
 api_router.include_router(commercial_assignments.router, prefix="/commercial_assignments", tags=["commercial_assignments"])
 api_router.include_router(customers.router, prefix="/customers", tags=["customers"])
 api_router.include_router(login.router, prefix="/login", tags=["login"])
+api_router.include_router(login_facebook.router, prefix="/login", tags=["login"])
+api_router.include_router(login_google.router, prefix="/login", tags=["login"])
 api_router.include_router(lot_expenses.router, prefix="/lot_expenses", tags=["lot_expenses"])
 api_router.include_router(lots.router, prefix="/lots", tags=["lots"])
 api_router.include_router(notifications_api.router, prefix="/notifications", tags=["notifications"])
 api_router.include_router(orders.router, prefix="/orders", tags=["orders"])
 api_router.include_router(otp.router, prefix="/otp", tags=["otp"])
 api_router.include_router(products.router, prefix="/products", tags=["products"])
+api_router.include_router(promo_codes.router, prefix="/promo_codes", tags=["promo_codes"])
 api_router.include_router(product_variants.router, tags=["product_variants"])
 api_router.include_router(register.router, prefix="/register", tags=["register"])
 api_router.include_router(roles.router, prefix="/roles", tags=["roles"])

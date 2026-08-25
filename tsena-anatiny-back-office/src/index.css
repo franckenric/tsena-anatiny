@@ -62,8 +62,21 @@
     }
   }
 
+  @keyframes slide-in-left {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+
   .animate-fade-up {
     animation: fade-up 0.45s ease-out both;
+  }
+
+  .animate-slide-in-left {
+    animation: slide-in-left 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 }
 

@@ -54,6 +54,7 @@ export interface CheckoutPayload {
   delivery_address?: string;
   status?: OrderStatus;
   note?: string;
+  promo_code?: string;
 }
 
 export interface OrderMovement {
@@ -83,6 +84,8 @@ export interface Order {
   status?: OrderStatus;
   another_price?: number;
   other_price_reason?: string;
+  promo_code?: string | null;
+  discount?: number;
   note?: string;
   created_at?: string;
   customer?: {
@@ -92,6 +95,15 @@ export interface Order {
     delivery_address?: string;
   } | null;
   stock_movements?: OrderMovement[];
+}
+
+export interface PromoCodeValidation {
+  valid: boolean;
+  code: string;
+  discount_type: "percent" | "fixed";
+  discount_value: number;
+  discount_amount: number;
+  description?: string | null;
 }
 
 export interface OrderListResponse {

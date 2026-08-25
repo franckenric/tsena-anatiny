@@ -12,15 +12,12 @@ import {
   ArrowRight,
   BadgePercent,
   Banknote,
-  Check,
-  ChevronRight,
   Flame,
   PackageSearch,
   Plus,
   RefreshCcw,
   Search,
   ShieldCheck,
-  ShoppingBag,
   Sparkles,
   Store,
   Truck,
@@ -35,6 +32,7 @@ import {
 import type { Category, Product } from "../types/product";
 import { ProductCard } from "../components/ProductCard";
 import { ProductGridSkeleton } from "../components/Skeletons";
+import { PromoCodeCard } from "../components/PromoCodeCard";
 import { Page } from "../components/Page";
 import { useAuth } from "../contexts/AuthContext";
 import {
@@ -43,7 +41,6 @@ import {
   getRecentProductIds,
   resolveImageUrl
 } from "../lib/utils";
-import { categoryEmoji, categoryGradient } from "../lib/categories";
 import { useI18n } from "../contexts/I18nContext";
 
 const PAGE_SIZE = 200;
@@ -122,53 +119,56 @@ function GreetingHero({
   };
 
   return (
-    <section className="mx-4 mt-4 animate-fade-up sm:mx-6">
-      <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#7c2d12] via-brand to-[hsl(16_85%_14%)] px-5 pb-6 pt-6 text-white shadow-glow sm:px-8 sm:pb-8 sm:pt-9">
-        <div className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-28 -left-16 h-72 w-72 rounded-full bg-accent/20 blur-3xl" />
-        <div className="pointer-events-none absolute right-8 top-8 h-14 w-14 rounded-full border border-white/15" />
-        <div className="pointer-events-none absolute right-16 top-16 h-8 w-8 rounded-full border border-white/10" />
+    <section className="mx-4 mt-4 animate-fade-up sm:mx-6 lg:mx-auto lg:max-w-6xl">
+      <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-brand via-[hsl(16_80%_38%)] to-[#7c2d12] px-6 pb-7 pt-7 text-white shadow-glow sm:px-9 sm:pb-9 sm:pt-9 lg:flex lg:items-center lg:gap-8">
+        {/* Ambient blobs */}
+        <div className="pointer-events-none absolute -right-24 -top-32 h-80 w-80 animate-pulse-slow rounded-full bg-white/10 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-accent/25 blur-3xl" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
 
-        <div className="relative z-10">
-          <div className="flex items-center gap-3">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/15 text-lg font-bold ring-1 ring-white/20 backdrop-blur-sm">
+        <div className="relative z-10 min-w-0 flex-1">
+          <span className="inline-flex items-center gap-2 rounded-full bg-white/10 py-1.5 pl-2 pr-3.5 text-xs font-semibold ring-1 ring-white/20 backdrop-blur-md">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/20 text-sm font-bold">
               {!isBooting && firstName ? (
                 firstName[0].toUpperCase()
               ) : (
-                <Sparkles className="h-5 w-5" />
+                <Sparkles className="h-3 w-3" />
               )}
             </span>
-            <div className="min-w-0">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-white/70">
-                {t(greetingKey())}
-              </p>
-              <p className="truncate text-base font-bold">
-                {!isBooting && firstName
-                  ? `${firstName} 👋`
-                  : t("home.welcome")}
-              </p>
-            </div>
-          </div>
+            <span className="max-w-[14rem] truncate">
+              {!isBooting && firstName
+                ? `${t(greetingKey())}, ${firstName} 👋`
+                : t("home.welcome")}
+            </span>
+          </span>
 
-          <h1 className="mt-5 font-display text-[2rem] font-extrabold leading-[1.05] tracking-tight sm:text-4xl">
-            {t("home.heroTitle1")}
-            <br />
-            {t("home.heroTitle2")}
+          <h1 className="mt-4 font-display text-[2.1rem] font-extrabold leading-[1.04] tracking-tight sm:text-5xl">
+            {t("home.heroTitle1")}{" "}
+            <span className="bg-gradient-to-r from-accent-soft to-white bg-clip-text text-transparent">
+              {t("home.heroTitle2")}
+            </span>
           </h1>
-          <p className="mt-2.5 max-w-sm text-sm leading-relaxed text-white/85">
+          <p className="mt-3 max-w-md text-sm leading-relaxed text-white/80 sm:text-base">
             {t("home.heroSub")}
           </p>
 
-          <form onSubmit={handleSearch} className="mt-5 max-w-md">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-brand" />
+          <form onSubmit={handleSearch} className="mt-6 max-w-lg">
+            <div className="group flex items-center gap-2 rounded-2xl bg-white p-1.5 shadow-lift ring-1 ring-white/40 transition focus-within:ring-4 focus-within:ring-white/30">
+              <Search className="pointer-events-none ml-3 h-5 w-5 shrink-0 text-muted" />
               <input
                 type="search"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={t("header.searchPlaceholder")}
-                className="w-full rounded-2xl bg-white py-3.5 pl-12 pr-4 text-[15px] font-medium text-ink shadow-lg outline-none transition placeholder:text-muted/70 focus:ring-4 focus:ring-white/25"
+                className="min-w-0 flex-1 bg-transparent py-2 text-[15px] font-medium text-ink outline-none placeholder:text-muted/60"
               />
+              <button
+                type="submit"
+                aria-label={t("header.searchPlaceholder")}
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand text-white shadow-glow transition hover:bg-brand/90 active:scale-90"
+              >
+                <ArrowRight className="h-5 w-5" />
+              </button>
             </div>
           </form>
 
@@ -176,55 +176,56 @@ function GreetingHero({
             <button
               type="button"
               onClick={onExplore}
-              className="inline-flex items-center gap-2 rounded-2xl bg-white px-6 py-3.5 text-sm font-bold text-brand shadow-lg transition hover:bg-white/90 active:scale-95"
+              className="group inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-bold text-brand shadow-lift transition hover:bg-white/90 active:scale-95"
             >
               {t("home.explore")}
-              <ArrowRight className="h-4 w-4" />
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
             </button>
             <button
               type="button"
               onClick={onNewest}
-              className="inline-flex items-center gap-2 rounded-2xl bg-white/10 px-5 py-3.5 text-sm font-bold text-white ring-1 ring-white/25 transition hover:bg-white/20 active:scale-95"
+              className="inline-flex items-center gap-2 rounded-full bg-white/10 px-5 py-3 text-sm font-bold text-white ring-1 ring-white/25 backdrop-blur-sm transition hover:bg-white/20 active:scale-95"
             >
-              <Flame className="h-4 w-4 text-accent" />
+              <Flame className="h-4 w-4 text-accent-soft" />
               {t("home.new")}
             </button>
           </div>
 
-          <div className="mt-6 grid grid-cols-3 gap-2">
+          <div className="mt-6 hidden flex-wrap items-center gap-2.5 sm:flex">
             {TRUST.map(({ icon: Icon, labelKey }) => (
-              <div
+              <span
                 key={labelKey}
-                className="flex flex-col items-center gap-1 rounded-2xl bg-white/10 px-2 py-2.5 text-center ring-1 ring-white/15 backdrop-blur-sm"
+                className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-[11px] font-semibold text-white/90 ring-1 ring-white/15 backdrop-blur-sm"
               >
-                <Icon className="h-4 w-4 text-white" />
-                <span className="text-[10px] font-semibold leading-tight text-white/85">
-                  {t(labelKey)}
-                </span>
-              </div>
+                <Icon className="h-3.5 w-3.5 text-accent-soft" />
+                {t(labelKey)}
+              </span>
             ))}
           </div>
         </div>
 
         {image && featured && (
-          <div className="absolute -bottom-4 -right-2 z-10 hidden w-40 rotate-3 overflow-hidden rounded-3xl border-4 border-white/25 bg-panel shadow-2xl sm:block lg:w-48">
-            <img
-              src={image}
-              alt={featured.name}
-              className="aspect-square w-full object-cover"
-            />
-            <div className="flex items-center justify-between gap-2 bg-white px-3 py-2">
-              <div className="min-w-0">
-                <p className="text-[9px] font-bold uppercase tracking-wider text-muted">
-                  {t("home.featured")}
-                </p>
-                <p className="truncate text-xs font-bold text-ink">
-                  {featured.name}
-                </p>
+          <div className="relative z-10 mt-7 hidden shrink-0 lg:block">
+            <div className="absolute -left-6 -top-6 h-16 w-16 rounded-2xl bg-white/10 backdrop-blur-sm" />
+            <div className="group relative w-56 rotate-2 overflow-hidden rounded-3xl bg-panel shadow-lift ring-1 ring-white/40 transition-transform duration-500 hover:rotate-0">
+              <img
+                src={image}
+                alt={featured.name}
+                className="aspect-square w-full object-cover"
+              />
+              <div className="flex items-center justify-between gap-2 px-4 py-3">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted">
+                    {t("home.featured")}
+                  </p>
+                  <p className="truncate text-sm font-bold text-ink">
+                    {featured.name}
+                  </p>
+                </div>
+                <span className="shrink-0 text-base font-extrabold text-brand">
+                  {price > 0 ? formatAr(price) : ""}
+                </span>
               </div>
-              <span className="shrink-0 text-sm font-extrabold text-brand">
-                {price > 0 ? formatAr(price) : ""}
-              </span>
             </div>
           </div>
         )}
@@ -246,7 +247,7 @@ function SectionHeader({
     <div className="flex items-center justify-between px-4 sm:px-6">
       <h2 className="flex items-center gap-2.5 font-display text-xl font-bold text-ink sm:text-2xl">
         {Icon && (
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-soft">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white shadow-card ring-1 ring-brand/10">
             <Icon className="h-5 w-5 text-brand" />
           </span>
         )}
@@ -256,10 +257,10 @@ function SectionHeader({
         <button
           type="button"
           onClick={action.onPress}
-          className="flex items-center gap-1.5 rounded-2xl bg-brand-soft px-3 py-2 text-sm font-bold text-brand transition hover:bg-brand/15 active:scale-95"
+          className="group flex items-center gap-1.5 rounded-full bg-brand-soft px-3.5 py-2 text-sm font-bold text-brand transition hover:bg-brand hover:text-white active:scale-95"
         >
           {action.label}
-          <ArrowRight className="h-4 w-4" />
+          <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
         </button>
       )}
     </div>
@@ -268,16 +269,12 @@ function SectionHeader({
 
 function CategoryRail({
   categories,
-  counts,
-  totalCount,
   activeCategories,
   onToggleCategory,
   onClearCategories,
   onExplore
 }: {
   categories: Category[];
-  counts: Map<number, number>;
-  totalCount: number;
   activeCategories: Set<number>;
   onToggleCategory: (id: number) => void;
   onClearCategories: () => void;
@@ -286,13 +283,14 @@ function CategoryRail({
   const { t } = useI18n();
   if (categories.length === 0) return null;
 
-  const visible = categories.slice(0, 2);
-  const row =
-    "flex w-full items-center gap-2.5 rounded-xl px-2.5 py-1.5 text-left transition active:scale-[0.99]";
+  const visible = categories.slice(0, 12);
   const isAllSelected = activeCategories.size === 0;
 
+  const chip =
+    "shrink-0 whitespace-nowrap rounded-xl px-4 py-2 text-[13px] font-semibold transition-all duration-200 active:scale-95";
+
   return (
-    <section className="mt-5 animate-fade-up">
+    <section className="mt-6 animate-fade-up lg:mx-auto lg:max-w-6xl">
       <SectionHeader
         title={t("home.categories")}
         icon={Store}
@@ -300,87 +298,57 @@ function CategoryRail({
           onExplore ? { label: t("common.seeAll"), onPress: onExplore } : undefined
         }
       />
-      <div className="mx-4 mt-2.5 space-y-1 sm:mx-6">
-        <button
-          type="button"
-          onClick={onClearCategories}
-          className={cn(
-            row,
-            isAllSelected
-              ? "bg-brand-soft ring-2 ring-brand/60"
-              : "bg-panel shadow-card"
-          )}
-        >
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand text-white shadow-glow">
-            <ShoppingBag className="h-4 w-4" />
-          </span>
-          <span className="min-w-0 flex-1 text-[13px] font-bold text-ink">
+      <div className="mx-4 mt-3 rounded-2xl border border-border bg-panel p-1.5 shadow-card sm:mx-6 lg:mx-auto lg:max-w-6xl">
+        <div className="scrollbar-hide flex items-center gap-1 overflow-x-auto">
+          <button
+            type="button"
+            onClick={onClearCategories}
+            aria-pressed={isAllSelected}
+            className={cn(
+              chip,
+              isAllSelected
+                ? "bg-brand text-white shadow-glow"
+                : "text-muted hover:bg-bg hover:text-ink"
+            )}
+          >
             {t("common.all")}
-          </span>
-          <span className="shrink-0 rounded-full bg-brand-soft px-1.5 py-0.5 text-[10px] font-bold text-brand">
-            {totalCount}
-          </span>
-          {isAllSelected ? (
-            <Check className="h-3.5 w-3.5 shrink-0 text-brand" />
-          ) : (
-            <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted" />
-          )}
-        </button>
+          </button>
 
-        {visible.map((c) => {
-          const selected = activeCategories.has(c.id);
-          return (
-            <button
-              key={c.id}
-              type="button"
-              onClick={() => onToggleCategory(c.id)}
-              className={cn(
-                row,
-                selected
-                  ? "bg-brand-soft ring-2 ring-brand/60"
-                  : "bg-panel shadow-card"
-              )}
-            >
-              <span
+          <span className="h-5 w-px shrink-0 bg-border" aria-hidden />
+
+          {visible.map((c) => {
+            const selected = activeCategories.has(c.id);
+            return (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => onToggleCategory(c.id)}
+                aria-pressed={selected}
                 className={cn(
-                  "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br text-base",
-                  categoryGradient(c.name)
+                  chip,
+                  selected
+                    ? "bg-brand text-white shadow-glow"
+                    : "text-muted hover:bg-bg hover:text-ink"
                 )}
               >
-                {categoryEmoji(c.name)}
-              </span>
-              <span className="min-w-0 flex-1 truncate text-[13px] font-bold text-ink">
                 {c.name}
-              </span>
-              <span className="shrink-0 rounded-full bg-brand-soft px-1.5 py-0.5 text-[10px] font-bold text-brand">
-                {counts.get(c.id) ?? 0}
-              </span>
-              {selected ? (
-                <Check className="h-3.5 w-3.5 shrink-0 text-brand" />
-              ) : (
-                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted" />
-              )}
-            </button>
-          );
-        })}
+              </button>
+            );
+          })}
 
-        {onExplore && (
-          <Link
-            to="/categories"
-            className={cn(row, "border border-dashed border-brand/40 bg-panel/70")}
-          >
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-soft text-brand">
-              <Plus className="h-4 w-4" />
-            </span>
-            <span className="min-w-0 flex-1 text-[13px] font-bold text-ink">
+          {onExplore && (
+            <Link
+              to="/categories"
+              className={cn(
+                chip,
+                "flex items-center gap-1 text-brand hover:bg-brand-soft/50"
+              )}
+            >
+              <Plus className="h-3.5 w-3.5" />
               {t("home.allCategories")}
-            </span>
-            <span className="shrink-0 text-[11px] font-semibold text-muted">
-              {categories.length}
-            </span>
-            <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted" />
-          </Link>
-        )}
+            </Link>
+          )}
+        </div>
       </div>
     </section>
   );
@@ -402,12 +370,15 @@ function ProductRail({
   if (products.length === 0) return null;
   const isCompact = products.length <= 2;
   return (
-    <section className="mt-7 animate-fade-up sm:mt-9" style={{ animationDelay: `${delay}ms` }}>
+    <section
+      className="mt-7 animate-fade-up sm:mt-9 lg:mx-auto lg:max-w-6xl"
+      style={{ animationDelay: `${delay}ms` }}
+    >
       {isCompact ? (
-        <div className="mx-4 overflow-hidden rounded-[2rem] border border-border bg-gradient-to-br from-brand-soft/40 via-panel to-panel p-4 shadow-card sm:mx-6 sm:p-6">
+        <div className="mx-4 overflow-hidden rounded-[2rem] border border-border/70 bg-gradient-to-br from-brand-soft/50 via-panel to-panel p-4 shadow-card sm:mx-6 sm:p-6">
           <div className="flex items-center justify-between gap-3">
             <h2 className="flex items-center gap-2.5 font-display text-xl font-bold text-ink sm:text-2xl">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-soft">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white shadow-card ring-1 ring-brand/10">
                 {Icon && <Icon className="h-5 w-5 text-brand" />}
               </span>
               {title}
@@ -416,10 +387,10 @@ function ProductRail({
               <button
                 type="button"
                 onClick={action.onPress}
-                className="flex shrink-0 items-center gap-1.5 rounded-2xl bg-brand px-3.5 py-2 text-sm font-bold text-white shadow-glow transition hover:bg-brand/90 active:scale-95"
+                className="group flex shrink-0 items-center gap-1.5 rounded-full bg-brand px-4 py-2 text-sm font-bold text-white shadow-glow transition hover:bg-brand/90 active:scale-95"
               >
                 {action.label}
-                <ArrowRight className="h-4 w-4" />
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </button>
             )}
           </div>
@@ -451,33 +422,36 @@ function ProductRail({
 function PromoBanner({ onPress }: { onPress: () => void }) {
   const { t } = useI18n();
   return (
-    <section className="mx-4 mt-6 animate-fade-up sm:mx-6">
-      <div className="relative overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-accent via-[hsl(24_92%_45%)] to-[hsl(8_85%_40%)] p-6 text-white shadow-glow sm:p-8">
+    <section className="mx-4 mt-7 animate-fade-up sm:mx-6 lg:mx-auto lg:max-w-6xl">
+      <button
+        type="button"
+        onClick={onPress}
+        className="group relative block w-full overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-accent via-[hsl(24_92%_45%)] to-[hsl(8_85%_40%)] p-6 text-left text-white shadow-glow transition-transform duration-300 hover:-translate-y-0.5 active:scale-[0.99] sm:p-8"
+      >
         <div className="pointer-events-none absolute -right-12 -top-12 h-44 w-44 rounded-full bg-white/15 blur-2xl" />
         <div className="pointer-events-none absolute -bottom-16 -left-10 h-48 w-48 rounded-full bg-black/10 blur-2xl" />
         <div className="pointer-events-none absolute right-10 top-6 h-12 w-12 rounded-full border border-white/20" />
+        <div className="pointer-events-none absolute right-16 top-14 h-6 w-6 rounded-full border border-white/15" />
 
         <div className="relative z-10 flex items-center justify-between gap-4">
           <div className="min-w-0">
-            <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-white/85">
-              <BadgePercent className="h-4 w-4" />
+            <p className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-[11px] font-bold uppercase tracking-widest text-white ring-1 ring-white/25 backdrop-blur-sm">
+              <BadgePercent className="h-3.5 w-3.5" />
               {t("home.goodDeal")}
             </p>
-            <h2 className="mt-1.5 font-display text-lg font-bold leading-snug sm:text-xl">
-              {t("home.promoTitle1")}
-              <br />
+            <h2 className="mt-2 font-display text-xl font-extrabold leading-snug sm:text-2xl">
+              {t("home.promoTitle1")}{" "}
               {t("home.promoTitle2")}
             </h2>
           </div>
-          <button
-            type="button"
-            onClick={onPress}
-            className="shrink-0 rounded-2xl bg-white px-4 py-2.5 text-sm font-bold text-brand shadow-card transition hover:bg-white/90 active:scale-95"
+          <span
+            aria-hidden
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white text-brand shadow-card transition-transform duration-300 group-hover:translate-x-1 sm:h-14 sm:w-14"
           >
-            {t("home.discover")}
-          </button>
+            <ArrowRight className="h-5 w-5" strokeWidth={2.5} />
+          </span>
         </div>
-      </div>
+      </button>
     </section>
   );
 }
@@ -571,14 +545,6 @@ export function HomePage() {
         .slice(0, 2),
     [availableProducts]
   );
-
-  const categoryCounts = useMemo(() => {
-    const map = new Map<number, number>();
-    for (const p of availableProducts) {
-      map.set(p.category_id, (map.get(p.category_id) ?? 0) + 1);
-    }
-    return map;
-  }, [availableProducts]);
 
   const filtered = useMemo(() => {
     const list = products.filter((p) => {
@@ -681,8 +647,6 @@ export function HomePage() {
         />
         <CategoryRail
           categories={categories}
-          counts={categoryCounts}
-          totalCount={availableProducts.length}
           activeCategories={activeCategories}
           onToggleCategory={toggleCategory}
           onClearCategories={clearCategories}
@@ -706,9 +670,11 @@ export function HomePage() {
           <PromoBanner onPress={scrollToProducts} />
         )}
 
+        <PromoCodeCard />
+
         <section
           ref={productsRef}
-          className="mt-6 scroll-mt-4 px-4 sm:px-6"
+          className="mt-8 scroll-mt-4 px-4 sm:px-6 lg:mx-auto lg:max-w-6xl lg:px-6"
         >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">

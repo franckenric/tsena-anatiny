@@ -314,5 +314,52 @@ export const productsService = {
       throw new Error(err.detail || "Erreur suppression image produit");
     }
     clearProductsCache();
+  },
+
+  async uploadProductImages(
+    productId: number,
+    files: File[]
+  ): Promise<ProductImage[]> {
+    const formData = new FormData();
+    for (const file of files) formData.append("images", file);
+    const response = await fetch(
+      `${API_BASE_URL}/products/${productId}/images`,
+      {
+        method: "POST",
+        headers: { Authorization: `Bearer ${getToken()}` },
+        body: formData
+      }
+    );
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.detail || "Erreur ajout images produit");
+    }
+    const created = await response.json();
+    clearProductsCache();
+    return Array.isArray(created) ? created : [];
+  },
+
+  async replaceProductImage(
+    productId: number,
+    imageId: number,
+    file: File
+  ): Promise<ProductImage> {
+    const formData = new FormData();
+    formData.append("image", file);
+    const response = await fetch(
+      `${API_BASE_URL}/products/${productId}/images/${imageId}`,
+      {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${getToken()}` },
+        body: formData
+      }
+    );
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.detail || "Erreur remplacement image produit");
+    }
+    const updated = await response.json();
+    clearProductsCache();
+    return updated;
   }
 };

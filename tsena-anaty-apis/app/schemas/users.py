@@ -15,6 +15,9 @@ class UsersBase(BaseModel):
     is_active: Optional[bool] = None
     role_id: Optional[int] = None
     phone_numer: Optional[str] = None
+    facebook_id: Optional[str] = None
+    google_id: Optional[str] = None
+    icon: Optional[str] = None
     address: Optional[str] = None
 
 
@@ -33,6 +36,9 @@ class UsersUpdate(UsersBase):
 class UsersInDBBase(UsersBase):
     id: Optional[int]
     role_id: Optional[int] = None
+    facebook_id: Optional[str] = None
+    google_id: Optional[str] = None
+    icon: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

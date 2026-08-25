@@ -12,8 +12,6 @@ import { notificationsService } from "../services/notifications.service";
 import { useAuth } from "./AuthContext";
 import type { Notification } from "../types/notification";
 
-const POLL_INTERVAL_MS = 15000;
-
 interface NotificationsContextValue {
   notifications: Notification[];
   unreadCount: number;
@@ -59,19 +57,6 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setIsLoading(true);
     void refresh();
-
-    const interval = window.setInterval(() => {
-      void refresh();
-    }, POLL_INTERVAL_MS);
-
-    const onFocus = () => {
-      void refresh();
-    };
-    window.addEventListener("focus", onFocus);
-    return () => {
-      window.clearInterval(interval);
-      window.removeEventListener("focus", onFocus);
-    };
   }, [refresh]);
 
   const markAllRead = useCallback(async () => {

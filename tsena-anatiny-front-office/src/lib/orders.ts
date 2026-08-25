@@ -113,7 +113,10 @@ export function getOrderTotal(
   const orderOtherPrice = Number(order.another_price || 0);
   const otherPrice =
     orderOtherPrice > 0 ? orderOtherPrice : movementOtherPrice;
-  return productsTotal + otherPrice;
+  return Math.max(
+    0,
+    productsTotal + otherPrice - Number(order.discount || 0)
+  );
 }
 
 export function getOrderOtherPriceReason(

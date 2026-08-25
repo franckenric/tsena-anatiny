@@ -9,4 +9,5 @@ export { ReceiptImport } from "./ReceiptImport";
 export type { ReceiptApplyPayload } from "./ReceiptImport";
 export { VariantsManager } from "./VariantsManager";
 export { Pagination } from "./Pagination";
+export { FloatingActionButton } from "./FloatingActionButton";
 export type { Column } from "./DataTable";

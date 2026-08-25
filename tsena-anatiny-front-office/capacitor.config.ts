@@ -1,4 +1,15 @@
 import type { CapacitorConfig } from "@capacitor/cli";
+import { readFileSync } from "fs";
+
+function loadEnv(key: string): string {
+  try {
+    const env = readFileSync(".env", "utf-8");
+    const match = env.match(new RegExp(`^${key}=(.*)$`, "m"));
+    return match?.[1]?.trim() ?? "";
+  } catch {
+    return "";
+  }
+}
 
 const config: CapacitorConfig = {
   appId: "mg.tsenanatiny.app",
@@ -13,6 +24,14 @@ const config: CapacitorConfig = {
   },
   server: {
     androidScheme: "https"
+  },
+  plugins: {
+    GoogleAuth: {
+      scopes: ["profile", "email"],
+      clientId: loadEnv("VITE_GOOGLE_IOS_CLIENT_ID"),
+      serverClientId: loadEnv("VITE_GOOGLE_CLIENT_ID"),
+      forceCodeForRefreshToken: false
+    }
   }
 };
 

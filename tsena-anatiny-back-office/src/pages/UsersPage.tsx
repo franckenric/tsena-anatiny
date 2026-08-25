@@ -4,7 +4,13 @@ import type { Role } from "../types/role";
 import type { Column } from "../components/index";
 import { usersService } from "../services/users.service";
 import { rolesService } from "../services/roles.service";
-import { Card, Button, DataTable, Pagination } from "../components/index";
+import {
+  Card,
+  Button,
+  DataTable,
+  Pagination,
+  FloatingActionButton
+} from "../components/index";
 import { UserForm } from "../components/UserForm";
 import { Modal } from "../components/Modal";
 import { Layout } from "../components/Layout";
@@ -160,6 +166,10 @@ export function UsersPage() {
     <Layout
       title="Utilisateurs"
     >
+      <FloatingActionButton
+        label="Nouvel utilisateur"
+        onClick={handleCreate}
+      />
       <div className="animate-fade-up flex flex-col gap-6">
         <div className="hidden items-center justify-between rounded-2xl border border-border/60 bg-panel/65 px-4 py-3 sm:flex">
           <div className="inline-flex items-center gap-2 text-sm font-semibold text-ink">

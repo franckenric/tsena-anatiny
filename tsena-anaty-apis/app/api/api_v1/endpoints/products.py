@@ -370,6 +370,69 @@ async def upload_product_images(
         raise HTTPException(status_code=409, detail='Erreur lors de l’enregistrement des images')
 
 
+@router.put('/{products_id}/images/{image_id}', response_model=schemas.ProductImages)
+async def replace_product_image(
+        *,
+        request: Request,
+        db: Session = Depends(deps.get_db),
+        products_id: int,
+        image_id: int,
+        image: UploadFile = File(...),
+        current_user: models.Users = Depends(deps.get_current_active_user),
+) -> Any:
+    """Replace an existing product image file, keeping its position."""
+    row = crud.product_images.get(db=db, id=image_id)
+    if not row or row.product_id != products_id:
+        raise HTTPException(status_code=404, detail='Image introuvable')
+
+    allowed_types = {"image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"}
+    if image.content_type not in allowed_types:
+        raise HTTPException(status_code=400, detail='Format image non supporte')
+
+    uploads_dir = Path('files/products')
+    uploads_dir.mkdir(parents=True, exist_ok=True)
+
+    ext = Path(image.filename or '').suffix.lower() or '.jpg'
+    if ext not in {'.jpg', '.jpeg', '.png', '.webp', '.gif'}:
+        ext = '.jpg'
+    filename = f"{uuid4().hex}{ext}"
+    content = await image.read()
+    if len(content) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail='Image trop volumineuse (max 5MB)')
+
+    old_filename = Path(row.image or '').name
+    public_path = f"/files/products/{filename}"
+    public_url = f"{str(request.base_url).rstrip('/')}{public_path}"
+
+    (uploads_dir / filename).write_bytes(content)
+    updated = crud.product_images.update(
+        db=db,
+        db_obj=row,
+        obj_in=schemas.ProductImagesUpdate(image=public_url),
+    )
+    try:
+        product = crud.products.get(db=db, id=products_id)
+        if product and product.image and Path(product.image).name == old_filename:
+            product.image = public_url
+            db.commit()
+            db.refresh(product)
+        else:
+            db.commit()
+        db.refresh(updated)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail='Erreur lors du remplacement de l’image')
+
+    try:
+        old_path = uploads_dir / old_filename
+        if old_path.exists():
+            old_path.unlink()
+    except OSError:
+        pass
+
+    return updated
+
+
 @router.delete('/{products_id}/images/{image_id}', response_model=schemas.Msg)
 def delete_product_image(
         *,
@@ -383,13 +446,27 @@ def delete_product_image(
     if not image or image.product_id != products_id:
         raise HTTPException(status_code=404, detail='Image introuvable')
 
+    was_main = False
+    product = crud.products.get(db=db, id=products_id)
+    if product and image.image and product.image:
+        was_main = Path(product.image).name == Path(image.image).name
+
     crud.product_images.remove(db=db, id=image_id)
+
     try:
         file_path = Path('files/products') / Path(image.image or '').name
         if file_path.exists():
             file_path.unlink()
     except OSError:
         pass
+
+    if was_main and product:
+        remaining = crud.product_images.get_multi_by_product(
+            db=db, product_id=products_id
+        )
+        product.image = remaining[0].image if remaining else '/No_Image_Available.jpg'
+        db.commit()
+
     return schemas.Msg(msg='Image supprimée')
 
 

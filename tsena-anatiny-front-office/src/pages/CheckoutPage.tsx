@@ -4,10 +4,14 @@ import { ArrowLeft, Lock } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { useCart } from "../contexts/CartContext";
 import { useI18n } from "../contexts/I18nContext";
-import { cartItemsService } from "../services/operations.service";
+import {
+  cartItemsService,
+  promoCodesService
+} from "../services/operations.service";
 import { PageLoader, Spinner } from "../components/Spinner";
 import { Page } from "../components/Page";
 import { formatAr, formatPhoneMadagascar } from "../lib/utils";
+import { computeDiscountAmount, getAppliedPromo, setAppliedPromo, type AppliedPromo } from "../lib/promo";
 
 export function CheckoutPage() {
   const { customer, isBooting, apiUser } = useAuth();
@@ -23,6 +27,7 @@ export function CheckoutPage() {
   const [error, setError] = useState<string | null>(null);
   const [address, setAddress] = useState(customer?.delivery_address ?? "");
   const [note, setNote] = useState("");
+  const [promo, setPromo] = useState<AppliedPromo | null>(null);
 
   useEffect(() => {
     if (isBooting) return;
@@ -58,6 +63,28 @@ export function CheckoutPage() {
     0
   );
 
+  // Revalidate the applied promo code against the real cart subtotal.
+  useEffect(() => {
+    const stored = getAppliedPromo();
+    if (!stored || items.length === 0) return;
+    let cancelled = false;
+    promoCodesService
+      .validate(stored.code, subtotal)
+      .then(() => {
+        if (!cancelled) setPromo(stored);
+      })
+      .catch(() => {
+        setAppliedPromo(null);
+        if (!cancelled) setPromo(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [items.length, subtotal]);
+
+  const discount = promo ? computeDiscountAmount(promo, subtotal) : 0;
+  const total = Math.max(0, subtotal - discount);
+
   const handleConfirm = async () => {
     if (!customer) return;
     if (items.length === 0) return;
@@ -76,9 +103,11 @@ export function CheckoutPage() {
         customer_phone: customer.phone,
         delivery_address: address.trim() || undefined,
         status: "draft",
-        note: note.trim() || undefined
+        note: note.trim() || undefined,
+        promo_code: promo?.code
       });
       clear();
+      setAppliedPromo(null);
       history.push(`/succes/${order.id}`);
     } catch (err) {
       setError(
@@ -229,10 +258,16 @@ export function CheckoutPage() {
                 {t("common.toConvene")}
               </dd>
             </div>
+            {discount > 0 && promo && (
+              <div className="flex justify-between text-success">
+                <dt>{t("checkout.discount", { code: promo.code })}</dt>
+                <dd className="font-semibold">-{formatAr(discount)}</dd>
+              </div>
+            )}
             <div className="flex justify-between border-t border-border pt-3">
               <dt className="font-bold text-ink">{t("common.total")}</dt>
               <dd className="text-xl font-bold text-brand">
-                {formatAr(subtotal)}
+                {formatAr(total)}
               </dd>
             </div>
           </dl>

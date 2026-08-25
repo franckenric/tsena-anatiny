@@ -7,6 +7,7 @@ from .crud_lots import lots
 from .crud_notifications import notifications
 from .crud_orders import orders
 from .crud_products import products
+from .crud_promo_codes import promo_codes
 from .crud_product_images import product_images
 from .crud_product_variants import product_variants
 from .crud_receipts import receipts

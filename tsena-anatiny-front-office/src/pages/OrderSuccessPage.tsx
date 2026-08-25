@@ -96,7 +96,13 @@ export function OrderSuccessPage() {
     (sum, line) => sum + line.quantity * line.unit_cost,
     0
   );
-  const otherPrice = total - productsTotal;
+  const orderOtherPrice = Number(order.another_price || 0);
+  const movementOtherPrice = items.reduce(
+    (sum, line) => sum + line.another_price,
+    0
+  );
+  const otherPrice = orderOtherPrice > 0 ? orderOtherPrice : movementOtherPrice;
+  const discount = Number(order.discount || 0);
   const otherPriceReason = getOrderOtherPriceReason(order, items);
   const status = (order.status ?? "draft") as OrderStatus;
   const isConfirmed = status === "confirmed" || status === "delivered";
@@ -180,6 +186,12 @@ export function OrderSuccessPage() {
               <dd className="font-semibold text-ink">
                 {formatAr(otherPrice)}
               </dd>
+            </div>
+          )}
+          {discount > 0 && (
+            <div className="flex justify-between text-success">
+              <dt>{t("checkout.discount", { code: order.promo_code ?? "" })}</dt>
+              <dd className="font-semibold">-{formatAr(discount)}</dd>
             </div>
           )}
           <div className="flex justify-between border-t border-border pt-3">

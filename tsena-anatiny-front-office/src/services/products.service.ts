@@ -7,7 +7,7 @@ import type {
 const PRODUCT_RELATION = JSON.stringify([
   "categorie{id,name}",
   "stock{quantity}",
-  "variants{id,parent_id,name,sku,quantity,unit_cost,selling_price}",
+  "variants{id,parent_id,name,sku,quantity,unit_cost,selling_price,discount_price}",
   "images{image,position}"
 ]);
 
@@ -64,7 +64,7 @@ export function selectableVariants(
   return leaves.length > 0 ? leaves : variants;
 }
 
-export function getProductDisplayPrice(product: Product): number {
+export function getProductOriginalPrice(product: Product): number {
   const variants = product.variants ?? [];
   if (variants.length > 0) {
     const prices = selectableVariants(product)
@@ -75,6 +75,39 @@ export function getProductDisplayPrice(product: Product): number {
     }
   }
   return product.selling_price ?? 0;
+}
+
+export function getProductDisplayPrice(product: Product): number {
+  const variants = product.variants ?? [];
+  if (variants.length > 0) {
+    const prices = selectableVariants(product)
+      .map((v) => {
+        const selling = typeof v.selling_price === "number" && v.selling_price > 0 ? v.selling_price : 0;
+        const discount = typeof v.discount_price === "number" && v.discount_price > 0 ? v.discount_price : 0;
+        return discount > 0 && discount < selling ? discount : selling;
+      })
+      .filter((p) => p > 0);
+    if (prices.length > 0) {
+      return Math.min(...prices);
+    }
+  }
+  const original = product.selling_price ?? 0;
+  const discount = product.discount_price ?? 0;
+  return discount > 0 && discount < original ? discount : original;
+}
+
+export function productHasDiscount(product: Product): boolean {
+  const variants = product.variants ?? [];
+  if (variants.length > 0) {
+    return selectableVariants(product).some((v) => {
+      const sp = Number(v.selling_price ?? 0);
+      const dp = Number(v.discount_price ?? 0);
+      return dp > 0 && sp > 0 && dp < sp;
+    });
+  }
+  const sp = Number(product.selling_price ?? 0);
+  const dp = Number(product.discount_price ?? 0);
+  return dp > 0 && sp > 0 && dp < sp;
 }
 
 export function variantLabel(

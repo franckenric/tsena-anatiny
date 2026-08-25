@@ -41,6 +41,12 @@ export function NotificationsPage() {
 
   useEffect(() => {
     void refresh();
+
+    const interval = window.setInterval(() => {
+      void refresh();
+    }, 15_000);
+
+    return () => window.clearInterval(interval);
   }, [refresh]);
 
   if (isBooting) {

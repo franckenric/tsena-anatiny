@@ -41,6 +41,7 @@ type LotProductRow = StockMovement & {
   current_stock: number;
   sold_quantity: number;
   selling_price: number;
+  discount_price: number | null;
   base_unit_cost: number;
 };
 

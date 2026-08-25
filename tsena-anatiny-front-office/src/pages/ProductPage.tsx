@@ -6,19 +6,18 @@ import {
   PackageCheck,
   PackageX,
   ShoppingBag,
-  Tags,
-  Truck
+  Tags
 } from "lucide-react";
 import {
   productsService,
   getProductTotalStock,
   getProductDisplayPrice,
+  getProductOriginalPrice,
+  productHasDiscount,
   selectableVariants,
-  variantEffectiveStock,
-  variantLabel
+  variantEffectiveStock
 } from "../services/products.service";
 import type { Product } from "../types/product";
-import { useAuth } from "../contexts/AuthContext";
 import { useCartDrawer } from "../contexts/CartDrawerContext";
 import { useToast } from "../contexts/ToastContext";
 import { useI18n } from "../contexts/I18nContext";
@@ -38,7 +37,6 @@ type Line = CartLine;
 export function ProductPage() {
   const { id } = useParams<{ id: string }>();
   const history = useHistory();
-  const { customer, isBooting } = useAuth();
   const { closeCart } = useCartDrawer();
   const { error: toastError } = useToast();
   const { t } = useI18n();
@@ -73,11 +71,28 @@ export function ProductPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product?.id, galleryImages.length]);
 
-  const variants = useMemo(
-    () => (product ? selectableVariants(product) : []),
-    [product]
-  );
   const hasVariants = (product?.variants ?? []).length > 0;
+
+  const variantTree = useMemo(() => {
+    if (!product || !hasVariants) return [];
+    const all = product.variants ?? [];
+    const roots = all.filter((v) => v.parent_id == null);
+    return roots.map((root) => ({
+      root,
+      children: all.filter((v) => v.parent_id === root.id),
+    }));
+  }, [product?.id]);
+
+  const [selectedRootId, setSelectedRootId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (variantTree.length > 0 && selectedRootId == null) {
+      const firstWithChildren = variantTree.find((g) => g.children.length > 0);
+      setSelectedRootId(firstWithChildren?.root.id ?? variantTree[0].root.id);
+    }
+  }, [variantTree]);
+
+  const selectedGroup = variantTree.find((g) => g.root.id === selectedRootId);
 
   const [lines, setLines] = useState<Line[]>([]);
 
@@ -113,15 +128,17 @@ export function ProductPage() {
 
   useEffect(() => {
     if (product && hasVariants) {
+      const leaves = selectableVariants(product);
       setLines(
-        variants.map((v) => ({
-          variant: v,
-          quantity: 0,
-          unit_cost:
-            Number(v.selling_price ?? 0) ||
-            Number(product.selling_price ?? 0) ||
-            0
-        }))
+        leaves.map((v) => {
+          const vPrice = Number(v.selling_price ?? 0) || Number(product.selling_price ?? 0) || 0;
+          const vDiscount = Number(v.discount_price ?? 0);
+          return {
+            variant: v,
+            quantity: 0,
+            unit_cost: vDiscount > 0 && vDiscount < vPrice ? vDiscount : vPrice
+          };
+        })
       );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -131,11 +148,14 @@ export function ProductPage() {
   const activeLines = hasVariants ? lines.filter((l) => l.quantity > 0) : [];
 
   const displayPrice = product ? getProductDisplayPrice(product) : 0;
+  const originalPrice = product ? getProductOriginalPrice(product) : 0;
+
+  const effectivePrice = displayPrice;
 
   const total =
     hasVariants && activeLines.length > 0
       ? activeLines.reduce((sum, l) => sum + l.quantity * l.unit_cost, 0)
-      : quantity * displayPrice;
+      : quantity * effectivePrice;
 
   const totalQty = hasVariants
     ? activeLines.reduce((sum, l) => sum + l.quantity, 0)
@@ -221,16 +241,21 @@ export function ProductPage() {
 
   if (!product) return <Page />;
 
+  const hasDiscount = productHasDiscount(product);
+
+  const discountPercent = hasDiscount
+    ? Math.round(((originalPrice - displayPrice) / originalPrice) * 100)
+    : 0;
+
   return (
     <Page>
-      {/* Bouton retour flottant */}
       {backButton}
 
-      <div className="mx-auto max-w-7xl px-4 pb-28 pt-5 sm:px-6 sm:pb-12">
-        <div className="grid gap-8 lg:grid-cols-2">
-          {/* ── Galerie ── */}
-          <div className="animate-fade-in">
-            <div className="relative overflow-hidden rounded-3xl border border-border bg-panel">
+      <div className="mx-auto max-w-6xl px-5 pb-32 pt-6 sm:px-8 sm:pb-14">
+        <div className="grid gap-6 lg:grid-cols-[1fr_420px] lg:gap-10">
+          {/* ── Gallery ── */}
+          <div className="animate-fade-in lg:sticky lg:top-24 lg:self-start">
+            <div className="relative overflow-hidden rounded-3xl bg-bg">
               {selectedImage ? (
                 <img
                   src={selectedImage}
@@ -238,30 +263,36 @@ export function ProductPage() {
                   className="aspect-square w-full object-cover"
                 />
               ) : (
-                <div className="flex aspect-square w-full items-center justify-center text-muted/40">
-                  <ImageOff className="h-16 w-16" />
+                <div className="flex aspect-square w-full items-center justify-center text-muted/20">
+                  <ImageOff className="h-20 w-20" />
                 </div>
               )}
+
+              {hasDiscount && (
+                <span className="absolute right-4 top-4 inline-flex items-center rounded-full bg-accent px-3 py-1.5 text-xs font-extrabold uppercase tracking-wide text-white shadow-lg">
+                  -{discountPercent}%
+                </span>
+              )}
+
               {galleryImages.length > 1 && selectedImage && (
-                <span className="absolute bottom-3 right-3 rounded-full bg-ink/70 px-2.5 py-1 text-[11px] font-semibold text-white">
-                  {galleryImages.indexOf(selectedImage) + 1} /{" "}
-                  {galleryImages.length}
+                <span className="absolute bottom-4 right-4 rounded-full bg-ink/50 px-3 py-1 text-[11px] font-semibold text-white backdrop-blur-md">
+                  {galleryImages.indexOf(selectedImage) + 1}/{galleryImages.length}
                 </span>
               )}
             </div>
 
             {galleryImages.length > 1 && (
-              <div className="mt-4 flex flex-wrap gap-2.5">
+              <div className="mt-3 flex gap-2 overflow-x-auto scrollbar-hide pb-1">
                 {galleryImages.map((url) => (
                   <button
                     key={url}
                     type="button"
                     onClick={() => setSelectedImage(url)}
                     className={cn(
-                      "relative h-20 w-20 overflow-hidden rounded-xl border-2 transition",
+                      "h-[72px] w-[72px] shrink-0 overflow-hidden rounded-2xl transition-all duration-200",
                       selectedImage === url
-                        ? "border-brand ring-2 ring-brand/25"
-                        : "border-border hover:border-brand/40"
+                        ? "ring-2 ring-brand ring-offset-2 ring-offset-bg"
+                        : "opacity-50 hover:opacity-80"
                     )}
                   >
                     <img
@@ -275,18 +306,19 @@ export function ProductPage() {
             )}
           </div>
 
-          {/* ── Informations ── */}
+          {/* ── Info ── */}
           <div className="flex flex-col gap-5">
-            <div className="flex flex-wrap items-center gap-2">
+            {/* Top row: category + stock */}
+            <div className="flex items-center gap-2">
               {product.categorie?.name && (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-soft px-3 py-1 text-xs font-semibold text-brand">
-                  <Tags className="h-3.5 w-3.5" />
+                <span className="inline-flex items-center gap-1 rounded-full bg-brand-soft px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-brand">
+                  <Tags className="h-3 w-3" />
                   {product.categorie.name}
                 </span>
               )}
               <span
                 className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold",
+                  "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider",
                   stock > 0
                     ? "bg-success/10 text-success"
                     : "bg-danger/10 text-danger"
@@ -294,131 +326,270 @@ export function ProductPage() {
               >
                 {stock > 0 ? (
                   <>
-                    <PackageCheck className="h-3.5 w-3.5" />
+                    <PackageCheck className="h-3 w-3" />
                     {t("common.inStock", { count: stock })}
                   </>
                 ) : (
                   <>
-                    <PackageX className="h-3.5 w-3.5" />
+                    <PackageX className="h-3 w-3" />
                     {t("common.outOfStock")}
                   </>
                 )}
               </span>
             </div>
 
-            <h1 className="text-2xl font-bold leading-tight text-ink sm:text-3xl">
+            {/* Title */}
+            <h1 className="text-2xl font-extrabold leading-tight tracking-tight text-ink sm:text-3xl">
               {product.name}
             </h1>
 
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
-              <span>{t("product.sku", { sku: product.sku })}</span>
+            {/* SKU */}
+            <div className="flex items-center gap-2 text-[11px] text-muted/50">
+              <span>REF: {product.sku}</span>
               {product.unit && (
-                <span>{t("product.unit", { unit: product.unit })}</span>
+                <>
+                  <span className="text-border">·</span>
+                  <span>{product.unit}</span>
+                </>
               )}
             </div>
 
-            {product.description && (
-              <div className="rounded-2xl border border-border/60 bg-bg/30 p-4">
-                <p className="mb-1.5 text-[11px] font-bold uppercase tracking-widest text-muted">
-                  {t("common.description")}
-                </p>
-                <p className="whitespace-pre-line text-sm leading-relaxed text-ink">
-                  {product.description}
-                </p>
-              </div>
-            )}
-
-            {/* ── Prix & sélection ── */}
-            {hasVariants ? (
-              <div className="space-y-3">
-                <div className="flex items-baseline justify-between gap-3">
-                  <p className="text-xs font-semibold uppercase tracking-widest text-muted">
-                    {t("product.variants")}
-                  </p>
-                  {displayPrice > 0 && (
-                    <p className="text-sm text-muted">
-                      {t("product.from")}{" "}
-                      <span className="font-bold text-brand">
-                        {formatAr(displayPrice)}
-                      </span>
+            {/* ── Price block ── */}
+            <div className="rounded-2xl border border-border/40 bg-bg/50 p-3.5 sm:p-4">
+              {hasVariants ? (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[11px] font-bold uppercase tracking-widest text-muted/50">
+                      {t("product.variants")}
                     </p>
+                    {displayPrice > 0 && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-extrabold text-brand">
+                          {t("product.from")} {formatAr(displayPrice)}
+                        </span>
+                        {hasDiscount && (
+                          <>
+                            <span className="text-xs text-muted/40 line-through">
+                              {formatAr(originalPrice)}
+                            </span>
+                            <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-bold text-accent">
+                              -{discountPercent}%
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ── Root variant chips ── */}
+                  <div className="flex flex-wrap gap-2">
+                    {variantTree.map((group) => {
+                      const isActive = selectedRootId === group.root.id;
+                      const rootStock = variantEffectiveStock(
+                        product.variants ?? [],
+                        group.root
+                      );
+                      const rootSoldOut =
+                        group.children.length === 0 && rootStock <= 0;
+                      const selectedCount = group.children.length > 0
+                        ? group.children.filter((c) => {
+                            const l = lines.find((ln) => ln.variant.id === c.id);
+                            return l && l.quantity > 0;
+                          }).length
+                        : (() => {
+                            const l = lines.find((ln) => ln.variant.id === group.root.id);
+                            return l && l.quantity > 0 ? 1 : 0;
+                          })();
+                      return (
+                        <button
+                          key={group.root.id}
+                          type="button"
+                          onClick={() => setSelectedRootId(group.root.id)}
+                          disabled={rootSoldOut}
+                          className={cn(
+                            "relative rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-all duration-200",
+                            isActive
+                              ? "border-brand bg-brand text-white shadow-sm"
+                              : "border-border/60 bg-panel text-ink hover:border-brand/50",
+                            rootSoldOut && "cursor-not-allowed opacity-30"
+                          )}
+                        >
+                          {group.root.name || `#${group.root.id}`}
+                          {selectedCount > 0 && (
+                            <span
+                              className={cn(
+                                "ml-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold",
+                                isActive
+                                  ? "bg-white/25 text-white"
+                                  : "bg-brand/15 text-brand"
+                              )}
+                            >
+                              {selectedCount}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* ── Variant rows with inline quantity ── */}
+                  {selectedGroup && (() => {
+                    const items = selectedGroup.children.length > 0
+                      ? selectedGroup.children
+                      : [selectedGroup.root];
+                    return (
+                      <div className="space-y-1.5">
+                        {items.map((variant) => {
+                          const line = lines.find(
+                            (l) => l.variant.id === variant.id
+                          );
+                          if (!line) return null;
+                          const idx = lines.indexOf(line);
+                          if (idx === -1) return null;
+                          const vStock = variantEffectiveStock(
+                            product.variants ?? [],
+                            variant
+                          );
+                          const vSoldOut = vStock <= 0;
+                          const isSelected = line.quantity > 0;
+                          const vSelling = Number(variant.selling_price ?? 0);
+                          const vDiscount = Number(variant.discount_price ?? 0);
+                          const vHasDiscount =
+                            vDiscount > 0 && vSelling > 0 && vDiscount < vSelling;
+                          const vPrice = vHasDiscount ? vDiscount : line.unit_cost;
+                          const vPercent = vHasDiscount
+                            ? Math.round(((vSelling - vDiscount) / vSelling) * 100)
+                            : 0;
+
+                          return (
+                            <div
+                              key={variant.id}
+                              className={cn(
+                                "flex items-center justify-between gap-3 rounded-xl border px-3.5 py-2.5 transition-all duration-200",
+                                vSoldOut
+                                  ? "border-border/20 bg-bg/20 opacity-50"
+                                  : isSelected
+                                    ? "border-brand/40 bg-brand/5 shadow-sm"
+                                    : "border-border/40 bg-panel hover:border-border"
+                              )}
+                            >
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-1.5">
+                                  {isSelected && (
+                                    <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-brand px-1 text-[9px] font-bold text-white">
+                                      {line.quantity}
+                                    </span>
+                                  )}
+                                  <p className="truncate text-xs font-semibold text-ink">
+                                    {variant.name || `#${variant.id}`}
+                                  </p>
+                                </div>
+                                <div className="mt-0.5 flex items-center gap-1.5 text-[11px]">
+                                  {vSoldOut ? (
+                                    <span className="font-semibold text-danger">
+                                      {t("common.exhausted")}
+                                    </span>
+                                  ) : (
+                                    <>
+                                      <span className="text-muted/50">
+                                        {t("product.stock", { count: vStock })}
+                                      </span>
+                                      <span className="text-border">·</span>
+                                      <span className="font-bold text-brand">
+                                        {formatAr(vPrice)}
+                                      </span>
+                                      {vHasDiscount && (
+                                        <>
+                                          <span className="text-muted/40 line-through">
+                                            {formatAr(vSelling)}
+                                          </span>
+                                          <span className="rounded-full bg-accent/10 px-1.5 py-0.5 text-[9px] font-bold text-accent">
+                                            -{vPercent}%
+                                          </span>
+                                        </>
+                                      )}
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                              <QuantityInput
+                                value={line.quantity}
+                                onChange={(value) =>
+                                  updateLine(idx, { quantity: value })
+                                }
+                                min={0}
+                                max={vStock}
+                                disabled={vSoldOut}
+                                className="shrink-0"
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 items-center gap-2">
+                  {hasDiscount ? (
+                    <>
+                      <p className="text-sm text-muted/50 line-through">
+                        {formatAr(originalPrice)}
+                      </p>
+                      <div className="flex items-center justify-end gap-2">
+                        <p className="text-[11px] font-medium text-muted/50">
+                          {t("product.unitPrice")}
+                        </p>
+                        <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-bold text-accent">
+                          -{discountPercent}%
+                        </span>
+                      </div>
+                      <p className="text-2xl font-extrabold tracking-tight text-brand sm:text-3xl">
+                        {formatAr(displayPrice)}
+                      </p>
+                      <div className="flex justify-end">
+                        <QuantityInput
+                          value={quantity}
+                          onChange={setQuantity}
+                          min={1}
+                          max={stock > 0 ? stock : undefined}
+                          disabled={stock <= 0}
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-[11px] font-medium text-muted/50">
+                        {t("product.unitPrice")}
+                      </p>
+                      <div />
+                      <p className="text-2xl font-extrabold tracking-tight text-brand sm:text-3xl">
+                        {formatAr(displayPrice)}
+                      </p>
+                      <div className="flex justify-end">
+                        <QuantityInput
+                          value={quantity}
+                          onChange={setQuantity}
+                          min={1}
+                          max={stock > 0 ? stock : undefined}
+                          disabled={stock <= 0}
+                        />
+                      </div>
+                    </>
                   )}
                 </div>
-                {lines.map((line, index) => {
-                  const lineStock = variantEffectiveStock(
-                    product.variants ?? [],
-                    line.variant
-                  );
-                  const soldOut = lineStock <= 0;
-                  return (
-                    <div
-                      key={line.variant.id}
-                      className={cn(
-                        "flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-4 transition",
-                        soldOut
-                          ? "border-border/50 bg-bg/30 opacity-70"
-                          : "border-border bg-panel"
-                      )}
-                    >
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-ink">
-                          {variantLabel(product, line.variant)}
-                        </p>
-                        <p className="text-xs text-muted">
-                          {soldOut ? (
-                            <span className="font-semibold text-danger">
-                              {t("common.exhausted")}
-                            </span>
-                          ) : (
-                            <>
-                              {t("product.stock", { count: lineStock })} ·{" "}
-                              <span className="font-semibold text-brand">
-                                {formatAr(line.unit_cost)}
-                              </span>
-                            </>
-                          )}
-                        </p>
-                      </div>
-                      <QuantityInput
-                        value={soldOut ? 0 : line.quantity}
-                        onChange={(value) =>
-                          updateLine(index, { quantity: value })
-                        }
-                        max={lineStock}
-                        disabled={soldOut}
-                        className="shrink-0"
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border bg-panel p-4">
-                <div>
-                  <p className="text-sm text-muted">{t("product.unitPrice")}</p>
-                  <p className="text-3xl font-bold text-brand">
-                    {formatAr(displayPrice)}
-                  </p>
-                </div>
-                <QuantityInput
-                  value={quantity}
-                  onChange={setQuantity}
-                  min={1}
-                  max={stock > 0 ? stock : undefined}
-                  disabled={stock <= 0}
-                />
-              </div>
-            )}
+              )}
+            </div>
 
-            {/* ── Récapitulatif ── */}
-            <div className="flex items-center justify-between rounded-2xl bg-brand-soft px-4 py-3">
-              <div className="flex items-center gap-2 text-sm font-semibold text-brand">
-                <ShoppingBag className="h-4 w-4" />
+            {/* ── Total recap ── */}
+            <div className="flex items-center justify-between rounded-2xl bg-accent/10 px-5 py-3.5">
+              <div className="flex items-center gap-2.5 text-sm font-semibold text-brand">
+                <ShoppingBag className="h-4.5 w-4.5" />
                 {totalQty > 0
                   ? t("common.article", { count: totalQty })
                   : t("common.total")}
               </div>
-              <span className="text-xl font-bold text-brand">
+              <span className="text-xl font-extrabold text-brand">
                 {formatAr(total)}
               </span>
             </div>
@@ -429,7 +600,7 @@ export function ProductPage() {
                 type="button"
                 onClick={handleAddToCart}
                 disabled={!canAdd}
-                className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-brand px-6 py-3.5 text-sm font-bold text-white shadow-glow transition hover:bg-brand/90 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex flex-1 items-center justify-center gap-2.5 rounded-2xl bg-brand px-6 py-3.5 text-sm font-bold text-white shadow-glow transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <ShoppingBag className="h-4 w-4" />
                 {isSubmitting ? t("product.adding") : t("product.addToCart")}
@@ -444,43 +615,23 @@ export function ProductPage() {
                     history.push("/panier");
                   }
                 }}
-                className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-ink px-6 py-3.5 text-sm font-bold text-ink transition hover:bg-ink hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex flex-1 items-center justify-center gap-2.5 rounded-2xl border border-ink/10 bg-ink px-6 py-3.5 text-sm font-bold text-white transition-all duration-200 hover:bg-ink/80 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {t("product.buyNow")}
               </button>
             </div>
-
-            <p className="flex items-center gap-1.5 text-xs text-muted">
-              <Truck className="h-3.5 w-3.5" />
-              {t("product.quickDelivery")}
-            </p>
-
-            {!customer && !isBooting && (
-              <p className="text-xs text-muted">
-                {t("product.needAccount")}{" "}
-                <Link to="/inscription" className="font-semibold text-brand">
-                  {t("auth.createAccount")}
-                </Link>
-              </p>
-            )}
           </div>
         </div>
       </div>
 
-      {/* ── Barre d'achat mobile ── */}
-      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-panel/95 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-md sm:hidden">
+      {/* ── Mobile bottom bar ── */}
+      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-border/40 bg-panel/95 px-5 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl sm:hidden">
         <div className="flex items-center gap-3">
-          <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted">
-              {t("common.total")}
-            </p>
-            <p className="text-lg font-bold text-brand">{formatAr(total)}</p>
-          </div>
           <button
             type="button"
             onClick={handleAddToCart}
             disabled={!canAdd}
-            className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-brand px-5 py-3 text-sm font-bold text-white shadow-glow transition hover:bg-brand/90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-2.5 rounded-2xl bg-brand px-5 py-3.5 text-sm font-bold text-white shadow-glow transition-all duration-200 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <ShoppingBag className="h-4 w-4" />
             {hasVariants && totalQty <= 0 && stock > 0

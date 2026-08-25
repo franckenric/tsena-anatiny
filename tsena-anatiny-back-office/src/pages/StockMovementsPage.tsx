@@ -1,394 +1,34 @@
 import { useState, useEffect, useMemo } from "react";
+import { useHistory } from "react-router-dom";
 import type {
-  StockMovement,
-  CreateStockMovementPayload,
-  UpdateStockMovementPayload,
-  MovementType,
-  Lot
+  StockMovement
 } from "../types/operations";
 import type { Product } from "../types/product";
-import type { User } from "../types/user";
 import type { Column } from "../components/index";
-import {
-  stockMovementsService,
-  lotsService
-} from "../services/operations.service";
+import { stockMovementsService } from "../services/operations.service";
 import { productsService } from "../services/products.service";
-import { usersService } from "../services/users.service";
 import {
   Layout,
   Card,
   Button,
   DataTable,
-  Input,
-  QuantityInput,
-  Select,
-  Pagination
+  Pagination,
+  FloatingActionButton
 } from "../components/index";
-import { Modal } from "../components/Modal";
 import {
   ArrowLeftRight,
-  Boxes,
-  Coins,
   Pencil,
   Plus,
-  Trash2,
-  Users
+  Trash2
 } from "lucide-react";
 
-const getLotDateLabel = (lot: Lot) => {
-  const rawDate = lot.received_at ?? lot.created_at;
-  if (!rawDate) return "Date inconnue";
-
-  const parsed = new Date(rawDate);
-  if (Number.isNaN(parsed.getTime())) return "Date inconnue";
-
-  return parsed.toLocaleDateString("fr-FR");
-};
-
-const getLotOptions = (lots: Lot[]) => [
-  { label: "Sélectionner un lot", value: "0" },
-  ...[...lots]
-    .sort((a, b) => {
-      const aTime = new Date(a.received_at ?? a.created_at ?? 0).getTime();
-      const bTime = new Date(b.received_at ?? b.created_at ?? 0).getTime();
-      return bTime - aTime;
-    })
-    .map((lot) => ({
-      label: `#${lot.id} - ${getLotDateLabel(lot)} - ${lot.reference || "Sans référence"}`,
-      value: String(lot.id)
-    }))
-];
-
-function MovementForm({
-  movement,
-  products,
-  users,
-  lots,
-  onSubmit,
-  onCancel,
-  isLoading
-}: {
-  movement?: StockMovement;
-  products: Product[];
-  users: User[];
-  lots: Lot[];
-  onSubmit: (
-    p: CreateStockMovementPayload | UpdateStockMovementPayload
-  ) => Promise<void>;
-  onCancel: () => void;
-  isLoading: boolean;
-}) {
-  const [form, setForm] = useState({
-    product_id: movement?.product_id ?? (products[0]?.id || 0),
-    user_id: movement?.user_id ?? (users[0]?.id || 0),
-    lot_id: movement?.lot_id ?? 0,
-    type: (movement?.type ?? "in_stock") as MovementType,
-    quantity: movement?.quantity ?? 1,
-    unit_cost: movement?.unit_cost ?? 0,
-    another_price: movement?.another_price ?? 0,
-    other_price_reason: movement?.other_price_reason ?? "",
-    reference: movement?.reference ?? ""
-  });
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
-  const movementValidation = (() => {
-    const issues: string[] = [];
-    if (!form.product_id) issues.push("Produit requis");
-    if (form.quantity < 1) issues.push("Quantité invalide (min 1)");
-    if (form.type === "in_stock" && !form.lot_id)
-      issues.push("Lot requis pour une entrée");
-    if (form.type === "in_stock" && form.unit_cost <= 0)
-      issues.push("Prix unitaire requis pour une entrée");
-    if (form.another_price < 0) issues.push("Other price invalide");
-    if (
-      form.type === "in_stock" &&
-      form.another_price > 0 &&
-      !form.other_price_reason.trim()
-    )
-      issues.push("Raison requise quand Other price est > 0");
-    return issues;
-  })();
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrors({});
-    if (!form.product_id) {
-      setErrors({ product_id: "Produit requis" });
-      return;
-    }
-    if (!form.quantity || form.quantity < 1) {
-      setErrors({ quantity: "Quantité invalide" });
-      return;
-    }
-    if (form.type === "in_stock" && !form.lot_id) {
-      setErrors({ lot_id: "Lot requis pour une entrée" });
-      return;
-    }
-    if (form.type === "in_stock" && (!form.unit_cost || form.unit_cost <= 0)) {
-      setErrors({ unit_cost: "Prix unitaire requis pour une entrée" });
-      return;
-    }
-    if (form.another_price < 0) {
-      setErrors({ another_price: "Other price invalide" });
-      return;
-    }
-    if (
-      form.type === "in_stock" &&
-      form.another_price > 0 &&
-      !form.other_price_reason.trim()
-    ) {
-      setErrors({
-        other_price_reason: "Raison requise quand Other price est > 0"
-      });
-      return;
-    }
-    try {
-      const payload = {
-        ...form,
-        unit_cost:
-          form.type === "in_stock" && form.unit_cost > 0
-            ? form.unit_cost
-            : undefined,
-        another_price:
-          form.type === "in_stock" ? form.another_price : undefined,
-        other_price_reason:
-          form.type === "in_stock" && form.another_price > 0
-            ? form.other_price_reason.trim() || undefined
-            : undefined,
-        lot_id:
-          form.type === "in_stock" && form.lot_id ? form.lot_id : undefined
-      };
-      await onSubmit(payload);
-    } catch (err) {
-      setErrors({ submit: err instanceof Error ? err.message : "Erreur" });
-    }
-  };
-
-  const sel = (field: string, value: string | number) =>
-    setForm((p) => ({ ...p, [field]: value }));
-
-  return (
-    <form className="flex flex-col gap-0" onSubmit={handleSubmit}>
-      <div className="space-y-4 pb-4">
-        {errors.submit && (
-          <div className="rounded-xl border border-warning/50 bg-warning/10 px-3 py-2 text-sm text-ink">
-            {errors.submit}
-          </div>
-        )}
-
-        {/* Acteurs */}
-        <div className="rounded-2xl border border-border/60 bg-bg/30 p-4 space-y-4">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand/10 text-brand">
-              <Users className="h-4 w-4" />
-            </div>
-            <p className="text-xs font-bold uppercase tracking-widest text-ink">
-              Acteurs
-            </p>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Select
-              label="Produit"
-              value={String(form.product_id)}
-              onValueChange={(value) => sel("product_id", parseInt(value))}
-              options={products.map((p) => ({
-                label: p.name,
-                value: String(p.id)
-              }))}
-              placeholder="Sélectionner un produit"
-              disabled={isLoading}
-            />
-            <Select
-              label="Utilisateur"
-              value={String(form.user_id)}
-              onValueChange={(value) => sel("user_id", parseInt(value))}
-              options={users.map((u) => ({
-                label: u.email,
-                value: String(u.id)
-              }))}
-              placeholder="Sélectionner un utilisateur"
-              disabled={isLoading}
-            />
-          </div>
-        </div>
-
-        {/* Type & Quantité */}
-        <div className="rounded-2xl border border-border/60 bg-bg/30 p-4 space-y-4">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand/10 text-brand">
-              <ArrowLeftRight className="h-4 w-4" />
-            </div>
-            <p className="text-xs font-bold uppercase tracking-widest text-ink">
-              Mouvement
-            </p>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Select
-              label="Type"
-              value={form.type}
-              onValueChange={(value) => sel("type", value)}
-              options={[
-                { label: "Entrée", value: "in_stock" },
-                { label: "Sortie", value: "out_stock" }
-              ]}
-              disabled={isLoading}
-            />
-            <QuantityInput
-              label="Quantité"
-              value={form.quantity}
-              onChange={(value) => sel("quantity", value)}
-              error={errors.quantity}
-              placeholder="1"
-              disabled={isLoading}
-              min={0}
-            />
-          </div>
-        </div>
-
-        {/* Tarification (entrée uniquement) */}
-        <div className="rounded-2xl border border-border/60 bg-bg/30 p-4 space-y-4">
-          <div className="flex items-center gap-2.5">
-            <div
-              className={`flex h-8 w-8 items-center justify-center rounded-lg ${
-                form.type !== "in_stock"
-                  ? "bg-muted/10 text-muted/40"
-                  : "bg-brand/10 text-brand"
-              }`}
-            >
-              <Coins className="h-4 w-4" />
-            </div>
-            <p
-              className={`text-xs font-bold uppercase tracking-widest ${
-                form.type !== "in_stock" ? "text-muted/40" : "text-ink"
-              }`}
-            >
-              Tarification
-            </p>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Input
-              label="Prix unitaire (Ar)"
-              type="number"
-              value={form.unit_cost}
-              onChange={(e) =>
-                sel("unit_cost", parseFloat(e.target.value) || 0)
-              }
-              error={errors.unit_cost}
-              placeholder="0"
-              disabled={isLoading || form.type !== "in_stock"}
-            />
-            <Input
-              label="Other price (Ar)"
-              type="number"
-              value={form.another_price}
-              onChange={(e) => {
-                const nextValue = parseFloat(e.target.value) || 0;
-                setForm((p) => ({
-                  ...p,
-                  another_price: nextValue,
-                  other_price_reason: nextValue > 0 ? p.other_price_reason : ""
-                }));
-              }}
-              error={errors.another_price}
-              placeholder="0"
-              disabled={isLoading || form.type !== "in_stock"}
-            />
-          </div>
-          {form.type === "in_stock" && form.another_price > 0 && (
-            <Input
-              label="Other price reason"
-              value={form.other_price_reason}
-              onChange={(e) => sel("other_price_reason", e.target.value)}
-              placeholder="Raison du coût additionnel"
-              error={errors.other_price_reason}
-              disabled={isLoading}
-            />
-          )}
-        </div>
-
-        {/* Lot & Référence (entrée uniquement) */}
-        <div className="rounded-2xl border border-border/60 bg-bg/30 p-4 space-y-4">
-          <div className="flex items-center gap-2.5">
-            <div
-              className={`flex h-8 w-8 items-center justify-center rounded-lg ${
-                form.type !== "in_stock"
-                  ? "bg-muted/10 text-muted/40"
-                  : "bg-brand/10 text-brand"
-              }`}
-            >
-              <Boxes className="h-4 w-4" />
-            </div>
-            <p
-              className={`text-xs font-bold uppercase tracking-widest ${
-                form.type !== "in_stock" ? "text-muted/40" : "text-ink"
-              }`}
-            >
-              Lot & Référence
-            </p>
-          </div>
-          <Select
-            label="Lot"
-            value={String(form.lot_id)}
-            onValueChange={(value) => sel("lot_id", parseInt(value) || 0)}
-            options={getLotOptions(lots)}
-            disabled={isLoading || form.type !== "in_stock"}
-            error={errors.lot_id}
-          />
-          <Input
-            label="Référence (optionnel)"
-            value={form.reference}
-            onChange={(e) => sel("reference", e.target.value)}
-            placeholder="BON-001"
-            disabled={isLoading}
-          />
-        </div>
-
-        {movementValidation.length > 0 && (
-          <ul className="space-y-0.5 rounded-xl border border-warning/40 bg-warning/8 px-3 py-2">
-            {movementValidation.map((msg) => (
-              <li key={msg} className="text-xs text-warning">
-                • {msg}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      <div className="flex shrink-0 gap-3 border-t border-border/60 pt-4">
-        <Button
-          type="submit"
-          isLoading={isLoading}
-          variant="primary"
-          className="flex-1"
-          disabled={isLoading || movementValidation.length > 0}
-        >
-          {movement ? "Mettre à jour" : "Créer"}
-        </Button>
-        <Button
-          type="button"
-          onClick={onCancel}
-          variant="secondary"
-          className="flex-1"
-          disabled={isLoading}
-        >
-          Annuler
-        </Button>
-      </div>
-    </form>
-  );
-}
-
 export function StockMovementsPage() {
+  const history = useHistory();
   const [movements, setMovements] = useState<StockMovement[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
-  const [lots, setLots] = useState<Lot[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isFormLoading, setIsFormLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selected, setSelected] = useState<StockMovement | null>(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [total, setTotal] = useState(0);
@@ -397,14 +37,6 @@ export function StockMovementsPage() {
     productsService
       .getProducts(1, 200)
       .then((r) => setProducts(r.items))
-      .catch(() => {});
-    usersService
-      .getUsers(1, 200)
-      .then((r) => setUsers(r.items))
-      .catch(() => {});
-    lotsService
-      .getLots(1, 200)
-      .then((r) => setLots(r.items))
       .catch(() => {});
   }, []);
   useEffect(() => {
@@ -518,33 +150,6 @@ export function StockMovementsPage() {
     }
   };
 
-  const handleSubmit = async (
-    payload: CreateStockMovementPayload | UpdateStockMovementPayload
-  ) => {
-    try {
-      setIsFormLoading(true);
-      if (selected) {
-        const u = await stockMovementsService.updateMovement(
-          selected.id,
-          payload as UpdateStockMovementPayload
-        );
-        setMovements((prev) => prev.map((x) => (x.id === selected.id ? u : x)));
-      } else {
-        const c = await stockMovementsService.createMovement(
-          payload as CreateStockMovementPayload
-        );
-        setMovements((prev) => [c, ...prev]);
-        setTotal((t) => t + 1);
-      }
-      setIsModalOpen(false);
-      setSelected(null);
-    } catch (err) {
-      throw err;
-    } finally {
-      setIsFormLoading(false);
-    }
-  };
-
   const columns: Column<MovementRow>[] = [
     {
       header: "Stock ID",
@@ -653,6 +258,10 @@ export function StockMovementsPage() {
     <Layout
       title="Mouvements de stock"
     >
+      <FloatingActionButton
+        label="Nouveau mouvement"
+        onClick={() => history.push("/stock-movements/new")}
+      />
       <div className="animate-fade-up flex flex-col gap-6">
         <div className="hidden items-center justify-between rounded-2xl border border-border/60 bg-panel/65 px-4 py-3 sm:flex">
           <div className="inline-flex items-center gap-2 text-sm font-semibold text-ink">
@@ -677,10 +286,7 @@ export function StockMovementsPage() {
           headerAction={
             <Button
               variant="primary"
-              onClick={() => {
-                setSelected(null);
-                setIsModalOpen(true);
-              }}
+              onClick={() => history.push("/stock-movements/new")}
             >
               <Plus className="mr-2 h-4 w-4" />
               Nouveau mouvement
@@ -786,10 +392,9 @@ export function StockMovementsPage() {
                   size="sm"
                   variant="secondary"
                   disabled={isFormLoading}
-                  onClick={() => {
-                    setSelected(m);
-                    setIsModalOpen(true);
-                  }}
+                  onClick={() =>
+                    history.push(`/stock-movements/${m.id}/edit`)
+                  }
                   title="Modifier"
                   aria-label="Modifier"
                   className="h-8 w-8 p-0"
@@ -811,28 +416,6 @@ export function StockMovementsPage() {
             )}
           />
         </Card>
-        <Modal
-          isOpen={isModalOpen}
-          onClose={() => {
-            setIsModalOpen(false);
-            setSelected(null);
-          }}
-          title={selected ? "Modifier mouvement" : "Nouveau mouvement"}
-          contentClassName="max-w-4xl"
-        >
-          <MovementForm
-            movement={selected ?? undefined}
-            products={products}
-            users={users}
-            lots={lots}
-            onSubmit={handleSubmit}
-            onCancel={() => {
-              setIsModalOpen(false);
-              setSelected(null);
-            }}
-            isLoading={isFormLoading}
-          />
-        </Modal>
       </div>
     </Layout>
   );

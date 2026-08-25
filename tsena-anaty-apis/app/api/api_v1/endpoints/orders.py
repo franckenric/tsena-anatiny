@@ -6,6 +6,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.encoders import jsonable_encoder
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
@@ -17,6 +18,7 @@ from app.api.api_v1.endpoints.notifications import (
 )
 from app.enum.product_status import ProductStatusEnum
 from app.enum.type import TypeEnum
+from app.invoice_renderer import render_order_invoice_png
 from app.schemas.orders import OrderMovementPayload
 
 router = APIRouter()
@@ -633,6 +635,79 @@ def update_orders(
     except IntegrityError:
         db.rollback()
         raise HTTPException(status_code=409, detail='Order update conflict')
+
+
+@router.get('/{orders_id}/invoice.png')
+def download_order_invoice_png(
+    *,
+    db: Session = Depends(deps.get_db),
+    orders_id: int,
+    current_user: models.Users = Depends(deps.get_current_active_user),
+) -> Any:
+    """Generate the order invoice as a PNG thermal ticket."""
+    relations = [
+        "customer{name,phone,delivery_address}",
+        "stock_movements{product_id,variant_id,quantity,unit_cost,another_price,other_price_reason,type}",
+        "stock_movements.product{name}",
+        "stock_movements.variant{name,sku}",
+    ]
+    order = crud.orders.get_first_where_array(
+        db=db,
+        relations=relations,
+        where=[{'key': 'id', 'value': orders_id, 'operator': '=='}],
+    )
+    if not order:
+        raise HTTPException(status_code=404, detail='Orders not found')
+
+    out_movements = [
+        movement
+        for movement in (order.stock_movements or [])
+        if getattr(movement, 'type', None) == TypeEnum.out_stock
+    ]
+
+    product_lines = []
+    movements_extra = 0.0
+    first_movement_reason = ""
+    for movement in out_movements:
+        product_name = getattr(getattr(movement, 'product', None), 'name', None) or "-"
+        variant_name = getattr(getattr(movement, 'variant', None), 'name', None)
+        if variant_name:
+            product_name = f"{product_name} - {variant_name}"
+        quantity = float(movement.quantity or 0)
+        unit_cost = float(movement.unit_cost or 0)
+        movements_extra += float(movement.another_price or 0)
+        reason = (movement.other_price_reason or "").strip()
+        if not first_movement_reason and reason:
+            first_movement_reason = reason
+        product_lines.append({
+            "name": product_name,
+            "quantity": quantity,
+            "unit_price": unit_cost,
+            "total": quantity * unit_cost,
+        })
+
+    order_extra = float(order.another_price or 0)
+    other_price = order_extra if order_extra > 0 else movements_extra
+    other_reason = (order.other_price_reason or "").strip() or first_movement_reason
+
+    png_bytes = render_order_invoice_png(
+        order_id=order.id,
+        order_number=order.order_number,
+        customer_name=getattr(getattr(order, 'customer', None), 'name', None),
+        customer_phone=getattr(getattr(order, 'customer', None), 'phone', None),
+        customer_address=getattr(getattr(order, 'customer', None), 'delivery_address', None),
+        product_lines=product_lines,
+        other_price=other_price,
+        other_price_reason=other_reason,
+    )
+
+    resolved_number = (order.order_number or f"CMD-{order.id}").strip()
+    filename = f"facture-{resolved_number}.png"
+    return Response(
+        content=png_bytes,
+        media_type="image/png",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.get('/{orders_id}', response_model=schemas.Orders)

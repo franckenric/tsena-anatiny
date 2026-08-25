@@ -75,5 +75,14 @@
 	</dict>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>L'application a besoin d'accéder au réseau local pour communiquer avec le serveur Tsena Anatiny.</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.186254071249-etsev7f6pa2b3np96pibeim3gcj5aaj2</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

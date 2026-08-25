@@ -76,6 +76,7 @@ export interface StockArrivalPayload {
   unit_cost: number;
   another_price?: number;
   reference?: string;
+  variant_id?: number;
 }
 
 export interface UpdateStockPayload {

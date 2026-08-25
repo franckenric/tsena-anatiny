@@ -64,6 +64,14 @@ from .product_variants import (
   ProductVariantUpdate,
   ProductVariantNode,
 )
+from .promo_codes import (
+  PromoCodes,
+  PromoCodesCreate,
+  PromoCodesUpdate,
+  ResponsePromoCodes,
+  PromoCodeValidateRequest,
+  PromoCodeValidateResponse,
+)
 from .product_images import (
   ProductImages,
   ProductImagesCreate,

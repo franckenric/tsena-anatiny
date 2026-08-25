@@ -14,7 +14,8 @@ import {
   DataTable,
   Input,
   Layout,
-  Pagination
+  Pagination,
+  FloatingActionButton
 } from "../components/index";
 import { Modal } from "../components/Modal";
 import type {
@@ -263,166 +264,6 @@ function CustomerCartViewer({
   );
 }
 
-function CustomerForm({
-  customer,
-  onSubmit,
-  onCancel,
-  isLoading
-}: {
-  customer?: Customer;
-  onSubmit: (
-    payload: CreateCustomerPayload | UpdateCustomerPayload
-  ) => Promise<void>;
-  onCancel: () => void;
-  isLoading: boolean;
-}) {
-  const [form, setForm] = useState({
-    name: customer?.name ?? "",
-    phone: formatPhoneMadagascar(customer?.phone ?? ""),
-    delivery_address: customer?.delivery_address ?? ""
-  });
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
-  const setField = (field: keyof typeof form, value: string) =>
-    setForm((prev) => ({ ...prev, [field]: value }));
-
-  const guardPhonePrefix = (input: HTMLInputElement) => {
-    const start = input.selectionStart ?? PHONE_PREFIX.length;
-    const end = input.selectionEnd ?? PHONE_PREFIX.length;
-    if (start < PHONE_PREFIX.length || end < PHONE_PREFIX.length) {
-      requestAnimationFrame(() => {
-        input.setSelectionRange(PHONE_PREFIX.length, PHONE_PREFIX.length);
-      });
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const errs: Record<string, string> = {};
-    const normalizedPhone = form.phone.trim();
-
-    if (!form.name.trim()) errs.name = "Nom requis";
-    if (!normalizedPhone || isPhonePrefixOnly(form.phone)) {
-      errs.phone = "Téléphone requis";
-    }
-    if (
-      normalizedPhone &&
-      !isPhonePrefixOnly(form.phone) &&
-      !PHONE_FORMAT_REGEX.test(normalizedPhone)
-    ) {
-      errs.phone = "Format attendu: +261 XX XX XXX XX";
-    }
-
-    if (Object.keys(errs).length > 0) {
-      setErrors(errs);
-      return;
-    }
-
-    try {
-      await onSubmit({
-        name: form.name.trim(),
-        phone: normalizedPhone,
-        delivery_address: form.delivery_address.trim() || undefined
-      });
-    } catch (err) {
-      setErrors({
-        submit: err instanceof Error ? err.message : "Erreur enregistrement"
-      });
-    }
-  };
-
-  return (
-    <form className="space-y-4" onSubmit={handleSubmit}>
-      {errors.submit && (
-        <div className="rounded-xl border border-warning/50 bg-warning/10 px-3 py-2.5 text-sm text-ink">
-          {errors.submit}
-        </div>
-      )}
-
-      <Input
-        label="Nom du client"
-        value={form.name}
-        onChange={(e) => setField("name", e.target.value)}
-        error={errors.name}
-        placeholder="Nom complet"
-        disabled={isLoading}
-      />
-
-      <Input
-        label="Téléphone"
-        value={form.phone}
-        onChange={(e) =>
-          setField("phone", formatPhoneMadagascar(e.target.value))
-        }
-        onFocus={(e) => {
-          if (!form.phone) {
-            setField("phone", PHONE_PREFIX);
-          }
-          guardPhonePrefix(e.currentTarget);
-        }}
-        onClick={(e) => guardPhonePrefix(e.currentTarget)}
-        onKeyUp={(e) => guardPhonePrefix(e.currentTarget)}
-        onKeyDown={(e) => {
-          const input = e.currentTarget;
-          const start = input.selectionStart ?? 0;
-          const end = input.selectionEnd ?? 0;
-          const isBackspaceOnPrefix =
-            e.key === "Backspace" &&
-            start <= PHONE_PREFIX.length &&
-            end <= PHONE_PREFIX.length;
-          const isDeleteOnPrefix =
-            e.key === "Delete" && start < PHONE_PREFIX.length;
-          const isHome = e.key === "Home";
-          const isArrowLeftAtPrefix =
-            e.key === "ArrowLeft" && start <= PHONE_PREFIX.length;
-
-          if (
-            isBackspaceOnPrefix ||
-            isDeleteOnPrefix ||
-            isHome ||
-            isArrowLeftAtPrefix
-          ) {
-            e.preventDefault();
-            requestAnimationFrame(() => {
-              input.setSelectionRange(PHONE_PREFIX.length, PHONE_PREFIX.length);
-            });
-          }
-        }}
-        error={errors.phone}
-        placeholder="+261 34 12 345 67"
-        disabled={isLoading}
-      />
-
-      <Input
-        label="Adresse (optionnel)"
-        value={form.delivery_address}
-        onChange={(e) => setField("delivery_address", e.target.value)}
-        placeholder="Adresse de livraison"
-        disabled={isLoading}
-      />
-
-      <div className="flex gap-3 pt-2">
-        <Button
-          type="submit"
-          variant="primary"
-          className="flex-1"
-          isLoading={isLoading}
-        >
-          {customer ? "Mettre à jour" : "Créer"}
-        </Button>
-        <Button
-          type="button"
-          variant="secondary"
-          className="flex-1"
-          onClick={onCancel}
-          disabled={isLoading}
-        >
-          Annuler
-        </Button>
-      </div>
-    </form>
-  );
-}
 
 export function CustomersPage() {
   const { user } = useAuth();
@@ -433,8 +274,6 @@ export function CustomersPage() {
   const [isFormLoading, setIsFormLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selected, setSelected] = useState<Customer | null>(null);
   const [selectedForCart, setSelectedForCart] = useState<Customer | null>(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
@@ -496,38 +335,6 @@ export function CustomersPage() {
     }
   };
 
-  const handleSubmit = async (
-    payload: CreateCustomerPayload | UpdateCustomerPayload
-  ) => {
-    try {
-      setIsFormLoading(true);
-      setError(null);
-
-      if (selected) {
-        const updated = await customersService.updateCustomer(
-          selected.id,
-          payload as UpdateCustomerPayload
-        );
-        setCustomers((prev) =>
-          prev.map((item) => (item.id === selected.id ? updated : item))
-        );
-      } else {
-        const created = await customersService.createCustomer(
-          payload as CreateCustomerPayload
-        );
-        setCustomers((prev) => [created, ...prev]);
-        setTotal((t) => t + 1);
-      }
-
-      setIsModalOpen(false);
-      setSelected(null);
-    } catch (err) {
-      throw err;
-    } finally {
-      setIsFormLoading(false);
-    }
-  };
-
   const columns: Column<Customer>[] = [
     {
       header: "Nom",
@@ -555,6 +362,10 @@ export function CustomersPage() {
 
   return (
     <Layout title="Clients">
+      <FloatingActionButton
+        label="Nouveau client"
+        onClick={() => history.push("/customers/new")}
+      />
       <div className="animate-fade-up flex flex-col gap-6">
         <div className="hidden items-center justify-between rounded-2xl border border-border/60 bg-panel/65 px-4 py-3 sm:flex">
           <div className="inline-flex items-center gap-2 text-sm font-semibold text-ink">
@@ -587,10 +398,7 @@ export function CustomersPage() {
           headerAction={
             <Button
               variant="primary"
-              onClick={() => {
-                setSelected(null);
-                setIsModalOpen(true);
-              }}
+              onClick={() => history.push("/customers/new")}
             >
               <Plus className="mr-2 h-4 w-4" />
               Ajouter un client

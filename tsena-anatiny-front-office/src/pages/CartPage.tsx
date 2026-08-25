@@ -4,12 +4,21 @@ import { ArrowRight, ShoppingCart, Trash2 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { useCart } from "../contexts/CartContext";
 import { useI18n } from "../contexts/I18nContext";
-import { cartItemsService } from "../services/operations.service";
+import {
+  cartItemsService,
+  promoCodesService
+} from "../services/operations.service";
 import type { CartItem } from "../types/operations";
 import { PageLoader } from "../components/Spinner";
 import { Page } from "../components/Page";
 import { QuantityInput } from "../components/QuantityInput";
 import { formatAr, resolveImageUrl } from "../lib/utils";
+import {
+  computeDiscountAmount,
+  getAppliedPromo,
+  setAppliedPromo,
+  type AppliedPromo
+} from "../lib/promo";
 
 export function CartPage() {
   const { customer, isBooting } = useAuth();
@@ -88,6 +97,30 @@ export function CartPage() {
     (sum, item) => sum + Number(item.quantity || 0) * Number(item.unit_cost || 0),
     0
   );
+
+  const [promo, setPromo] = useState<AppliedPromo | null>(() =>
+    getAppliedPromo()
+  );
+
+  useEffect(() => {
+    const stored = getAppliedPromo();
+    if (!stored || items.length === 0) return;
+    let cancelled = false;
+    promoCodesService
+      .validate(stored.code, subtotal)
+      .then(() => {
+        if (!cancelled) setPromo(stored);
+      })
+      .catch(() => {
+        setAppliedPromo(null);
+        if (!cancelled) setPromo(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [items.length, subtotal]);
+
+  const discount = promo ? computeDiscountAmount(promo, subtotal) : 0;
 
   if (isBooting) {
     return (
@@ -247,10 +280,16 @@ export function CartPage() {
                 {t("common.toConvene")}
               </dd>
             </div>
+            {discount > 0 && promo && (
+              <div className="flex justify-between text-success">
+                <dt>{t("checkout.discount", { code: promo.code })}</dt>
+                <dd className="font-semibold">-{formatAr(discount)}</dd>
+              </div>
+            )}
             <div className="flex justify-between border-t border-border pt-3">
               <dt className="font-bold text-ink">{t("common.total")}</dt>
               <dd className="text-xl font-bold text-brand">
-                {formatAr(subtotal)}
+                {formatAr(Math.max(0, subtotal - discount))}
               </dd>
             </div>
           </dl>

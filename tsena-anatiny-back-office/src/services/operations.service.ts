@@ -304,6 +304,11 @@ export const ordersService = {
     const data = await apiFetch<any>(`${url}${where}`);
     return normalize<Order>(data);
   },
+  async getOrder(id: number): Promise<Order> {
+    const url = `/orders/${id}`;
+    const relation = 'relation=["customer{name,phone,delivery_address}","user{email}","stock_movements{product_id,variant_id,quantity,unit_cost,another_price,other_price_reason,type}","stock_movements.product{name}","stock_movements.variant{name,sku}"]';
+    return apiFetch<Order>(`${API_BASE_URL}${url}?${relation}`);
+  },
   async createOrder(payload: CreateOrderPayload): Promise<Order> {
     return apiFetch<Order>(`${API_BASE_URL}/orders/`, {
       method: "POST",
@@ -318,6 +323,16 @@ export const ordersService = {
   },
   async deleteOrder(id: number): Promise<void> {
     await apiFetch(`${API_BASE_URL}/orders/${id}`, { method: "DELETE" });
+  },
+  async getInvoiceBlob(id: number): Promise<Blob> {
+    const res = await fetch(`${API_BASE_URL}/orders/${id}/invoice.png`, {
+      headers: { Authorization: `Bearer ${getToken()}` }
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `Erreur ${res.status}`);
+    }
+    return res.blob();
   }
 };
 

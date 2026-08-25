@@ -22,6 +22,12 @@ class CRUDUsers(CRUDBase[Users, UsersCreate, UsersUpdate]):
     def get_by_phone(self, db: Session, *, phone: str) -> Optional[Users]:
         return db.query(Users).filter(Users.phone_numer == phone).first()
 
+    def get_by_facebook_id(self, db: Session, *, facebook_id: str) -> Optional[Users]:
+        return db.query(Users).filter(Users.facebook_id == facebook_id).first()
+
+    def get_by_google_id(self, db: Session, *, google_id: str) -> Optional[Users]:
+        return db.query(Users).filter(Users.google_id == google_id).first()
+
     def is_superuser(self, user: Users) -> Users:
         return user.is_superuser
 

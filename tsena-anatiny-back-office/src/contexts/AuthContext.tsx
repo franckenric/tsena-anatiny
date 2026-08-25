@@ -8,6 +8,8 @@ type AuthContextValue = {
   isBootstrapping: boolean;
   isLoading: boolean;
   login: (payload: LoginPayload) => Promise<void>;
+  loginWithFacebook: () => void;
+  handleFacebookCallback: (code: string) => Promise<void>;
   logout: () => void;
 };
 
@@ -56,6 +58,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   }
 
+  const fbAppId = import.meta.env.VITE_FACEBOOK_APP_ID ?? "";
+
+  function loginWithFacebook(): void {
+    const redirectUri = window.location.origin + "/login";
+    const url = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${fbAppId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=email,public_profile&response_type=code`;
+    window.location.href = url;
+  }
+
+  async function handleFacebookCallback(code: string): Promise<void> {
+    setIsLoading(true);
+    try {
+      const redirectUri = window.location.origin + "/login";
+      const auth = await authService.facebookLogin(code, redirectUri);
+      const me = await authService.testToken(auth.access_token);
+      authService.saveToken(auth.access_token);
+      setToken(auth.access_token);
+      setUser(me);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
@@ -63,6 +87,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isBootstrapping,
       isLoading,
       login: handleLogin,
+      loginWithFacebook,
+      handleFacebookCallback,
       logout: handleLogout
     }),
     [user, token, isBootstrapping, isLoading]

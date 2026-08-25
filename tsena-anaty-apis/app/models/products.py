@@ -20,6 +20,7 @@ class Products(Base):
     image = Column(String(255), nullable=False)
     unit = Column(String(255))
     selling_price = Column(Float)
+    discount_price = Column(Float)
     low_stock_alert = Column(Integer)
     status = Column(Enum(StatusEnum))
 

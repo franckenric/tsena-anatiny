@@ -18,7 +18,8 @@ import {
   X,
   ChevronRight,
   User,
-  ChevronDown
+  ChevronDown,
+  FileUp
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { NotificationsBell } from "./NotificationsBell";
@@ -33,6 +34,7 @@ const navItems = [
   { label: "Tableau de bord", href: "/dashboard", icon: LayoutDashboard },
   { label: "Commandes", href: "/orders", icon: ShoppingCart },
   { label: "Produits", href: "/products", icon: Package },
+  { label: "Import receipt", href: "/products/import-receipt", icon: FileUp },
   { label: "Stock", href: "/stock", icon: Boxes },
   { label: "Arrivages", href: "/arrivals", icon: Truck },
   { label: "Lots", href: "/lots", icon: ScanBarcode },

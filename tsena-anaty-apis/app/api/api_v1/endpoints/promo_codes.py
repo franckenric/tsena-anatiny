@@ -1,5 +1,4 @@
 from typing import Any
-import ast
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.encoders import jsonable_encoder
@@ -7,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app import crud, models, schemas
 from app.api import deps
+from app.utils import parse_query_array
 from app.crud.crud_promo_codes import InvalidPromoCode
 
 router = APIRouter()
@@ -24,21 +24,13 @@ def read_promo_codes(
     db: Session = Depends(deps.get_db),
 ) -> Any:
     """Retrieve promo codes."""
-    relations = []
-    if relation not in (None, "", [], "[]"):
-        relations += ast.literal_eval(relation)
+    relations = parse_query_array(relation, default=[]) or []
 
-    wheres = []
-    if where not in (None, "", [], "[]"):
-        wheres += ast.literal_eval(where)
+    wheres = parse_query_array(where, default=[]) or []
 
-    where_relations = []
-    if where_relation not in (None, "", [], "[]"):
-        where_relations += ast.literal_eval(where_relation)
+    where_relations = parse_query_array(where_relation, default=[]) or []
 
-    bases_columns = []
-    if base_columns not in (None, "", [], "[]"):
-        bases_columns += ast.literal_eval(base_columns)
+    bases_columns = parse_query_array(base_columns, default=[]) or []
 
     promo_codes = crud.promo_codes.get_multi_where_array(
         db=db,

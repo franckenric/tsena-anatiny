@@ -1,12 +1,10 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useHistory } from "react-router-dom";
 import type {
   Product,
-  Category,
-  ProductImage
+  Category
 } from "../types/product";
 import type {
-  Lot,
   LotExpense,
   StockMovement,
   CreateCartItemPayload,
@@ -29,10 +27,8 @@ import {
   DataTable,
   Select,
   QuantityInput,
-  ReceiptImport,
   Pagination,
-  FloatingActionButton,
-  type ReceiptApplyPayload
+  FloatingActionButton
 } from "../components/index";
 import { Modal } from "../components/Modal";
 import { Input } from "../components/Input";
@@ -47,11 +43,10 @@ import {
   PackagePlus,
   ShoppingCart,
   Eye,
+  FileUp,
   AlertTriangle
 } from "lucide-react";
 
-const fmtAr = (value: number) =>
-  value.toLocaleString("fr-FR", { maximumFractionDigits: 2 });
 const PHONE_FORMAT_REGEX = /^\+261\s\d{2}\s\d{2}\s\d{3}\s\d{2}$/;
 const PHONE_PREFIX = "+261 ";
 
@@ -126,52 +121,6 @@ const getProductDangerReason = (product: Product): string | null => {
 
 const isProductDanger = (product: Product): boolean =>
   getProductDangerReason(product) !== null;
-
-function DraftImageThumb({ file }: { file: File }) {
-  const url = useMemo(() => URL.createObjectURL(file), [file]);
-
-  useEffect(() => {
-    return () => URL.revokeObjectURL(url);
-  }, [url]);
-
-  return <img src={url} alt="" className="h-full w-full object-cover" />;
-}
-
-const generateProductReference = () => {
-  const now = new Date();
-  const yyyy = now.getFullYear();
-  const mm = String(now.getMonth() + 1).padStart(2, "0");
-  const dd = String(now.getDate()).padStart(2, "0");
-  const hh = String(now.getHours()).padStart(2, "0");
-  const mi = String(now.getMinutes()).padStart(2, "0");
-  const ss = String(now.getSeconds()).padStart(2, "0");
-  const random = Math.random().toString(36).slice(2, 6).toUpperCase();
-  return `REF-${yyyy}${mm}${dd}${hh}${mi}${ss}-${random}`;
-};
-
-const getLotDateLabel = (lot: Lot) => {
-  const rawDate = lot.received_at ?? lot.created_at;
-  if (!rawDate) return "Date inconnue";
-
-  const parsed = new Date(rawDate);
-  if (Number.isNaN(parsed.getTime())) return "Date inconnue";
-
-  return parsed.toLocaleDateString("fr-FR");
-};
-
-const getLotOptions = (lots: Lot[]) => [
-  { label: "Sélectionner un lot", value: "0" },
-  ...[...lots]
-    .sort((a, b) => {
-      const aTime = new Date(a.received_at ?? a.created_at ?? 0).getTime();
-      const bTime = new Date(b.received_at ?? b.created_at ?? 0).getTime();
-      return bTime - aTime;
-    })
-    .map((lot) => ({
-      label: `#${lot.id} - ${getLotDateLabel(lot)} - ${lot.reference || "Sans référence"} (${Number(lot.total_expense || 0).toLocaleString("fr-FR")} Ar)`,
-      value: String(lot.id)
-    }))
-];
 
 function ProductCartForm({
   product,
@@ -1054,7 +1003,6 @@ function CustomerCartViewer({
 export function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [lots, setLots] = useState<Lot[]>([]);
   const [lotExpenses, setLotExpenses] = useState<LotExpense[]>([]);
   const [stockMovements, setStockMovements] = useState<StockMovement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -1082,7 +1030,6 @@ export function ProductsPage() {
     lotsService
       .getLots(1, 200)
       .then(async (r) => {
-        setLots(r.items);
         const expenses = await Promise.all(
           r.items.map((lot) =>
             lotExpensesService
@@ -1378,6 +1325,13 @@ export function ProductsPage() {
               >
                 <Eye className="mr-2 h-4 w-4" />
                 Voir panier client
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => history.push("/products/import-receipt")}
+              >
+                <FileUp className="mr-2 h-4 w-4" />
+                Import receipt
               </Button>
               <Button
                 variant="primary"

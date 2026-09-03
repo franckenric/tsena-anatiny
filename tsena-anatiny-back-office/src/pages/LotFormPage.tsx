@@ -3,7 +3,7 @@ import { useHistory, useParams } from "react-router-dom";
 import { ArrowRight, Calendar as CalendarIcon, Package } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import type { CreateLotPayload, Lot } from "../types/operations";
+import type { CreateLotPayload } from "../types/operations";
 import { lotsService } from "../services/operations.service";
 import {
   Input,
@@ -26,8 +26,8 @@ function generateRef(date?: string): string {
 }
 
 export function LotFormPage() {
-  const { id } = useParams<{ id: string }>();
-  const isEdit = Boolean(id);
+  const { id } = useParams<{ id?: string }>();
+  const isEdit = Boolean(id && /^\d+$/.test(id));
   const history = useHistory();
   const [isLoading, setIsLoading] = useState(isEdit);
   const [isSaving, setIsSaving] = useState(false);

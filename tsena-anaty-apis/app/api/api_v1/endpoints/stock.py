@@ -1,6 +1,5 @@
 from typing import Any, Union
 
-import ast
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy.exc import IntegrityError
@@ -8,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app import crud, models, schemas
 from app.api import deps
+from app.utils import parse_query_array
 from app.enum.type import TypeEnum
 
 router = APIRouter()
@@ -71,21 +71,13 @@ def read_stock(
     current_user: models.Users = Depends(deps.get_current_active_user),
 ) -> Any:
     """Retrieve stock rows."""
-    relations = []
-    if relation not in (None, "", []):
-        relations += ast.literal_eval(relation)
+    relations = parse_query_array(relation, default=[]) or []
 
-    wheres = []
-    if where not in (None, "", []):
-        wheres += ast.literal_eval(where)
+    wheres = parse_query_array(where, default=[]) or []
 
-    where_relations = []
-    if where_relation not in (None, "", []):
-        where_relations += ast.literal_eval(where_relation)
+    where_relations = parse_query_array(where_relation, default=[]) or []
 
-    bases_columns = []
-    if base_columns not in (None, "", []):
-        bases_columns += ast.literal_eval(base_columns)
+    bases_columns = parse_query_array(base_columns, default=[]) or []
 
     stock_rows = crud.stock.get_multi_where_array(
         db=db,
@@ -334,21 +326,14 @@ def read_stock_by_id(
     current_user: models.Users = Depends(deps.get_current_active_user),
 ) -> Any:
     """Get stock row by ID."""
-    relations = []
-    if relation not in (None, "", [], "[]"):
-        relations += ast.literal_eval(relation)
+    relations = parse_query_array(relation, default=[]) or []
 
     wheres = [{"key": "id", "value": stock_id, "operator": "=="}]
-    if where not in (None, "", []):
-        wheres += ast.literal_eval(where)
+    wheres += parse_query_array(where, default=[]) or []
 
-    where_relations = []
-    if where_relation not in (None, "", []):
-        where_relations += ast.literal_eval(where_relation)
+    where_relations = parse_query_array(where_relation, default=[]) or []
 
-    bases_columns = []
-    if base_columns not in (None, "", []):
-        bases_columns += ast.literal_eval(base_columns)
+    bases_columns = parse_query_array(base_columns, default=[]) or []
 
     stock_row = crud.stock.get_first_where_array(
         db=db,

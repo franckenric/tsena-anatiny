@@ -6,7 +6,7 @@ import { Input } from "./Input";
 import { Modal } from "./Modal";
 import { Select } from "./Select";
 import type { SelectOption } from "./Select";
-import { CheckCircle2, FileUp, TriangleAlert, X } from "lucide-react";
+import { CheckCircle2, FileUp, ImagePlus, TriangleAlert, X } from "lucide-react";
 import { cn } from "../lib/utils";
 
 const RATE_STORAGE_PREFIX = "tsena.receipt.rate.";
@@ -128,6 +128,8 @@ export function ReceiptImport({
   const [selectedVariantLevels, setSelectedVariantLevels] = useState<
     string[]
   >([]);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState("");
 
   const parsedRate = parseFloat(exchangeRate);
   const useRate = Number.isFinite(parsedRate) && parsedRate > 0;
@@ -173,6 +175,8 @@ export function ReceiptImport({
     setImportedCount(null);
     setApplied(false);
     setSelectedVariantLevels([]);
+    setPhotoFile(null);
+    setPhotoPreview("");
     setIsModalOpen(false);
   };
 
@@ -332,7 +336,7 @@ export function ReceiptImport({
               ? receiptData.items[index].attributes
               : undefined
         }))
-      });
+      }, photoFile);
       storeRate(receiptData.currency, exchangeRate);
       setImportedCount(created.length);
       setApplied(true);
@@ -739,6 +743,48 @@ export function ReceiptImport({
                     </div>
                   </div>
                 )}
+
+                <div className="space-y-1.5">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-muted">
+                    Photo du reçu (optionnel)
+                  </p>
+                  {photoPreview ? (
+                    <div className="flex items-center gap-3 rounded-xl border border-border/60 bg-bg/40 p-2">
+                      <img
+                        src={photoPreview}
+                        alt="Photo du reçu"
+                        className="h-20 w-20 shrink-0 rounded-lg object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPhotoFile(null);
+                          setPhotoPreview("");
+                        }}
+                        className="text-xs font-semibold text-warning"
+                      >
+                        Retirer la photo
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border/60 bg-bg/50 px-3 py-3 text-xs font-semibold text-muted transition hover:border-brand/40">
+                      <ImagePlus className="h-4 w-4" />
+                      Ajouter une photo / scan du reçu
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="sr-only"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          e.target.value = "";
+                          if (!file) return;
+                          setPhotoFile(file);
+                          setPhotoPreview(URL.createObjectURL(file));
+                        }}
+                      />
+                    </label>
+                  )}
+                </div>
 
                 {importError && (
                   <p className="text-xs text-warning">{importError}</p>

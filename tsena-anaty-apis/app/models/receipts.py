@@ -10,6 +10,7 @@ class Receipts(Base):
     file_name = Column(String(255))
     seller = Column(String(255))
     currency = Column(String(10))
+    photo = Column(String(500))
     items_count = Column(Integer, nullable=False, default=0)
     user_id = Column(Integer)
 

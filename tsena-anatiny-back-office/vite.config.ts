@@ -9,10 +9,22 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     server: {
+      // Bind to 0.0.0.0 so the dev server is reachable from the phone/emulator
+      // over the LAN (needed for Capacitor's server.url dev flow).
+      host: true,
+      port: 5175,
+      strictPort: true,
       proxy: {
         "/api": {
           target: proxyTarget,
           changeOrigin: true
+        },
+        // Notifications WebSocket (proxied because the WebView resolves
+        // window.location.host to the dev server, not the backend).
+        "/ws": {
+          target: proxyTarget,
+          changeOrigin: true,
+          ws: true
         }
       }
     }

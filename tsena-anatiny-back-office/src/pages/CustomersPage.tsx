@@ -12,17 +12,12 @@ import {
   Button,
   Card,
   DataTable,
-  Input,
   Layout,
   Pagination,
   FloatingActionButton
 } from "../components/index";
 import { Modal } from "../components/Modal";
-import type {
-  Customer,
-  CreateCustomerPayload,
-  UpdateCustomerPayload
-} from "../types/customer";
+import type { Customer } from "../types/customer";
 import type { CartItem, Order } from "../types/operations";
 import type { Column } from "../components/index";
 import type { Product } from "../types/product";
@@ -30,28 +25,6 @@ import { customersService } from "../services/customers.service";
 import { cartItemsService } from "../services/operations.service";
 import { productsService } from "../services/products.service";
 import { useAuth } from "../contexts/AuthContext";
-
-const PHONE_FORMAT_REGEX = /^\+261\s\d{2}\s\d{2}\s\d{3}\s\d{2}$/;
-const PHONE_PREFIX = "+261 ";
-
-const formatPhoneMadagascar = (value: string): string => {
-  const digits = value.replace(/\D/g, "");
-  if (!digits) return PHONE_PREFIX;
-
-  const localDigits = digits.startsWith("261") ? digits.slice(3) : digits;
-  const limited = localDigits.slice(0, 9);
-
-  const p1 = limited.slice(0, 2);
-  const p2 = limited.slice(2, 4);
-  const p3 = limited.slice(4, 7);
-  const p4 = limited.slice(7, 9);
-
-  const grouped = [p1, p2, p3, p4].filter(Boolean).join(" ");
-  return grouped ? `${PHONE_PREFIX}${grouped}` : PHONE_PREFIX;
-};
-
-const isPhonePrefixOnly = (value: string): boolean =>
-  value.trim() === PHONE_PREFIX.trim();
 
 function CustomerCartViewer({
   customer,
@@ -468,10 +441,7 @@ export function CustomersPage() {
                   size="sm"
                   variant="secondary"
                   disabled={isFormLoading}
-                  onClick={() => {
-                    setSelected(customer);
-                    setIsModalOpen(true);
-                  }}
+                  onClick={() => history.push(`/customers/${customer.id}/edit`)}
                   title="Modifier"
                   aria-label="Modifier"
                   className="h-8 w-8 p-0"
@@ -523,25 +493,6 @@ export function CustomersPage() {
               }}
             />
           )}
-        </Modal>
-
-        <Modal
-          isOpen={isModalOpen}
-          onClose={() => {
-            setIsModalOpen(false);
-            setSelected(null);
-          }}
-          title={selected ? "Modifier client" : "Nouveau client"}
-        >
-          <CustomerForm
-            customer={selected || undefined}
-            onSubmit={handleSubmit}
-            onCancel={() => {
-              setIsModalOpen(false);
-              setSelected(null);
-            }}
-            isLoading={isFormLoading}
-          />
         </Modal>
       </div>
     </Layout>

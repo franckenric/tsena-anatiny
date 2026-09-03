@@ -1,8 +1,9 @@
-from typing import Any, List
+from typing import Any, List, Optional
 from pathlib import Path
 from uuid import uuid4
 import re
-from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
+import json
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -12,7 +13,7 @@ from app import crud, models, schemas
 from app.receipt_parser import parse_receipt_pdf, _split_attributes
 from app.enum.type import TypeEnum
 from app.enum.status import StatusEnum
-import ast
+from app.utils import parse_query_array
 
 router = APIRouter()
 from app.api import deps
@@ -49,11 +50,19 @@ async def extract_receipt(
 
 
 @router.post('/import-receipt', response_model=List[schemas.Products])
-def import_receipt(
+async def import_receipt(
       *,
       db: Session = Depends(deps.get_db),
-      import_in: schemas.ReceiptImportRequest,
       current_user: models.Users = Depends(deps.get_current_active_user),
+      items: str = Form(...),
+      category_id: int = Form(...),
+      lot_id: int = Form(...),
+      receipt_number: Optional[str] = Form(None),
+      file_name: Optional[str] = Form(None),
+      seller: Optional[str] = Form(None),
+      currency: Optional[str] = Form(None),
+      variant_levels: Optional[str] = Form(None),
+      image: Optional[UploadFile] = File(None),
 ) -> Any:
     """Import all products from a receipt in one transaction, with their stock entry.
 
@@ -62,8 +71,35 @@ def import_receipt(
     (ex: "compatible model", "color") construisent l'arborescence de
     variantes, chaque combinaison possédant son propre stock.
     Le reçu est enregistré afin d'empêcher toute double importation.
+    `image` (optionnel) stocke une photo/scan du reçu servi via /files/receipts.
     """
-    receipt_number = (import_in.receipt_number or '').strip()
+    vls = []
+    if variant_levels:
+        try:
+            vls = json.loads(variant_levels)
+        except (ValueError, TypeError):
+            vls = [variant_levels]
+    variant_levels_list = [str(k).strip() for k in vls if str(k).strip()]
+
+    receipt_number = (receipt_number or '').strip()
+
+    try:
+        items_list = json.loads(items)
+        if not isinstance(items_list, list):
+            raise ValueError("items doit être une liste")
+        import_in = schemas.ReceiptImportRequest(
+            receipt_number=receipt_number,
+            file_name=file_name,
+            seller=seller,
+            currency=currency,
+            category_id=category_id,
+            lot_id=lot_id,
+            variant_levels=variant_levels_list,
+            items=items_list,
+        )
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(status_code=422, detail=f"Aucun article à importer ({exc})")
+
     if receipt_number:
         existing = crud.receipts.get_by_receipt_number(db=db, receipt_number=receipt_number)
         if existing:
@@ -75,15 +111,32 @@ def import_receipt(
     if not import_in.items:
         raise HTTPException(status_code=422, detail='Aucun article à importer')
 
-    category = crud.categories.get(db=db, id=import_in.category_id)
+    category = crud.categories.get(db=db, id=category_id)
     if not category:
         raise HTTPException(status_code=404, detail='Catégorie introuvable')
 
-    lot = crud.lots.get(db=db, id=import_in.lot_id)
+    lot = crud.lots.get(db=db, id=lot_id)
     if not lot:
         raise HTTPException(status_code=404, detail='Lot introuvable')
 
-    variant_levels = [str(k).strip() for k in (import_in.variant_levels or []) if str(k).strip()]
+    photo_url = None
+    if image is not None:
+        allowed_types = {"image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"}
+        if image.content_type not in allowed_types:
+            raise HTTPException(status_code=400, detail='Format image non supporté')
+        uploads_dir = Path('files/receipts')
+        uploads_dir.mkdir(parents=True, exist_ok=True)
+        ext = Path(image.filename or '').suffix.lower()
+        if ext not in {'.jpg', '.jpeg', '.png', '.webp', '.gif'}:
+            ext = '.jpg'
+        filename = f"{uuid4().hex}{ext}"
+        content = await image.read()
+        if len(content) > 5 * 1024 * 1024:
+            raise HTTPException(status_code=400, detail='Image trop volumineuse (max 5MB)')
+        (uploads_dir / filename).write_bytes(content)
+        photo_url = f"/files/receipts/{filename}"
+
+    variant_levels = variant_levels_list
 
     user_id = int(getattr(current_user, 'id', 0) or 0)
     lot_reference = lot.reference or f'Lot #{lot.id}'
@@ -229,9 +282,10 @@ def import_receipt(
                 db=db,
                 obj_in=schemas.ReceiptsCreate(
                     receipt_number=receipt_number,
-                    file_name=import_in.file_name,
-                    seller=import_in.seller,
-                    currency=import_in.currency,
+                    file_name=file_name,
+                    seller=seller,
+                    currency=currency,
+                    photo=photo_url,
                     items_count=len(import_in.items),
                     user_id=user_id,
                 ),
@@ -484,21 +538,13 @@ def read_products(
     """
     Retrieve products.
     """
-    relations = []
-    if relation is not None and relation != "" and relation != []:
-       relations += ast.literal_eval(relation)
+    relations = parse_query_array(relation, default=[]) or []
 
-    wheres = []
-    if where is not None and where != "" and where != []:
-       wheres += ast.literal_eval(where)
+    wheres = parse_query_array(where, default=[]) or []
 
-    where_relations = []
-    if where_relation is not None and where_relation != "" and where_relation != []:
-       where_relations += ast.literal_eval(where_relation)
+    where_relations = parse_query_array(where_relation, default=[]) or []
 
-    bases_columns = []
-    if base_columns is not None and base_columns != "" and base_columns != []:
-       bases_columns += ast.literal_eval(base_columns)
+    bases_columns = parse_query_array(base_columns, default=[]) or []
 
     products = crud.products.get_multi_where_array(
       db=db, relations=relations, skip=offset, limit=limit, where=wheres, where_relation=where_relations, base_columns=bases_columns)
@@ -610,21 +656,14 @@ def read_products(
     """
     Get products by ID.
     """
-    relations = []
-    if relation is not None and relation != "" and relation != [] and relation != "[]":
-       relations += ast.literal_eval(relation)
+    relations = parse_query_array(relation, default=[]) or []
 
     wheres = [{'key': 'id', 'value': products_id, 'operator': '=='}]
-    if where is not None and where != "" and where != []:
-       wheres += ast.literal_eval(where)
+    wheres += parse_query_array(where, default=[]) or []
 
-    where_relations = []
-    if where_relation is not None and where_relation != "" and where_relation != []:
-       where_relations += ast.literal_eval(where_relation)
+    where_relations = parse_query_array(where_relation, default=[]) or []
 
-    bases_columns = []
-    if base_columns is not None and base_columns != "" and base_columns != []:
-       bases_columns += ast.literal_eval(base_columns)
+    bases_columns = parse_query_array(base_columns, default=[]) or []
 
 
     products = crud.products.get_first_where_array(db=db, relations=relations, where=wheres, where_relation=where_relations, base_columns=bases_columns)

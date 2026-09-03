@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Redirect, useHistory, useLocation } from "react-router-dom";
 import { IonContent, IonPage } from "@ionic/react";
-import { Eye, EyeOff, LockKeyhole, Package, Phone } from "lucide-react";
+import { Eye, EyeOff, LockKeyhole, Phone } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 
 export function LoginPage() {

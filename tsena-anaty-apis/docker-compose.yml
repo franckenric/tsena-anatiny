@@ -1,13 +1,15 @@
 services:
   api:
     image: "${IMAGE_NAME}"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     build:
       context: .
       dockerfile: Dockerfile
     env_file:
       - .env
     environment:
-      - TESTING=${TESTING:-0}  # Set to "true" to enable tests
+      - TESTING=${TESTING:-0} # Set to "true" to enable tests
     ports:
       - "${HOST_PORT}:${CONTAINER_PORT}"
     volumes:

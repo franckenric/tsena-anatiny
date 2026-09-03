@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.api import deps
 from app import crud, models, schemas
 from app.enum.type import TypeEnum
-import ast
+from app.utils import parse_query_array
 
 router = APIRouter()
 
@@ -25,21 +25,13 @@ def read_stock_movements(
     """
     Retrieve stock_movements.
     """
-    relations = []
-    if relation is not None and relation != "" and relation != []:
-       relations += ast.literal_eval(relation)
+    relations = parse_query_array(relation, default=[]) or []
 
-    wheres = []
-    if where is not None and where != "" and where != []:
-       wheres += ast.literal_eval(where)
+    wheres = parse_query_array(where, default=[]) or []
 
-    where_relations = []
-    if where_relation is not None and where_relation != "" and where_relation != []:
-       where_relations += ast.literal_eval(where_relation)
+    where_relations = parse_query_array(where_relation, default=[]) or []
 
-    bases_columns = []
-    if base_columns is not None and base_columns != "" and base_columns != []:
-       bases_columns += ast.literal_eval(base_columns)
+    bases_columns = parse_query_array(base_columns, default=[]) or []
 
     stock_movements = crud.stock_movements.get_multi_where_array(
       db=db, relations=relations, skip=offset, limit=limit, where=wheres, where_relation=where_relations, base_columns=bases_columns)
@@ -330,21 +322,14 @@ def read_stock_movements(
     """
     Get stock_movements by ID.
     """
-    relations = []
-    if relation is not None and relation != "" and relation != [] and relation != "[]":
-       relations += ast.literal_eval(relation)
+    relations = parse_query_array(relation, default=[]) or []
 
     wheres = [{'key': 'id', 'value': stock_movements_id, 'operator': '=='}]
-    if where is not None and where != "" and where != []:
-       wheres += ast.literal_eval(where)
+    wheres += parse_query_array(where, default=[]) or []
 
-    where_relations = []
-    if where_relation is not None and where_relation != "" and where_relation != []:
-       where_relations += ast.literal_eval(where_relation)
+    where_relations = parse_query_array(where_relation, default=[]) or []
 
-    bases_columns = []
-    if base_columns is not None and base_columns != "" and base_columns != []:
-       bases_columns += ast.literal_eval(base_columns)
+    bases_columns = parse_query_array(base_columns, default=[]) or []
 
 
     stock_movements = crud.stock_movements.get_first_where_array(db=db, relations=relations, where=wheres, where_relation=where_relations, base_columns=bases_columns)

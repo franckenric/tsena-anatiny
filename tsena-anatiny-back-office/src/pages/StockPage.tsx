@@ -159,7 +159,7 @@ function StockForm({
               const pricing = form.variantPricing[v.id];
               if (pricing && (pricing.selling_price > 0 || pricing.discount_price > 0)) {
                 try {
-                  await productsService.updateVariant(v.id, {
+                  await productsService.updateVariant(form.product_id, v.id, {
                     selling_price: pricing.selling_price || undefined,
                     discount_price: pricing.discount_price || undefined,
                     unit_cost: pricing.unit_cost || undefined

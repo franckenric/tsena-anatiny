@@ -176,16 +176,36 @@ export const productsService = {
     return response.json();
   },
 
-  async importReceipt(payload: ReceiptImportRequest): Promise<Product[]> {
+  async importReceipt(
+    payload: ReceiptImportRequest,
+    photo?: File | null
+  ): Promise<Product[]> {
+    const formData = new FormData();
+    const data: Record<string, string> = {
+      receipt_number: payload.receipt_number || "",
+      file_name: payload.file_name || "",
+      seller: payload.seller || "",
+      currency: payload.currency || "",
+      category_id: String(payload.category_id),
+      lot_id: String(payload.lot_id),
+      items: JSON.stringify(payload.items)
+    };
+    if (payload.variant_levels && payload.variant_levels.length > 0) {
+      data.variant_levels = JSON.stringify(payload.variant_levels);
+    }
+    for (const [key, value] of Object.entries(data)) {
+      formData.append(key, value);
+    }
+    if (photo) formData.append("image", photo, photo.name);
+
     const response = await fetch(
       `${API_BASE_URL}/products/import-receipt`,
       {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
           Authorization: `Bearer ${getToken()}`
         },
-        body: JSON.stringify(payload)
+        body: formData
       }
     );
 

@@ -4,7 +4,7 @@ from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
 from app.api import deps
 from app import crud, models, schemas
-import ast
+from app.utils import parse_query_array
 
 router = APIRouter()
 from app.api import deps
@@ -23,21 +23,13 @@ def read_commercial_assignments(
     """
     Retrieve commercial_assignments.
     """
-    relations = []
-    if relation is not None and relation != "" and relation != []:
-       relations += ast.literal_eval(relation)
+    relations = parse_query_array(relation, default=[]) or []
 
-    wheres = []
-    if where is not None and where != "" and where != []:
-       wheres += ast.literal_eval(where)
+    wheres = parse_query_array(where, default=[]) or []
 
-    where_relations = []
-    if where_relation is not None and where_relation != "" and where_relation != []:
-       where_relations += ast.literal_eval(where_relation)
+    where_relations = parse_query_array(where_relation, default=[]) or []
 
-    bases_columns = []
-    if base_columns is not None and base_columns != "" and base_columns != []:
-       bases_columns += ast.literal_eval(base_columns)
+    bases_columns = parse_query_array(base_columns, default=[]) or []
 
     commercial_assignments = crud.commercial_assignments.get_multi_where_array(
       db=db, relations=relations, skip=offset, limit=limit, where=wheres, where_relation=where_relations, base_columns=bases_columns)
@@ -92,21 +84,14 @@ def read_commercial_assignments(
     """
     Get commercial_assignments by ID.
     """
-    relations = []
-    if relation is not None and relation != "" and relation != [] and relation != "[]":
-       relations += ast.literal_eval(relation)
+    relations = parse_query_array(relation, default=[]) or []
 
     wheres = [{'key': 'id', 'value': commercial_assignments_id, 'operator': '=='}]
-    if where is not None and where != "" and where != []:
-       wheres += ast.literal_eval(where)
+    wheres += parse_query_array(where, default=[]) or []
 
-    where_relations = []
-    if where_relation is not None and where_relation != "" and where_relation != []:
-       where_relations += ast.literal_eval(where_relation)
+    where_relations = parse_query_array(where_relation, default=[]) or []
 
-    bases_columns = []
-    if base_columns is not None and base_columns != "" and base_columns != []:
-       bases_columns += ast.literal_eval(base_columns)
+    bases_columns = parse_query_array(base_columns, default=[]) or []
 
 
     commercial_assignments = crud.commercial_assignments.get_first_where_array(db=db, relations=relations, where=wheres, where_relation=where_relations, base_columns=bases_columns)

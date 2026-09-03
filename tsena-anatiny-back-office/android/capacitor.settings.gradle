@@ -3,4 +3,10 @@ include ':capacitor-android'
 project(':capacitor-android').projectDir = new File('../node_modules/@capacitor/android/capacitor')
 
 include ':byteowls-capacitor-sms'
-project(':byteowls-capacitor-sms').projectDir = new File('../node_modules/@byteowls/capacitor-sms/android')
+project(':byteowls-capacitor-sms').projectDir = new File('../vendor/byteowls-capacitor-sms/android')
+
+include ':capacitor-filesystem'
+project(':capacitor-filesystem').projectDir = new File('../node_modules/@capacitor/filesystem/android')
+
+include ':capacitor-share'
+project(':capacitor-share').projectDir = new File('../node_modules/@capacitor/share/android')

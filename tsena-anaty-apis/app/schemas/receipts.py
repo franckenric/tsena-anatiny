@@ -8,6 +8,7 @@ class ReceiptsBase(BaseModel):
     file_name: Optional[str] = None
     seller: Optional[str] = None
     currency: Optional[str] = None
+    photo: Optional[str] = None
     items_count: Optional[int] = 0
     user_id: Optional[int] = None
 

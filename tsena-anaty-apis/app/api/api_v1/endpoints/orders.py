@@ -1,5 +1,4 @@
 from typing import Any
-import ast
 import json
 from datetime import datetime
 from uuid import uuid4
@@ -12,6 +11,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app import crud, models, schemas
 from app.api import deps
+from app.utils import parse_query_array
 from app.api.api_v1.endpoints.notifications import (
     notify_order_created,
     notify_order_status_changed,
@@ -374,21 +374,13 @@ def read_orders(
     current_user: models.Users = Depends(deps.get_current_active_user),
 ) -> Any:
     """Retrieve orders."""
-    relations = []
-    if relation is not None and relation != "" and relation != []:
-        relations += ast.literal_eval(relation)
+    relations = parse_query_array(relation, default=[]) or []
 
-    wheres = []
-    if where is not None and where != "" and where != []:
-        wheres += ast.literal_eval(where)
+    wheres = parse_query_array(where, default=[]) or []
 
-    where_relations = []
-    if where_relation is not None and where_relation != "" and where_relation != []:
-        where_relations += ast.literal_eval(where_relation)
+    where_relations = parse_query_array(where_relation, default=[]) or []
 
-    bases_columns = []
-    if base_columns is not None and base_columns != "" and base_columns != []:
-        bases_columns += ast.literal_eval(base_columns)
+    bases_columns = parse_query_array(base_columns, default=[]) or []
 
     if len(bases_columns) > 0:
         bases_columns = _sanitize_removed_order_columns(bases_columns)
@@ -722,21 +714,14 @@ def read_order_by_id(
     current_user: models.Users = Depends(deps.get_current_active_user),
 ) -> Any:
     """Get order by ID."""
-    relations = []
-    if relation is not None and relation != "" and relation != [] and relation != "[]":
-        relations += ast.literal_eval(relation)
+    relations = parse_query_array(relation, default=[]) or []
 
     wheres = [{'key': 'id', 'value': orders_id, 'operator': '=='}]
-    if where is not None and where != "" and where != []:
-        wheres += ast.literal_eval(where)
+    wheres += parse_query_array(where, default=[]) or []
 
-    where_relations = []
-    if where_relation is not None and where_relation != "" and where_relation != []:
-        where_relations += ast.literal_eval(where_relation)
+    where_relations = parse_query_array(where_relation, default=[]) or []
 
-    bases_columns = []
-    if base_columns is not None and base_columns != "" and base_columns != []:
-        bases_columns += ast.literal_eval(base_columns)
+    bases_columns = parse_query_array(base_columns, default=[]) or []
 
     if len(bases_columns) > 0:
         bases_columns = _sanitize_removed_order_columns(bases_columns)

@@ -439,6 +439,7 @@ export function LotDetailsPage() {
         current_stock: currentStock,
         sold_quantity: soldQuantity,
         selling_price: sellingPrice,
+        discount_price: null,
         base_unit_cost: unitCostWithExtra
       };
     };

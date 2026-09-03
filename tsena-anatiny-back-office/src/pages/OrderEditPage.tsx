@@ -23,7 +23,6 @@ import { Layout, Button } from "../components/index";
 import {
   OrderForm,
   STATUS_LABELS,
-  formatAr,
   parsePendingLines
 } from "../components/OrderFormComponent";
 import type { CartItem } from "../components/OrderFormComponent";
@@ -51,7 +50,7 @@ export function OrderEditPage() {
       setIsLoading(true);
       setError(null);
 
-      const [usersList, customersRes, productsRes] = await Promise.all([
+      const [_usersList, customersRes, productsRes] = await Promise.all([
         ordersService.getOrders(1, 1).then(() => []).catch(() => []), // users loaded separately
         customersService.getCustomers(1, 500),
         productsService.getProducts(1, 500)
@@ -254,10 +253,10 @@ function mapCartItemsFromApi(
     product_id: number;
     variant_id?: number | null;
     quantity: number;
-    unit_cost: number;
-    another_price: number;
+    unit_cost?: number;
+    another_price?: number;
     other_price_reason?: string;
-    variant?: { name?: string; sku?: string };
+    variant?: { name?: string; sku?: string | null } | null;
   }>,
   products: Product[]
 ): CartItem[] {

@@ -1,12 +1,12 @@
 from typing import Any
 
-import ast
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
 
 from app import crud, models, schemas
 from app.api import deps
+from app.utils import parse_query_array
 
 router = APIRouter()
 
@@ -37,9 +37,7 @@ def read_lot_expenses(
     db: Session = Depends(deps.get_db),
     current_user: models.Users = Depends(deps.get_current_active_user),
 ) -> Any:
-    wheres = []
-    if where not in (None, "", [], "[]"):
-        wheres += ast.literal_eval(where)
+    wheres = parse_query_array(where, default=[]) or []
 
     expenses = crud.lot_expenses.get_multi_where_array(
         db=db,

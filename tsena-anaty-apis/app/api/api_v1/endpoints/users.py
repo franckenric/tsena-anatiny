@@ -1,5 +1,4 @@
 from typing import Any
-import ast
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.encoders import jsonable_encoder
@@ -7,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app import crud, models, schemas
 from app.api import deps
+from app.utils import parse_query_array
 
 router = APIRouter()
 
@@ -42,22 +42,14 @@ def read_users(
    current_user: models.Users = Depends(deps.get_current_active_user),
 ) -> Any:
    """Retrieve users."""
-   relations = []
-   if relation is not None and relation != "" and relation != []:
-      relations += ast.literal_eval(relation)
+   relations = parse_query_array(relation, default=[]) or []
 
-   wheres = []
-   if where is not None and where != "" and where != []:
-      wheres += ast.literal_eval(where)
+   wheres = parse_query_array(where, default=[]) or []
    wheres = _normalize_where_filters(wheres)
 
-   where_relations = []
-   if where_relation is not None and where_relation != "" and where_relation != []:
-      where_relations += ast.literal_eval(where_relation)
+   where_relations = parse_query_array(where_relation, default=[]) or []
 
-   bases_columns = []
-   if base_columns is not None and base_columns != "" and base_columns != []:
-      bases_columns += ast.literal_eval(base_columns)
+   bases_columns = parse_query_array(base_columns, default=[]) or []
 
    users = crud.users.get_multi_where_array(
       db=db,
@@ -113,22 +105,15 @@ def read_user_by_id(
    current_user: models.Users = Depends(deps.get_current_active_user),
 ) -> Any:
    """Get users by ID."""
-   relations = []
-   if relation is not None and relation != "" and relation != [] and relation != "[]":
-      relations += ast.literal_eval(relation)
+   relations = parse_query_array(relation, default=[]) or []
 
    wheres = [{"key": "id", "value": users_id, "operator": "=="}]
-   if where is not None and where != "" and where != []:
-      wheres += ast.literal_eval(where)
+   wheres += parse_query_array(where, default=[]) or []
    wheres = _normalize_where_filters(wheres)
 
-   where_relations = []
-   if where_relation is not None and where_relation != "" and where_relation != []:
-      where_relations += ast.literal_eval(where_relation)
+   where_relations = parse_query_array(where_relation, default=[]) or []
 
-   bases_columns = []
-   if base_columns is not None and base_columns != "" and base_columns != []:
-      bases_columns += ast.literal_eval(base_columns)
+   bases_columns = parse_query_array(base_columns, default=[]) or []
 
    users = crud.users.get_first_where_array(
       db=db,

@@ -17,25 +17,25 @@ OTP_TTL_MINUTES = 10
 OTP_MAX_ATTEMPTS = 5
 
 
-def _normalize_phone(phone: str) -> str:
-    return phone.replace(" ", "").strip()
+def _normalize_email(email: str) -> str:
+    return email.replace(" ", "").strip().lower()
 
 
-def _cleanup_expired(db: Session, phone: str) -> None:
+def _cleanup_expired(db: Session, email: str) -> None:
     db.query(models.OtpCodes).filter(
-        models.OtpCodes.phone == phone,
+        models.OtpCodes.email == email,
         models.OtpCodes.expires_at < datetime.utcnow(),
     ).delete()
     db.commit()
 
 
-def issue_otp(db: Session, phone: str) -> str:
-    """Create a fresh OTP for a phone and return the plain code to relay via SMS."""
-    normalized = _normalize_phone(phone)
+def issue_otp(db: Session, email: str) -> str:
+    """Create a fresh OTP for an email and return the plain code to relay."""
+    normalized = _normalize_email(email)
     _cleanup_expired(db, normalized)
     code = f"{secrets.randbelow(10 ** OTP_LENGTH):0{OTP_LENGTH}d}"
     row = models.OtpCodes(
-        phone=normalized,
+        email=normalized,
         code_hash=get_password_hash(code),
         attempts=0,
         is_used=False,
@@ -53,11 +53,11 @@ def verify_otp(
     payload: schemas.OtpVerifyRequest,
 ) -> Any:
     """Check the OTP submitted by the customer and mark it as used."""
-    normalized = _normalize_phone(payload.phone)
+    normalized = _normalize_email(payload.email)
     row = (
         db.query(models.OtpCodes)
         .filter(
-            models.OtpCodes.phone == normalized,
+            models.OtpCodes.email == normalized,
             models.OtpCodes.is_used == False,  # noqa: E712
         )
         .order_by(models.OtpCodes.id.desc())
@@ -79,7 +79,7 @@ def verify_otp(
 
     row.is_used = True
     db.commit()
-    return schemas.OtpVerifyResponse(success=True, phone=normalized)
+    return schemas.OtpVerifyResponse(success=True, email=normalized)
 
 
 @router.post("/resend", response_model=schemas.OtpVerifyResponse)
@@ -88,15 +88,17 @@ def resend_otp(
     db: Session = Depends(deps.get_db),
     payload: schemas.OtpRequest,
 ) -> Any:
-    """Issue a fresh OTP and notify the back-office to relay it by SMS."""
-    normalized = _normalize_phone(payload.phone)
-    customer = crud.customers.get_by_field(
-        db, field="phone", value=normalized
-    )
-    if not customer:
+    """Issue a fresh OTP and notify the back-office to relay it by email."""
+    normalized = _normalize_email(payload.email)
+    user = crud.users.get_by_email(db, email=normalized)
+    if not user:
         raise HTTPException(
-            status_code=404, detail="Compte introuvable pour ce numéro"
+            status_code=404, detail="Compte introuvable pour cet email"
         )
+    customer = crud.customers.get_first_where_array(
+        db=db,
+        where=[{"key": "users_id", "operator": "==", "value": user.id}],
+    )
     code = issue_otp(db, normalized)
-    notify_account_created(db, customer, otp=code)
-    return schemas.OtpVerifyResponse(success=True, phone=normalized)
+    notify_account_created(db, customer, email=normalized, otp=code)
+    return schemas.OtpVerifyResponse(success=True, email=normalized)

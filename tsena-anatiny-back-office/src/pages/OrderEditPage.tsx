@@ -134,6 +134,7 @@ export function OrderEditPage() {
           user_id: createPayload.user_id,
           order_number: createPayload.order_number,
           customer_id: resolvedCustomerId,
+          customer_phone: createPayload.customer_phone,
           another_price: createPayload.another_price,
           other_price_reason: createPayload.other_price_reason,
           status: createPayload.status,

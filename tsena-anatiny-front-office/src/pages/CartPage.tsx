@@ -133,7 +133,7 @@ export function CartPage() {
   if (!customer) {
     return (
       <Page>
-        <div className="mx-auto flex max-w-7xl flex-col items-center gap-4 px-4 py-20 text-center sm:px-6">
+        <div className="page-shell flex flex-col items-center gap-4 py-20 text-center">
           <ShoppingCart className="h-12 w-12 text-muted" />
           <h1 className="text-2xl font-bold text-ink">{t("cart.empty")}</h1>
           <p className="max-w-md text-muted">{t("cart.loginHint")}</p>
@@ -167,7 +167,7 @@ export function CartPage() {
   if (items.length === 0) {
     return (
       <Page>
-        <div className="mx-auto flex max-w-7xl flex-col items-center gap-4 px-4 py-20 text-center sm:px-6">
+        <div className="page-shell flex flex-col items-center gap-4 py-20 text-center">
           <ShoppingCart className="h-12 w-12 text-muted" />
           <h1 className="text-2xl font-bold text-ink">{t("cart.empty")}</h1>
           <p className="max-w-md text-muted">{t("cart.browseHint")}</p>
@@ -185,7 +185,7 @@ export function CartPage() {
 
   return (
     <Page>
-      <div className="mx-auto max-w-7xl px-4 py-10 pb-12 sm:px-6">
+      <div className="page-shell py-10 pb-12">
       <h1 className="text-2xl font-bold text-ink sm:text-3xl">
         {t("cart.myCart")}
       </h1>

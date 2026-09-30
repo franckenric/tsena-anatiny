@@ -99,7 +99,7 @@ export function ProductCard({ product }: { product: Product }) {
               ? t("product.chooseVariant")
               : t("product.addToCart")
           }
-          className="absolute bottom-2.5 right-2.5 flex h-9 w-9 items-center justify-center rounded-full bg-panel/90 text-ink shadow-lg backdrop-blur-sm transition-all duration-300 hover:bg-brand hover:text-white active:scale-90 disabled:cursor-not-allowed disabled:opacity-40 md:translate-y-2 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100"
+          className="absolute bottom-2.5 right-2.5 flex h-9 w-9 items-center justify-center rounded-full bg-panel/90 text-ink shadow-lg backdrop-blur-sm transition-all duration-300 hover:bg-brand hover:text-white active:scale-90 disabled:cursor-not-allowed disabled:opacity-40 [@media(hover:hover)]:translate-y-2 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:translate-y-0 [@media(hover:hover)]:group-hover:opacity-100"
         >
           {isAdding ? (
             <span className="h-4 w-4 shrink-0 animate-spin-slow rounded-full border-2 border-current border-t-transparent" />

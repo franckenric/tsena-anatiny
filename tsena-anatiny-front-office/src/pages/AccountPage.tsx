@@ -21,7 +21,7 @@ import type { Order, OrderStatus } from "../types/operations";
 import { PageLoader } from "../components/Spinner";
 import { StatusBadge } from "../components/StatusBadge";
 import { Page } from "../components/Page";
-import { formatAr, formatDate, formatPhoneMadagascar } from "../lib/utils";
+import { formatAr, formatDate } from "../lib/utils";
 import { getOrderLineItems, getOrderTotal } from "../lib/orders";
 
 const ORDERS_PAGE_SIZE = 10;
@@ -167,10 +167,10 @@ export function AccountPage() {
           </div>
           <div className="flex w-full flex-col gap-3">
             <Link
-              to={{ pathname: "/verification", state: { phone: customer.phone, from: "/compte" } }}
+              to={{ pathname: "/verification", state: { email: customer.email, from: "/compte" } }}
               className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-brand px-6 py-3.5 text-sm font-bold text-white shadow-glow transition hover:bg-brand/90 active:scale-[0.98]"
             >
-              {t("account.verifyPhone")}
+              {t("account.verifyEmail")}
               <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
@@ -227,7 +227,7 @@ export function AccountPage() {
 
   return (
     <Page>
-      <div className="mx-auto max-w-5xl px-4 py-6 pb-12 sm:px-6">
+      <div className="page-shell py-6 pb-12">
         <div className="animate-fade-up flex flex-col gap-5">
           {/* Profil */}
           <section className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#7c2d12] via-brand to-[hsl(16_85%_14%)] p-5 text-white shadow-glow sm:p-7">
@@ -250,7 +250,7 @@ export function AccountPage() {
                     {firstName}
                   </h1>
                   <p className="truncate text-sm text-white/85">
-                    {formatPhoneMadagascar(customer.phone)}
+                    {customer.email}
                   </p>
                 </div>
               </div>

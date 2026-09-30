@@ -215,13 +215,14 @@ def notify_account_created(
     db: Session,
     customer: Any,
     *,
+    email: str,
     otp: str,
 ) -> None:
     """Notify the back-office that a customer account was created.
 
     The plain OTP is only carried by the WebSocket broadcast (so the
-    back-office can relay it by SMS from the local phone); it is NOT
-    persisted in the notifications table.
+    back-office can relay it to the customer); it is NOT persisted in the
+    notifications table.
     """
     name = getattr(customer, "name", None)
     phone = getattr(customer, "phone", None)
@@ -229,6 +230,7 @@ def notify_account_created(
         "account_id": getattr(customer, "id", None),
         "customer_name": name,
         "customer_phone": phone,
+        "customer_email": email,
         "otp": otp,
         "created_at": datetime.utcnow().isoformat(),
     }
@@ -239,8 +241,8 @@ def notify_account_created(
             user_id=user_id,
             type="account.created",
             title="Nouveau compte client",
-            message=f"Compte créé pour {name or 'un client'} ({phone or '-'}). "
-            "Envoi de l'OTP par SMS en cours.",
+            message=f"Compte créé pour {name or email} ({email}). "
+            "Envoi de l'OTP par email en cours.",
             customer_name=name,
             customer_phone=phone,
         )

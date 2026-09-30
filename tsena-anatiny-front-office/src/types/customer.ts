@@ -1,9 +1,9 @@
 export interface Customer {
   id: number;
   name: string;
-  phone: string;
-  delivery_address?: string;
-  users_id?: number;
+  phone?: string | null;
+  delivery_address?: string | null;
+  users_id?: number | null;
   created_at?: string;
 }
 
@@ -13,9 +13,11 @@ export interface CreateCustomerPayload {
   delivery_address?: string;
 }
 
-export interface RegisterPayload extends CreateCustomerPayload {
+export interface RegisterPayload {
+  name: string;
+  email: string;
   password: string;
-  email?: string;
+  delivery_address?: string;
 }
 
 export interface RegisterResponse {
@@ -25,14 +27,19 @@ export interface RegisterResponse {
   otp_required?: boolean;
 }
 
+export interface LoginPayload {
+  email: string;
+  password: string;
+}
+
 export interface VerifyOtpPayload {
-  phone: string;
+  email: string;
   code: string;
 }
 
 export interface VerifyOtpResponse {
   success: boolean;
-  phone: string;
+  email: string;
 }
 
 export interface CustomerListResponse {

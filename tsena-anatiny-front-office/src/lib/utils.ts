@@ -39,6 +39,16 @@ export function normalizePhone(value: string): string {
   return value.replace(/\s+/g, "").trim();
 }
 
+export function normalizeEmail(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+export const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export function isValidEmail(value: string): boolean {
+  return EMAIL_REGEX.test(normalizeEmail(value));
+}
+
 export const PHONE_FORMAT_REGEX =
   /^\+261\s\d{2}\s\d{2}\s\d{3}\s\d{2}$/;
 

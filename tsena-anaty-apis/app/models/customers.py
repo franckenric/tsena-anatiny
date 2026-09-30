@@ -8,7 +8,7 @@ class Customers(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True, nullable=False, unique=True)
     name = Column(String(255), nullable=False)
-    phone = Column(String(255), nullable=False, unique=True)
+    phone = Column(String(255), nullable=True, unique=True)
     delivery_address = Column(Text)
     users_id = Column(Integer, ForeignKey('users.id'))
 

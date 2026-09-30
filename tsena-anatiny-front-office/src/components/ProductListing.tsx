@@ -28,7 +28,7 @@ export function ProductListing({
   const { t } = useI18n();
   return (
     <Page>
-      <div className="mx-auto max-w-7xl px-4 py-6 pb-12 sm:px-6">
+      <div className="page-shell py-6 pb-12">
         <Link
           to="/"
           className="inline-flex items-center gap-1.5 text-sm font-medium text-muted transition hover:text-ink"

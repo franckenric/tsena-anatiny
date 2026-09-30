@@ -42,6 +42,7 @@ import {
   resolveImageUrl
 } from "../lib/utils";
 import { useI18n } from "../contexts/I18nContext";
+import { useRecommendations } from "../hooks/useRecommendations";
 
 const PAGE_SIZE = 200;
 
@@ -82,7 +83,7 @@ function AnnouncementBar() {
   const { t } = useI18n();
   return (
     <div className="bg-gradient-to-r from-[#9a3412] via-brand to-[#9a3412] text-white">
-      <div className="mx-auto flex max-w-7xl items-center justify-center gap-2 px-4 py-2 text-center text-xs font-semibold tracking-wide sm:text-sm">
+      <div className="page-shell flex items-center justify-center gap-2 py-2 text-center text-xs font-semibold tracking-wide sm:text-sm">
         <span className="relative flex h-2 w-2">
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-75" />
           <span className="relative inline-flex h-2 w-2 rounded-full bg-accent" />
@@ -403,11 +404,11 @@ function ProductRail({
       ) : (
         <>
           <SectionHeader title={title} icon={Icon} action={action} />
-          <div className="scrollbar-hide -mx-4 mt-3 flex snap-x gap-3 overflow-x-auto px-4 pb-2 pt-1 sm:mx-0 sm:px-6">
+          <div className="scrollbar-hide -mx-4 mt-3 flex snap-x gap-3 overflow-x-auto px-4 pb-2 pt-1 sm:mx-0 sm:px-6 lg:grid lg:grid-cols-4 lg:gap-6 lg:overflow-visible lg:px-0">
             {products.map((product) => (
               <div
                 key={product.id}
-                className="w-40 shrink-0 snap-start sm:w-48"
+                className="w-40 shrink-0 snap-start sm:w-48 lg:w-auto lg:shrink"
               >
                 <ProductCard product={product} />
               </div>
@@ -594,15 +595,19 @@ export function HomePage() {
     return ids.map((id) => byId.get(id)).filter((p): p is Product => Boolean(p));
   }, [products, query, activeCategories]);
 
-  const recommended = useMemo(() => {
-    if (query || activeCategories.size > 0) return [];
-    const recent = recentProducts;
-    const recentIds = new Set(recent.map((p) => p.id));
-    const fill = availableProducts.filter((p) => !recentIds.has(p.id));
-    return [...recent, ...fill].slice(0, 2);
-  }, [recentProducts, availableProducts, query, activeCategories]);
+  const { customer } = useAuth();
 
   const hasActiveFilter = Boolean(query) || activeCategories.size > 0;
+
+  const { recommendations: recommended } = useRecommendations(
+    hasActiveFilter ? [] : availableProducts,
+    2
+  );
+
+  const recTitle =
+    customer || recentProducts.length > 0
+      ? t("home.recommended")
+      : t("home.toDiscover");
 
   const updateCategories = (next: Set<number>) => {
     const params = new URLSearchParams();
@@ -663,6 +668,19 @@ export function HomePage() {
               onPress: () => history.push("/nouveautes")
             }}
             products={newestProducts}
+          />
+        )}
+
+        {!hasActiveFilter && recommended.length > 0 && (
+          <ProductRail
+            title={recTitle}
+            icon={Sparkles}
+            delay={40}
+            action={{
+              label: t("common.seeAll"),
+              onPress: () => history.push("/recommandes")
+            }}
+            products={recommended}
           />
         )}
 
@@ -799,23 +817,6 @@ export function HomePage() {
             </>
           )}
         </section>
-
-        {!hasActiveFilter && recommended.length > 0 && (
-          <ProductRail
-            title={
-              recentProducts.length > 0
-                ? t("home.recommended")
-                : t("home.toDiscover")
-            }
-            icon={Sparkles}
-            delay={80}
-            action={{
-              label: t("common.seeAll"),
-              onPress: () => history.push("/recommandes")
-            }}
-            products={recommended}
-          />
-        )}
       </div>
     </Page>
   );

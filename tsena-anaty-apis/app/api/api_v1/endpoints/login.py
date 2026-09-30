@@ -27,13 +27,14 @@ def login_access_token(
 ) -> Any:
     """
     OAuth2 compatible token login, get an access token for future requests.
-    The 'username' field is used to pass the phone number.
+    The 'username' field accepts an email address (front-office customers)
+    or a phone number (back-office staff).
     """
-    user = crud.users.authenticate_by_phone(
-        db, phone=form_data.username, password=form_data.password
+    user = crud.users.authenticate_by_identifier(
+        db, identifier=form_data.username, password=form_data.password
     )
     if not user:
-        raise HTTPException(status_code=400, detail="Incorrect phone number or password")
+        raise HTTPException(status_code=400, detail="Incorrect email/phone or password")
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
 
     token = security.create_access_token(

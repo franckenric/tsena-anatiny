@@ -1,5 +1,3 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap");
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -28,11 +26,14 @@
   html {
     scroll-behavior: smooth;
     overflow-x: hidden;
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
   }
 
   body {
     @apply m-0 bg-bg text-ink font-sans antialiased;
     overflow-x: hidden;
+    min-height: 100dvh;
   }
 
   h1,
@@ -43,7 +44,35 @@
   }
 
   #root {
-    @apply min-h-screen;
+    @apply min-h-dvh;
+  }
+
+  /* Les zones cliquables restent assez grandes pour le tactile. */
+  button,
+  a,
+  [role="button"] {
+    touch-action: manipulation;
+  }
+
+  :focus-visible {
+    @apply outline-none ring-2 ring-brand ring-offset-2 ring-offset-bg;
+  }
+}
+
+@layer components {
+  /**
+   * Unique conteneur de largeur pour toutes les pages, l'en-tete et le pied de
+   * page, afin que les bords gauche et droit restent alignes sur tous les
+   * ecrans.
+   *
+   * La page d'accueil occupe 72rem (max-w-6xl) de contenu utile a partir de
+   * `lg`. On reserve donc 3rem de gouttiere en plus du plafond
+   * (2 x 1.5rem) pour que la colonne de contenu fasse exactement 72rem, tout en
+   * conservant une marge de securite sur les ecrans entre 1024px et 1152px,
+   * ou aucun contenu ne toucherait le bord.
+   */
+  .page-shell {
+    @apply mx-auto w-full max-w-[calc(72rem+3rem)] px-4 sm:px-6;
   }
 }
 
@@ -155,74 +184,4 @@
   .skeleton {
     @apply animate-pulse rounded-2xl bg-border/60;
   }
-}
-
-:root {
-  --ion-color-primary: hsl(var(--brand));
-  --ion-color-primary-rgb: 209, 71, 21;
-  --ion-color-primary-contrast: #ffffff;
-  --ion-color-primary-contrast-rgb: 255, 255, 255;
-  --ion-color-primary-shade: hsl(var(--brand) / 0.88);
-  --ion-color-primary-tint: hsl(var(--brand) / 0.12);
-  --ion-background-color: hsl(var(--bg));
-  --ion-background-color-rgb: 245, 247, 246;
-  --ion-text-color: hsl(var(--ink));
-  --ion-text-color-rgb: 34, 30, 27;
-  --ion-border-color: hsl(var(--border));
-  --ion-toolbar-background: hsl(var(--panel));
-  --ion-toolbar-color: hsl(var(--ink));
-  --ion-tab-bar-background: hsl(var(--panel));
-  --ion-tab-bar-color: hsl(var(--muted));
-  --ion-tab-bar-color-selected: hsl(var(--brand));
-  --ion-item-background: hsl(var(--panel));
-  --ion-font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
-}
-
-ion-content {
-  --background: hsl(var(--bg));
-}
-
-ion-toolbar {
-  --border-width: 0;
-}
-
-ion-tab-bar {
-  --background: hsl(var(--panel));
-  --border: 1px solid hsl(var(--border) / 0.4);
-  --color: hsl(var(--muted));
-  --color-selected: hsl(var(--brand));
-  --ion-tab-bar-padding-bottom: env(safe-area-inset-bottom);
-  height: 48px;
-  backdrop-filter: blur(12px);
-}
-
-ion-tab-button {
-  --color: hsl(var(--muted));
-  --color-selected: hsl(var(--brand));
-  --padding-top: 4px;
-  --padding-bottom: 2px;
-  --min-height: 48px;
-  position: relative;
-}
-
-ion-tab-button ion-icon {
-  font-size: 21px;
-}
-
-ion-tab-button ion-label {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-}
-
-ion-tab-button[tab-selected]::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 20px;
-  height: 2px;
-  background: hsl(var(--brand));
-  border-radius: 0 0 2px 2px;
 }

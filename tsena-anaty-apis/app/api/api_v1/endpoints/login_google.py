@@ -75,7 +75,6 @@ def login_with_google(
         db.commit()
     else:
         client_role = _get_client_role(db)
-        synthetic_phone = f"google_{google_sub}"
         email = google_email or f"google_{google_sub}@google.local"
 
         user_in = schemas.UsersCreate(
@@ -83,16 +82,15 @@ def login_with_google(
             password=secrets.token_urlsafe(32),
             is_active=True,
             role_id=client_role.id,
-            phone_numer=synthetic_phone,
             full_name=google_name,
             google_id=google_sub,
             icon=google_picture or None,
         )
         user = crud.users.create(db=db, obj_in=user_in)
 
+        # The phone number is collected when the customer places an order.
         customer_in = schemas.CustomersCreate(
             name=google_name,
-            phone=synthetic_phone,
             users_id=user.id,
         )
         crud.customers.create(db=db, obj_in=customer_in)

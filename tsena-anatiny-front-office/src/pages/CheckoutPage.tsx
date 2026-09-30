@@ -10,7 +10,14 @@ import {
 } from "../services/operations.service";
 import { PageLoader, Spinner } from "../components/Spinner";
 import { Page } from "../components/Page";
-import { formatAr, formatPhoneMadagascar } from "../lib/utils";
+import { PhoneInput } from "../components/PhoneInput";
+import {
+  formatAr,
+  formatPhoneMadagascar,
+  isPhonePrefixOnly,
+  normalizePhone,
+  PHONE_FORMAT_REGEX
+} from "../lib/utils";
 import { computeDiscountAmount, getAppliedPromo, setAppliedPromo, type AppliedPromo } from "../lib/promo";
 
 export function CheckoutPage() {
@@ -26,6 +33,7 @@ export function CheckoutPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [address, setAddress] = useState(customer?.delivery_address ?? "");
+  const [phone, setPhone] = useState(customer?.phone ?? "");
   const [note, setNote] = useState("");
   const [promo, setPromo] = useState<AppliedPromo | null>(null);
 
@@ -36,6 +44,7 @@ export function CheckoutPage() {
       return;
     }
     setAddress(customer.delivery_address ?? "");
+    setPhone(customer.phone ? formatPhoneMadagascar(customer.phone) : "");
     let cancelled = false;
     cartItemsService
       .getCartItems(customer.id)
@@ -92,6 +101,10 @@ export function CheckoutPage() {
       setError(t("checkout.sessionInvalid"));
       return;
     }
+    if (isPhonePrefixOnly(phone) || !PHONE_FORMAT_REGEX.test(phone)) {
+      setError(t("checkout.invalidPhone"));
+      return;
+    }
 
     setIsSubmitting(true);
     setError(null);
@@ -100,7 +113,7 @@ export function CheckoutPage() {
         user_id: apiUser.id,
         customer_id: customer.id,
         customer_name: customer.name,
-        customer_phone: customer.phone,
+        customer_phone: normalizePhone(phone),
         delivery_address: address.trim() || undefined,
         status: "draft",
         note: note.trim() || undefined,
@@ -131,7 +144,7 @@ export function CheckoutPage() {
   if (items.length === 0) {
     return (
       <Page>
-        <div className="mx-auto flex max-w-7xl flex-col items-center gap-4 px-4 py-20 text-center sm:px-6">
+        <div className="page-shell flex flex-col items-center gap-4 py-20 text-center">
           <p className="text-2xl font-bold text-ink">{t("cart.empty")}</p>
           <Link to="/" className="text-sm font-semibold text-brand">
             {t("common.seeShop")}
@@ -143,7 +156,7 @@ export function CheckoutPage() {
 
   return (
     <Page>
-      <div className="mx-auto max-w-7xl px-4 py-10 pb-12 sm:px-6">
+      <div className="page-shell py-10 pb-12">
       <Link
         to="/panier"
         className="inline-flex items-center gap-1.5 text-sm font-medium text-muted transition hover:text-ink"
@@ -170,14 +183,33 @@ export function CheckoutPage() {
             </h2>
             <div className="mt-4 space-y-4">
               <div>
-                <label className="text-xs font-semibold uppercase tracking-widest text-muted">
+                <label
+                  htmlFor="customer-name"
+                  className="text-xs font-semibold uppercase tracking-widest text-muted"
+                >
                   {t("checkout.customer")}
                 </label>
-                <p className="mt-1 text-sm font-semibold text-ink">
+                <p id="customer-name" className="mt-1 text-sm font-semibold text-ink">
                   {customer.name}
                 </p>
-                <p className="text-sm text-muted">
-                  {formatPhoneMadagascar(customer.phone)}
+              </div>
+              <div>
+                <label
+                  htmlFor="phone"
+                  className="text-xs font-semibold uppercase tracking-widest text-muted"
+                >
+                  {t("checkout.phoneRequired")}
+                </label>
+                <div className="mt-2">
+                  <PhoneInput
+                    id="phone"
+                    value={phone}
+                    onChange={setPhone}
+                    autoComplete="tel"
+                  />
+                </div>
+                <p className="mt-1 text-xs text-muted">
+                  {t("checkout.phoneHint")}
                 </p>
               </div>
               <div>

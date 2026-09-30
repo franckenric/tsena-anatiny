@@ -1,21 +1,25 @@
 from typing import Optional
-from pydantic import BaseModel, field_validator
-from .customers import Customers, PHONE_FORMAT_PATTERN
+from pydantic import BaseModel, EmailStr, field_validator
+from .customers import Customers
 
 
 class RegisterRequest(BaseModel):
     name: str
-    phone: str
+    email: EmailStr
     password: str
     delivery_address: Optional[str] = None
-    email: Optional[str] = None
 
-    @field_validator('phone')
+    @field_validator('email')
     @classmethod
-    def validate_phone_format(cls, value: str) -> str:
-        cleaned = value.replace(' ', '').strip()
-        if not PHONE_FORMAT_PATTERN.match(cleaned):
-            raise ValueError('Phone must match format +261 XX XX XXX XX')
+    def normalize_email(cls, value: str) -> str:
+        return value.strip().lower()
+
+    @field_validator('name')
+    @classmethod
+    def strip_name(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError('Name is required')
         return cleaned
 
     @field_validator('password')

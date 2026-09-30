@@ -1,12 +1,12 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   productsService,
   getProductTotalStock
 } from "../services/products.service";
 import type { Product } from "../types/product";
 import { ProductListing } from "../components/ProductListing";
-import { getRecentProductIds } from "../lib/utils";
 import { useI18n } from "../contexts/I18nContext";
+import { useRecommendations } from "../hooks/useRecommendations";
 
 export function RecommandesPage() {
   const { t } = useI18n();
@@ -14,22 +14,23 @@ export function RecommandesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const available = useMemo(
+    () =>
+      products.filter(
+        (p) => p.status !== "inactive" && getProductTotalStock(p) > 0
+      ),
+    [products]
+  );
+
+  const { recommendations, isLoading: recLoading } =
+    useRecommendations(available, 200);
+
   const load = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
       const res = await productsService.getProducts(1, 200);
-      const available = (res.items ?? []).filter(
-        (p) => p.status !== "inactive" && getProductTotalStock(p) > 0
-      );
-      const recentIds = getRecentProductIds();
-      const byId = new Map(available.map((p) => [p.id, p]));
-      const recent = recentIds
-        .map((id) => byId.get(id))
-        .filter((p): p is Product => Boolean(p));
-      const recentSet = new Set(recent.map((p) => p.id));
-      const fill = available.filter((p) => !recentSet.has(p.id));
-      setProducts([...recent, ...fill]);
+      setProducts(res.items ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : t("error.generic"));
     } finally {
@@ -45,8 +46,8 @@ export function RecommandesPage() {
     <ProductListing
       title={t("pages.rec.title")}
       subtitle={t("pages.rec.subtitle")}
-      products={products}
-      isLoading={isLoading}
+      products={recommendations}
+      isLoading={isLoading || recLoading}
       error={error}
       onRetry={load}
       emptyMessage={t("pages.rec.empty")}

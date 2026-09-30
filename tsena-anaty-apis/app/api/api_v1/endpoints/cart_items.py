@@ -20,6 +20,9 @@ from app.api.api_v1.endpoints.orders import (
 router = APIRouter()
 
 
+PHONE_REQUIRED_DETAIL = 'customer_phone is required to place an order'
+
+
 def _resolve_customer(
     *,
     db: Session,
@@ -27,22 +30,48 @@ def _resolve_customer(
     customer_name: str | None,
     customer_phone: str | None,
     delivery_address: str | None,
+    require_phone: bool = False,
 ) -> models.Customers:
-    if customer_id is not None:
-        customer = crud.customers.get(db=db, id=customer_id)
-        if not customer:
-            raise HTTPException(status_code=404, detail='Customer not found')
-        return customer
+    """Resolve the customer for an order.
 
+    A customer account is created with an email only, so the phone number is
+    collected when the order is placed (``require_phone=True``). It is stored
+    on the customer record and reused for their next orders.
+    """
     phone = (customer_phone or '').strip()
     name = (customer_name or '').strip()
     address = (delivery_address or '').strip()
 
+    if customer_id is not None:
+        customer = crud.customers.get(db=db, id=customer_id)
+        if not customer:
+            raise HTTPException(status_code=404, detail='Customer not found')
+
+        if phone and customer.phone != phone:
+            customer = crud.customers.update(
+                db=db, db_obj=customer, obj_in={'phone': phone}, commit=False,
+            )
+            db.flush()
+        elif not phone:
+            phone = (customer.phone or '').strip()
+
+        if require_phone and not phone:
+            raise HTTPException(status_code=422, detail=PHONE_REQUIRED_DETAIL)
+
+        update_payload = {}
+        if name and customer.name != name:
+            update_payload['name'] = name
+        if address and customer.delivery_address != address:
+            update_payload['delivery_address'] = address
+        if update_payload:
+            customer = crud.customers.update(
+                db=db, db_obj=customer, obj_in=update_payload, commit=False,
+            )
+            db.flush()
+        return customer
+
     if not phone:
-        raise HTTPException(
-            status_code=422,
-            detail='customer_phone is required when customer_id is not provided',
-        )
+        raise HTTPException(status_code=422, detail=PHONE_REQUIRED_DETAIL)
 
     customer = crud.customers.get_by_field(db=db, field='phone', value=phone)
     if customer is not None:
@@ -266,6 +295,7 @@ def checkout_cart(
         customer_name=checkout_in.customer_name,
         customer_phone=checkout_in.customer_phone,
         delivery_address=checkout_in.delivery_address,
+        require_phone=True,
     )
 
     cart_items = crud.cart_items.get_multi_by_customer_id(db=db, customer_id=customer.id)

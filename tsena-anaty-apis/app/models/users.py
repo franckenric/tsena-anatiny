@@ -17,7 +17,7 @@ class Users(Base):
     hashed_password = Column(String(255), nullable=False)
     is_active = Column(Boolean, nullable=False)
     role_id = Column(Integer, ForeignKey('roles.id'))
-    phone_numer = Column(String(255), nullable=False, unique=True, index=True)
+    phone_numer = Column(String(255), nullable=True, unique=True, index=True)
     facebook_id = Column(String(255), nullable=True, unique=True, index=True)
     google_id = Column(String(255), nullable=True, unique=True, index=True)
     icon = Column(String(1024), nullable=True)

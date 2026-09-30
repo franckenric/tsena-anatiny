@@ -23,7 +23,7 @@ import { useI18n } from "../contexts/I18nContext";
 export function CategoriesPage() {
   const { t } = useI18n();
   const history = useHistory();
-  const { search } = useLocation();
+  const { pathname, search } = useLocation();
 
   const activeCategories = useMemo(() => {
     const set = new Set<number>();
@@ -75,14 +75,22 @@ export function CategoriesPage() {
     void load();
   }, [load]);
 
+  /**
+   * `history.replace("")` est interprete comme la racine "/" par react-router
+   * v5 (history v4 fait `pathname = path || '/'` dans parsePath) : on atterrissait
+   * donc sur l'accueil des qu'on deselectionnait la derniere categorie. On
+   * conserve explicitement le pathname courant pour ne changer que la query.
+   */
+  const applySelection = (next: Set<number>) => {
+    const qs = next.size > 0 ? `?${[...next].join(",")}` : "";
+    history.replace({ pathname, search: qs });
+  };
+
   const toggleCategory = (id: number) => {
     const next = new Set(activeCategories);
     if (next.has(id)) next.delete(id);
     else next.add(id);
-    const params = new URLSearchParams();
-    if (next.size > 0) params.set("cats", [...next].join(","));
-    const qs = params.toString();
-    history.replace(qs ? `?${qs}` : "");
+    applySelection(next);
   };
 
   const selectedCount = [...activeCategories].reduce(
@@ -97,7 +105,7 @@ export function CategoriesPage() {
   return (
     <Page>
       <div className="pb-24">
-        <div className="px-4 pt-6 sm:px-6">
+        <div className="page-shell pt-6">
           <div className="flex items-center justify-between gap-3">
             <div>
               <h1 className="font-display text-2xl font-bold text-ink">
@@ -116,13 +124,13 @@ export function CategoriesPage() {
         </div>
 
         {isLoading ? (
-          <div className="mt-6 space-y-1 px-4 sm:px-6">
+          <div className="page-shell mt-6 space-y-1">
             {Array.from({ length: 8 }).map((_, i) => (
               <div key={i} className="h-12 animate-pulse rounded-xl bg-panel" />
             ))}
           </div>
         ) : error ? (
-          <div className="mx-4 mt-6 flex flex-col items-center gap-3 rounded-[1.75rem] border border-danger/30 bg-danger/5 p-10 text-center sm:mx-6">
+          <div className="page-shell mt-6 flex flex-col items-center gap-3 rounded-[1.75rem] border border-danger/30 bg-danger/5 p-10 text-center">
             <PackageSearch className="h-12 w-12 text-danger/60" />
             <p className="text-sm font-medium text-danger">{error}</p>
             <button
@@ -135,7 +143,7 @@ export function CategoriesPage() {
             </button>
           </div>
         ) : categories.length === 0 ? (
-          <div className="mx-4 mt-6 flex flex-col items-center gap-3 rounded-[1.75rem] border border-border bg-panel p-14 text-center sm:mx-6">
+          <div className="page-shell mt-6 flex flex-col items-center gap-3 rounded-[1.75rem] border border-border bg-panel p-14 text-center">
             <Store className="h-12 w-12 text-muted" />
             <p className="text-lg font-semibold text-ink">
               {t("categories.empty")}
@@ -145,10 +153,10 @@ export function CategoriesPage() {
             </p>
           </div>
         ) : (
-          <div className="mt-6 grid grid-cols-1 gap-1 px-4 sm:px-6 md:grid-cols-2">
+          <div className="page-shell mt-6 grid grid-cols-1 gap-1 md:grid-cols-2">
             <button
               type="button"
-              onClick={() => history.replace("")}
+              onClick={() => applySelection(new Set())}
               className={cn(
                 row,
                 isAllSelected
@@ -227,8 +235,8 @@ export function CategoriesPage() {
         )}
 
         {activeCategories.size > 0 && (
-          <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-bg/90 p-4 backdrop-blur sm:px-6">
-            <div className="mx-auto max-w-7xl">
+          <div className="fixed inset-x-0 z-40 border-t border-border bg-bg/90 p-4 backdrop-blur bottom-[calc(3.5rem+env(safe-area-inset-bottom))] sm:px-6 lg:bottom-0">
+            <div className="mx-auto w-full max-w-6xl">
               <button
                 type="button"
                 onClick={() => {

@@ -50,6 +50,15 @@ class CRUDUsers(CRUDBase[Users, UsersCreate, UsersUpdate]):
             return None
         return user
 
+    def authenticate_by_identifier(self, db: Session, *, identifier: str, password: str) -> Optional[Users]:
+        """Authenticate with either an email (customers) or a phone (back-office staff)."""
+        cleaned = identifier.replace(' ', '').strip()
+        if not cleaned:
+            return None
+        if '@' in cleaned:
+            return self.authenticate(db, email=cleaned.lower(), password=password)
+        return self.authenticate_by_phone(db, phone=cleaned, password=password)
+
     def create(self, db: Session, *, obj_in: UsersCreate) -> Users:
         obj_data = self._normalize_model_values(obj_in.model_dump())
         pass_value = obj_data.pop('password')

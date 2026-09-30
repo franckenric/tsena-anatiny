@@ -111,7 +111,6 @@ def login_with_facebook(
     else:
         # Create new user + customer
         client_role = _get_client_role(db)
-        synthetic_phone = f"fb_{fb_id}"
         email = fb_email or f"fb_{fb_id}@facebook.local"
 
         user_in = schemas.UsersCreate(
@@ -119,17 +118,15 @@ def login_with_facebook(
             password=secrets.token_urlsafe(32),
             is_active=True,
             role_id=client_role.id,
-            phone_numer=synthetic_phone,
             full_name=fb_name,
             facebook_id=fb_id,
             icon=fb_picture or None,
         )
         user = crud.users.create(db=db, obj_in=user_in)
 
-        # Create linked customer record
+        # Create linked customer record (phone is collected at order time)
         customer_in = schemas.CustomersCreate(
             name=fb_name,
-            phone=synthetic_phone,
             users_id=user.id,
         )
         crud.customers.create(db=db, obj_in=customer_in)

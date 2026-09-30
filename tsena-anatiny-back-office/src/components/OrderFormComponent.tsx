@@ -583,6 +583,7 @@ export function OrderForm({
         await onSubmit({
           user_id: form.user_id,
           customer_id: form.customer_id,
+          customer_phone: selectedCustomer?.phone ?? null,
           another_price: Number(form.another_price || 0),
           other_price_reason:
             Number(form.another_price || 0) > 0

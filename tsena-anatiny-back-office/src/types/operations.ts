@@ -197,6 +197,7 @@ export interface CheckoutCartPayload {
   user_id: number;
   order_number?: string;
   customer_id?: number;
+  customer_phone?: string | null;
   another_price?: number;
   other_price_reason?: string;
   status?: OrderStatus;
@@ -222,7 +223,7 @@ export interface OrderMovementPayload {
 export interface CustomerRef {
   id: number;
   name: string;
-  phone: string;
+  phone?: string | null;
   delivery_address?: string;
 }
 
@@ -249,6 +250,7 @@ export interface CreateOrderPayload {
   order_number?: string;
   user_id: number;
   customer_id: number;
+  customer_phone?: string | null;
   product_id?: number;
   quantity?: number;
   unit_cost?: number;

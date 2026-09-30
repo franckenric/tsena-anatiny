@@ -97,7 +97,8 @@ function CustomerCartViewer({
       setError(null);
       const order = await cartItemsService.checkout(customer.id, {
         user_id: currentUserId,
-        customer_id: customer.id
+        customer_id: customer.id,
+        customer_phone: customer.phone
       });
 
       setItems([]);

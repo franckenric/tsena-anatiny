@@ -1,19 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { IonApp } from "@ionic/react";
-import { IonReactRouter } from "@ionic/react-router";
-import { setupIonicReact } from "@ionic/react";
-
-import "@ionic/react/css/core.css";
-import "@ionic/react/css/normalize.css";
-import "@ionic/react/css/structure.css";
-import "@ionic/react/css/typography.css";
-import "@ionic/react/css/padding.css";
-import "@ionic/react/css/float-elements.css";
-import "@ionic/react/css/text-alignment.css";
-import "@ionic/react/css/text-transformation.css";
-import "@ionic/react/css/flex-utils.css";
-import "@ionic/react/css/display.css";
+import { BrowserRouter } from "react-router-dom";
 
 import "./index.css";
 import App from "./App";
@@ -24,29 +11,28 @@ import { CartProvider } from "./contexts/CartContext";
 import { ToastProvider } from "./contexts/ToastContext";
 import { CartDrawerProvider } from "./contexts/CartDrawerContext";
 import { MobileMenuProvider } from "./contexts/MobileMenuContext";
-
-setupIonicReact();
+import { PwaProvider } from "./contexts/PwaContext";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <IonApp>
-      <IonReactRouter>
-        <I18nProvider>
-          <AuthProvider>
-            <NotificationsProvider>
-              <CartProvider>
-                <ToastProvider>
-                  <CartDrawerProvider>
-                    <MobileMenuProvider>
+    <BrowserRouter>
+      <I18nProvider>
+        <AuthProvider>
+          <NotificationsProvider>
+            <CartProvider>
+              <ToastProvider>
+                <CartDrawerProvider>
+                  <MobileMenuProvider>
+                    <PwaProvider>
                       <App />
-                    </MobileMenuProvider>
-                  </CartDrawerProvider>
-                </ToastProvider>
-              </CartProvider>
-            </NotificationsProvider>
-          </AuthProvider>
-        </I18nProvider>
-      </IonReactRouter>
-    </IonApp>
+                    </PwaProvider>
+                  </MobileMenuProvider>
+                </CartDrawerProvider>
+              </ToastProvider>
+            </CartProvider>
+          </NotificationsProvider>
+        </AuthProvider>
+      </I18nProvider>
+    </BrowserRouter>
   </StrictMode>
 );

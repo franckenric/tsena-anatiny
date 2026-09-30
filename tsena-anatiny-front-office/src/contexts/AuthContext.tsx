@@ -8,26 +8,45 @@ import {
   type ReactNode
 } from "react";
 import { customersService } from "../services/customers.service";
-import { getApiUser, setApiToken, type ApiUser } from "../services/api";
-import { registerPlugin, type Plugin } from "@capacitor/core";
-import type { RegisterPayload } from "../types/customer";
+import {
+  clearApiToken,
+  getApiUser,
+  setApiToken,
+  type ApiUser
+} from "../services/api";
+import type { Customer, RegisterPayload } from "../types/customer";
 
 export interface CustomerSession {
   id: number;
   name: string;
-  phone: string;
-  delivery_address?: string;
+  email: string;
+  phone?: string | null;
+  delivery_address?: string | null;
   otpVerified: boolean;
 }
 
 const CUSTOMER_KEY = "fo.customer";
 const API_USER_KEY = "fo.api.user";
 
+function toSession(customer: Customer, email: string, otpVerified: boolean): CustomerSession {
+  return {
+    id: customer.id,
+    name: customer.name,
+    email,
+    phone: customer.phone ?? null,
+    delivery_address: customer.delivery_address ?? null,
+    otpVerified
+  };
+}
+
 function readStoredCustomer(): CustomerSession | null {
   try {
     const raw = localStorage.getItem(CUSTOMER_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as CustomerSession;
+    // Sessions created before the email switch have no email: drop them so
+    // the customer is asked to sign in again.
+    if (!parsed.email) return null;
     if (parsed.otpVerified === undefined) {
       parsed.otpVerified = true;
     }
@@ -50,12 +69,11 @@ interface AuthContextValue {
   isBooting: boolean;
   apiUser: ApiUser | null;
   customer: CustomerSession | null;
-  login: (phone: string) => Promise<CustomerSession>;
+  login: (email: string, password: string) => Promise<CustomerSession>;
   register: (payload: RegisterPayload) => Promise<CustomerSession>;
   loginWithFacebook: () => void;
   handleFacebookCallback: (code: string) => Promise<CustomerSession>;
-  loginWithGoogle: () => Promise<CustomerSession>;
-  handleGoogleCallback: (code: string) => Promise<CustomerSession>;
+  loginWithGoogle: (idToken: string) => Promise<CustomerSession>;
   logout: () => void;
   verifyOtp: () => void;
 }
@@ -97,20 +115,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback(
-    async (phone: string): Promise<CustomerSession> => {
-      const found = await customersService.findByPhone(phone);
+    async (email: string, password: string): Promise<CustomerSession> => {
+      await customersService.login({ email, password });
+      const user = await getApiUser();
+      setApiUser(user);
+      localStorage.setItem(API_USER_KEY, JSON.stringify(user));
+
+      const found = await customersService.findByUserId(user.id);
       if (!found) {
         throw new Error(
-          "Aucun compte trouve avec ce numero. Creez votre compte."
+          "Aucun profil client neyet lie a ce compte. Reessayez dans un instant."
         );
       }
-      const session: CustomerSession = {
-        id: found.id,
-        name: found.name,
-        phone: found.phone,
-        delivery_address: found.delivery_address,
-        otpVerified: true
-      };
+      const session = toSession(
+        found,
+        user.email ?? email,
+        readStoredCustomer()?.otpVerified ?? true
+      );
       persistCustomer(session);
       return session;
     },
@@ -121,14 +142,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (payload: RegisterPayload): Promise<CustomerSession> => {
       const result = await customersService.register(payload);
       setApiToken(result.access_token);
-      const created = result.customer;
-      const session: CustomerSession = {
-        id: created.id,
-        name: created.name,
-        phone: created.phone,
-        delivery_address: created.delivery_address,
-        otpVerified: false
-      };
+
+      // The token now belongs to the new customer, not the service account.
+      const user = await getApiUser();
+      setApiUser(user);
+      localStorage.setItem(API_USER_KEY, JSON.stringify(user));
+
+      const session = toSession(result.customer, payload.email, false);
       persistCustomer(session);
       return session;
     },
@@ -147,56 +167,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.location.href = url;
   }, [fbAppId, getFacebookRedirectUri]);
 
+  const resolveSocialSession = useCallback(
+    async (fallbackName: string): Promise<CustomerSession> => {
+      const tokenPayload = await getApiUser();
+      setApiUser(tokenPayload);
+      localStorage.setItem(API_USER_KEY, JSON.stringify(tokenPayload));
+
+      const found = await customersService.findByUserId(tokenPayload.id);
+      if (!found) {
+        throw new Error(
+          "Aucun profil client neyet lie a ce compte. Reessayez dans un instant."
+        );
+      }
+      const session = toSession(
+        found,
+        tokenPayload.email ?? "",
+        readStoredCustomer()?.otpVerified ?? true
+      );
+      if (!session.name) session.name = fallbackName;
+      persistCustomer(session);
+      return session;
+    },
+    [persistCustomer]
+  );
+
   const handleFacebookCallback = useCallback(
     async (code: string): Promise<CustomerSession> => {
       const redirectUri = getFacebookRedirectUri();
       const result = await customersService.facebookLogin(code, redirectUri);
       setApiToken(result.access_token);
-
-      const tokenPayload = await getApiUser();
-      const session: CustomerSession = {
-        id: tokenPayload.id,
-        name: tokenPayload.email ?? "Utilisateur Facebook",
-        phone: "",
-        otpVerified: true
-      };
-      persistCustomer(session);
-      return session;
+      return resolveSocialSession("Utilisateur Facebook");
     },
-    [getFacebookRedirectUri, persistCustomer]
+    [getFacebookRedirectUri, resolveSocialSession]
   );
 
-  const loginWithGoogle = useCallback(async () => {
-    const GoogleAuth = registerPlugin<Plugin & {
-      signIn: () => Promise<{ authentication: { idToken: string }; name?: string }>;
-    }>("GoogleAuth");
-    const result = await GoogleAuth.signIn();
-    const idToken = result.authentication.idToken;
-
-    const apiResult = await customersService.googleLogin(idToken);
-    setApiToken(apiResult.access_token);
-
-    const tokenPayload = await getApiUser();
-    const session: CustomerSession = {
-      id: tokenPayload.id,
-      name: result.name || (tokenPayload.email ?? "Utilisateur Google"),
-      phone: "",
-      otpVerified: true
-    };
-    persistCustomer(session);
-    return session;
-  }, [persistCustomer]);
-
-  const handleGoogleCallback = useCallback(
-    async (_code: string): Promise<CustomerSession> => {
-      return loginWithGoogle();
+  const loginWithGoogle = useCallback(
+    async (idToken: string): Promise<CustomerSession> => {
+      const apiResult = await customersService.googleLogin(idToken);
+      setApiToken(apiResult.access_token);
+      return resolveSocialSession("Utilisateur Google");
     },
-    [loginWithGoogle]
+    [resolveSocialSession]
   );
 
   const logout = useCallback(() => {
     localStorage.removeItem(CUSTOMER_KEY);
+    localStorage.removeItem(API_USER_KEY);
     setCustomer(null);
+    setApiUser(null);
+    // The customer's token must not survive the session: the next API call
+    // falls back to the public service account.
+    clearApiToken();
   }, []);
 
   const verifyOtp = useCallback(() => {
@@ -209,8 +230,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ isBooting, apiUser, customer, login, register, loginWithFacebook, handleFacebookCallback, loginWithGoogle, handleGoogleCallback, logout, verifyOtp }),
-    [isBooting, apiUser, customer, login, register, loginWithFacebook, handleFacebookCallback, loginWithGoogle, handleGoogleCallback, logout, verifyOtp]
+    () => ({ isBooting, apiUser, customer, login, register, loginWithFacebook, handleFacebookCallback, loginWithGoogle, logout, verifyOtp }),
+    [isBooting, apiUser, customer, login, register, loginWithFacebook, handleFacebookCallback, loginWithGoogle, logout, verifyOtp]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -13,10 +13,10 @@ export function OtpPage() {
   const history = useHistory();
   const location = useLocation();
   const state = (location.state ?? {}) as {
-    phone?: string;
+    email?: string;
     from?: string;
   } | null;
-  const phone = state?.phone ?? "";
+  const email = state?.email ?? "";
   const from = state?.from ?? "/compte";
 
   const [code, setCode] = useState("");
@@ -33,14 +33,14 @@ export function OtpPage() {
       setError(t("otp.invalidCode"));
       return;
     }
-    if (!phone) {
-      setError(t("otp.missingPhone"));
+    if (!email) {
+      setError(t("otp.missingEmail"));
       return;
     }
 
     setIsSubmitting(true);
     try {
-      await customersService.verifyOtp({ phone, code: code.trim() });
+      await customersService.verifyOtp({ email, code: code.trim() });
       verifyOtp();
       setNotice(t("otp.success"));
       history.replace(from);
@@ -56,13 +56,13 @@ export function OtpPage() {
   const handleResend = async () => {
     setError(null);
     setNotice(null);
-    if (!phone) {
-      setError(t("otp.missingPhone"));
+    if (!email) {
+      setError(t("otp.missingEmail"));
       return;
     }
     setIsResending(true);
     try {
-      await customersService.resendOtp(phone);
+      await customersService.resendOtp(email);
       setNotice(t("otp.resent"));
     } catch (err) {
       setError(
@@ -85,7 +85,7 @@ export function OtpPage() {
           </h1>
           <p className="mt-1 text-center text-sm text-muted">
             {t("otp.sub")}
-            {phone ? ` (${phone})` : ""}
+            {email ? ` (${email})` : ""}
           </p>
 
           {error && (

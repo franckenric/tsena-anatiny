@@ -78,7 +78,7 @@ export function OrderSuccessPage() {
   if (error || !order) {
     return (
       <Page>
-        <div className="mx-auto flex max-w-7xl flex-col items-center gap-4 px-4 py-20 text-center sm:px-6">
+        <div className="page-shell flex flex-col items-center gap-4 py-20 text-center">
           <p className="text-2xl font-bold text-ink">
             {error ?? t("order.notFound")}
           </p>

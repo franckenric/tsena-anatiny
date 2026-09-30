@@ -1,30 +1,40 @@
-import { apiFetch } from "./api";
+import { apiFetch, buildApiUrl, setApiToken } from "./api";
 import type {
   Customer,
   CreateCustomerPayload,
   CustomerListResponse,
+  LoginPayload,
   RegisterPayload,
   RegisterResponse,
   VerifyOtpPayload,
   VerifyOtpResponse
 } from "../types/customer";
-import { normalizePhone } from "../lib/utils";
+import { normalizeEmail, normalizePhone } from "../lib/utils";
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "/api/v1").replace(
   /\/$/,
   ""
 );
 
+async function queryCustomers(where: unknown): Promise<Customer | null> {
+  const payload = await apiFetch<{ count: number; data?: Customer[] }>(
+    `/customers/?limit=1&where=${encodeURIComponent(JSON.stringify(where))}`
+  );
+  const items = Array.isArray(payload?.data) ? payload.data : [];
+  return items[0] ?? null;
+}
+
 export const customersService = {
   async findByPhone(phone: string): Promise<Customer | null> {
-    const where = JSON.stringify([
+    return queryCustomers([
       { key: "phone", operator: "==", value: normalizePhone(phone) }
     ]);
-    const payload = await apiFetch<{ count: number; data?: Customer[] }>(
-      `/customers/?limit=1&where=${encodeURIComponent(where)}`
-    );
-    const items = Array.isArray(payload?.data) ? payload.data : [];
-    return items[0] ?? null;
+  },
+
+  async findByUserId(userId: number): Promise<Customer | null> {
+    return queryCustomers([
+      { key: "users_id", operator: "==", value: userId }
+    ]);
   },
 
   async create(payload: CreateCustomerPayload): Promise<Customer> {
@@ -41,6 +51,33 @@ export const customersService = {
     });
   },
 
+  async login(payload: LoginPayload): Promise<string> {
+    const body = new URLSearchParams();
+    body.set("username", normalizeEmail(payload.email));
+    body.set("password", payload.password);
+    body.set("grant_type", "password");
+
+    const response = await fetch(buildApiUrl("/login/access-token"), {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body
+    });
+
+    if (!response.ok) {
+      const err = await response
+        .json()
+        .catch(() => ({ detail: "Erreur de connexion" }));
+      throw new Error(err.detail || "Erreur de connexion");
+    }
+
+    const data = (await response.json()) as { access_token?: string };
+    if (!data.access_token) {
+      throw new Error("Réponse d'authentification invalide");
+    }
+    setApiToken(data.access_token);
+    return data.access_token;
+  },
+
   async findOrCreate(payload: CreateCustomerPayload): Promise<Customer> {
     const existing = await this.findByPhone(payload.phone);
     if (existing) return existing;
@@ -54,11 +91,11 @@ export const customersService = {
     });
   },
 
-  async resendOtp(phone: string): Promise<VerifyOtpResponse> {
+  async resendOtp(email: string): Promise<VerifyOtpResponse> {
     const response = await apiFetch<VerifyOtpResponse>("/otp/resend", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phone })
+      body: JSON.stringify({ email })
     });
     return response;
   },

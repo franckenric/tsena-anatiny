@@ -54,6 +54,22 @@ export const dictionaries: Record<Language, Record<string, string>> = {
     "nav.logout": "Se déconnecter",
     "nav.brandSub": "Boutique",
 
+    "pwa.install": "Installer",
+    "pwa.installLater": "Plus tard",
+    "pwa.installTitle": "Installer Tsena Anatiny",
+    "pwa.installSub":
+      "Ajoutez l'application à votre écran d'accueil pour un accès rapide, même hors connexion.",
+    "pwa.installHint": "Installable sur votre appareil, disponible hors connexion.",
+    "pwa.updateAvailable": "Une nouvelle version est disponible.",
+    "pwa.updateNow": "Mettre à jour",
+    "pwa.offline": "Vous êtes hors ligne — certaines données peuvent être obsolètes.",
+    "pwa.offlineHint":
+      "Vous êtes hors connexion. Les pages déjà visitées restent accessibles, mais les nouveaux produits ne se chargeront pas.",
+
+    "notFound.title": "Page introuvable",
+    "notFound.subtitle":
+      "La page que vous cherchez n'existe pas ou a été déplacée.",
+
     "home.greeting.night": "Bonsoir",
     "home.greeting.morning": "Bonjour",
     "home.greeting.afternoon": "Bon après-midi",
@@ -160,6 +176,10 @@ export const dictionaries: Record<Language, Record<string, string>> = {
     "checkout.title": "Finaliser la commande",
     "checkout.delivery": "Livraison",
     "checkout.customer": "Client",
+    "checkout.phoneRequired": "Téléphone (obligatoire)",
+    "checkout.phoneHint":
+      "Numéro utilisé pour vous contacter lors de la livraison de la commande.",
+    "checkout.invalidPhone": "Veuillez saisir un numéro de téléphone valide.",
     "checkout.address": "Adresse de livraison",
     "checkout.note": "Note (optionnel)",
     "checkout.notePlaceholder": "Instructions de livraison...",
@@ -190,7 +210,10 @@ export const dictionaries: Record<Language, Record<string, string>> = {
     "order.errorLoad": "Erreur chargement",
 
     "auth.loginTitle": "Connexion",
-    "auth.loginSub": "Retrouvez votre compte avec votre numéro de téléphone.",
+    "auth.loginSub": "Retrouvez votre compte avec votre adresse email.",
+    "auth.email": "Adresse email",
+    "auth.invalidEmail": "Adresse email invalide.",
+    "auth.needPassword": "Veuillez saisir votre mot de passe.",
     "auth.phone": "Téléphone",
     "auth.invalidPhone": "Numéro de téléphone invalide.",
     "auth.loginBtn": "Se connecter",
@@ -217,15 +240,15 @@ export const dictionaries: Record<Language, Record<string, string>> = {
 
     "otp.title": "Vérification du compte",
     "otp.sub":
-      "Un code de vérification vous a été envoyé par SMS. Saisissez-le ci-dessous.",
+      "Un code de vérification vous a été envoyé par email. Saisissez-le ci-dessous.",
     "otp.codeLabel": "Code de vérification",
     "otp.verify": "Vérifier mon compte",
     "otp.verifying": "Vérification...",
     "otp.resend": "Renvoyer le code",
-    "otp.resent": "Un nouveau code vous a été envoyé par SMS.",
+    "otp.resent": "Un nouveau code vous a été envoyé par email.",
     "otp.success": "Compte vérifié avec succès.",
     "otp.invalidCode": "Le code doit contenir 6 chiffres.",
-    "otp.missingPhone": "Numéro de téléphone manquant.",
+    "otp.missingEmail": "Adresse email manquante.",
     "otp.error": "Erreur lors de la vérification",
 
     "account.loginTitle": "Connectez-vous",
@@ -248,8 +271,8 @@ export const dictionaries: Record<Language, Record<string, string>> = {
     "account.errorOrders": "Erreur chargement commandes",
 
     "account.otpRequired": "Vérification requise",
-    "account.otpRequiredSub": "Vous devez vérifier votre numéro de téléphone pour accéder à votre profil.",
-    "account.verifyPhone": "Vérifier mon téléphone",
+    "account.otpRequiredSub": "Vous devez vérifier votre adresse email pour accéder à votre profil.",
+    "account.verifyEmail": "Vérifier mon email",
 
     "notifications.title": "Mes notifications",
     "notifications.unread": "{count} non lue",
@@ -280,7 +303,7 @@ export const dictionaries: Record<Language, Record<string, string>> = {
     "pages.new.empty": "Aucun produit disponible pour le moment.",
     "pages.rec.title": "Recommandé pour vous",
     "pages.rec.subtitle":
-      "Une sélection basée sur vos dernières consultations.",
+      "Une sélection personnalisée basée sur vos achats et vos consultations.",
     "pages.rec.empty": "Aucun produit recommandé pour le moment."
   },
 
@@ -336,6 +359,21 @@ export const dictionaries: Record<Language, Record<string, string>> = {
     "nav.createAccount": "Mamorona kaonty",
     "nav.logout": "Hivoaka",
     "nav.brandSub": "Fivarotana",
+
+    "pwa.install": "Apetraho",
+    "pwa.installLater": "Latera",
+    "pwa.installTitle": "Apetraho ny Tsena Anatiny",
+    "pwa.installSub":
+      "Ampio ny rindranasa amin'ny ekrananao mba hafaingana ny fidirana, na dia tsy misy tambajotra aza.",
+    "pwa.installHint": "Azo apetraka amin'ny findaynao, miaina koa amin'ny tsy misy tambajotra.",
+    "pwa.updateAvailable": "Misy kinava vaovao.",
+    "pwa.updateNow": "Hanavao",
+    "pwa.offline": "Tsy misy tambajotra — mety ho efa tsy marina ny angona.",
+    "pwa.offlineHint":
+      "Tsy misy tambajotra. Ny pejy efa nvisitedina dia azo idirana ihany, fa ny vokatra vaovao dia tsy ho charge.",
+
+    "notFound.title": "Pejy tsy hita",
+    "notFound.subtitle": "Tsy misy ny pejy norafitinao na dia nifindra aza.",
 
     "home.greeting.night": "Salama",
     "home.greeting.morning": "Manao ahoana",
@@ -443,6 +481,10 @@ export const dictionaries: Record<Language, Record<string, string>> = {
     "checkout.title": "Vitao ny baiko",
     "checkout.delivery": "Fandefasana",
     "checkout.customer": "Mpanjifa",
+    "checkout.phoneRequired": "Finday (tsy voatery)",
+    "checkout.phoneHint":
+      "Ny laharan'ny finday ampiasaina mba hifandahana aminao amin'ny fandefasana.",
+    "checkout.invalidPhone": "Ampidiro ny laharan'ny finday marina.",
     "checkout.address": "Adiresy fandefasana",
     "checkout.note": "Fanamarika (tsy voatery)",
     "checkout.notePlaceholder": "Torolalana momba ny fandefasana...",
@@ -475,7 +517,10 @@ export const dictionaries: Record<Language, Record<string, string>> = {
     "order.errorLoad": "Hadisoana tamin'ny fampidirana",
 
     "auth.loginTitle": "Fidirana",
-    "auth.loginSub": "Tadiavo ny kaontinao amin'ny laharan'ny findainao.",
+    "auth.loginSub": "Tadiavo ny kaontinao amin'ny adiresy email.",
+    "auth.email": "Adiresy email",
+    "auth.invalidEmail": "Tsy mety ny adiresy email.",
+    "auth.needPassword": "Ampidiro ny teny miafinao.",
     "auth.phone": "Finday",
     "auth.invalidPhone": "Tsy mety ny laharan'ny finday.",
     "auth.loginBtn": "Hiditra",
@@ -504,15 +549,15 @@ export const dictionaries: Record<Language, Record<string, string>> = {
 
     "otp.title": "Fanamarinana ny kaonty",
     "otp.sub":
-      "Nandefasana SMS anao ny kaody fanamarinana. Soraty eto ambany izy.",
+      "Nandefasana email anao ny kaody fanamarinana. Soraty eto ambany izy.",
     "otp.codeLabel": "Kaody fanamarinana",
     "otp.verify": "Hamarino ny kaontiko",
     "otp.verifying": "Fanamarinana...",
     "otp.resend": "Andefasana indray ny kaody",
-    "otp.resent": "Nandefasana SMS anao indray ny kaody.",
+    "otp.resent": "Nandefasana email anao indray ny kaody.",
     "otp.success": "Vita soa aman-tsara ny fanamarinana.",
     "otp.invalidCode": "Tsy maintsy 6 isa ny kaody.",
-    "otp.missingPhone": "Tsy hita ny laharana finday.",
+    "otp.missingEmail": "Tsy hita ny adiresy email.",
     "otp.error": "Hadisoana nandritra ny fanamarinana",
 
     "account.loginTitle": "Hiditra",
@@ -536,8 +581,8 @@ export const dictionaries: Record<Language, Record<string, string>> = {
     "account.errorOrders": "Hadisoana tamin'ny fampidirana ny baiko",
 
     "account.otpRequired": "Mila fanamarinana",
-    "account.otpRequiredSub": "Mila hamarino ny laharan'ny findainao ianao mba hahafahana miditra ao amin'ny kaontinao.",
-    "account.verifyPhone": "Hamarino ny findayko",
+    "account.otpRequiredSub": "Mila hamarino ny adiresy email-nao ianao mba hahafahana miditra ao amin'ny kaontinao.",
+    "account.verifyEmail": "Hamarino ny email-ko",
 
     "notifications.title": "Ny fampandrenesako",
     "notifications.unread": "{count} tsy voavaky",
@@ -567,7 +612,7 @@ export const dictionaries: Record<Language, Record<string, string>> = {
     "pages.new.empty": "Tsy misy vokatra azo alaina amin'izao fotoana izao.",
     "pages.rec.title": "Atolotra ho anao",
     "pages.rec.subtitle":
-      "Fifantenana mifototra amin'ny zavatra nojerenao farany.",
+      "Fifantenana manokana mifototra amin'ny fividiananao sy ny zavatra nojerenao.",
     "pages.rec.empty": "Tsy misy vokatra atolotra amin'izao fotoana izao."
   }
 };

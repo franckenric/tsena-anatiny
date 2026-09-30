@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useHistory, useParams } from "react-router-dom";
+import { Link, useHistory, useLocation, useParams } from "react-router-dom";
 import {
   ArrowLeft,
   ImageOff,
@@ -37,6 +37,7 @@ type Line = CartLine;
 export function ProductPage() {
   const { id } = useParams<{ id: string }>();
   const history = useHistory();
+  const location = useLocation();
   const { closeCart } = useCartDrawer();
   const { error: toastError } = useToast();
   const { t } = useI18n();
@@ -167,11 +168,14 @@ export function ProductPage() {
     );
 
   const handleGoBack = () => {
-    const state = window.history.state as { idx?: number } | null;
-    if (state && typeof state.idx === "number" && state.idx > 0) {
+    // React Router v5 ne renseigne pas `history.state.idx` (convention v6/Ionic).
+    // Un `location.key` n'existe que si l'entree a ete empilee en interne : c'est
+    // le seul signal fiable pour distinguer une navigation applicative d'un
+    // chargement direct (deep link, partage, rechargement).
+    if (typeof location.key === "string") {
       history.goBack();
     } else {
-      history.push("/");
+      history.replace("/");
     }
   };
 
@@ -225,7 +229,7 @@ export function ProductPage() {
     return (
       <Page>
         {backButton}
-        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6">
+        <div className="page-shell py-16">
           <div className="rounded-3xl border border-danger/30 bg-danger/5 p-8 text-center">
             <p className="text-sm text-danger">{error}</p>
             <Link
@@ -251,7 +255,7 @@ export function ProductPage() {
     <Page>
       {backButton}
 
-      <div className="mx-auto max-w-6xl px-5 pb-32 pt-6 sm:px-8 sm:pb-14">
+      <div className="page-shell pb-10 pt-6 sm:pb-14">
         <div className="grid gap-6 lg:grid-cols-[1fr_420px] lg:gap-10">
           {/* ── Gallery ── */}
           <div className="animate-fade-in lg:sticky lg:top-24 lg:self-start">
@@ -624,8 +628,8 @@ export function ProductPage() {
         </div>
       </div>
 
-      {/* ── Mobile bottom bar ── */}
-      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-border/40 bg-panel/95 px-5 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl sm:hidden">
+      {/* ── Barre d'action mobile (au-dessus de la navigation basse) ── */}
+      <div className="fixed inset-x-0 z-50 border-t border-border/40 bg-panel/95 px-5 pb-3 pt-3 backdrop-blur-xl bottom-[calc(3.5rem+env(safe-area-inset-bottom))] sm:hidden">
         <div className="flex items-center gap-3">
           <button
             type="button"

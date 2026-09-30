@@ -1,13 +1,5 @@
-import { Route } from "react-router-dom";
-import {
-  IonIcon,
-  IonLabel,
-  IonRouterOutlet,
-  IonTabBar,
-  IonTabButton,
-  IonTabs
-} from "@ionic/react";
-import { home, cart, person } from "ionicons/icons";
+import { Route, Switch } from "react-router-dom";
+import { Layout } from "./components/Layout";
 import { HomePage } from "./pages/HomePage";
 import { NouveautesPage } from "./pages/NouveautesPage";
 import { RecommandesPage } from "./pages/RecommandesPage";
@@ -21,13 +13,12 @@ import { LoginPage } from "./pages/LoginPage";
 import { OtpPage } from "./pages/OtpPage";
 import { AccountPage } from "./pages/AccountPage";
 import { NotificationsPage } from "./pages/NotificationsPage";
-import { useI18n } from "./contexts/I18nContext";
+import { NotFoundPage } from "./pages/NotFoundPage";
 
 export default function App() {
-  const { t } = useI18n();
   return (
-    <IonTabs>
-      <IonRouterOutlet>
+    <Layout>
+      <Switch>
         <Route exact path="/">
           <HomePage />
         </Route>
@@ -68,24 +59,9 @@ export default function App() {
           <NotificationsPage />
         </Route>
         <Route>
-          <HomePage />
+          <NotFoundPage />
         </Route>
-      </IonRouterOutlet>
-
-      <IonTabBar slot="bottom">
-        <IonTabButton tab="boutique" href="/">
-          <IonIcon icon={home} />
-          <IonLabel>{t("nav.shop")}</IonLabel>
-        </IonTabButton>
-        <IonTabButton tab="panier" href="/panier">
-          <IonIcon icon={cart} />
-          <IonLabel>{t("nav.cart")}</IonLabel>
-        </IonTabButton>
-        <IonTabButton tab="compte" href="/compte">
-          <IonIcon icon={person} />
-          <IonLabel>{t("nav.account")}</IonLabel>
-        </IonTabButton>
-      </IonTabBar>
-    </IonTabs>
+      </Switch>
+    </Layout>
   );
 }

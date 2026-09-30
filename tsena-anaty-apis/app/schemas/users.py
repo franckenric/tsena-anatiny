@@ -26,7 +26,7 @@ class UsersCreate(UsersBase):
     password: str
     is_active: bool
     role_id: int
-    phone_numer: str
+    phone_numer: Optional[str] = None
 
 
 class UsersUpdate(UsersBase):

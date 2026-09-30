@@ -32,7 +32,7 @@ class CustomersBase(BaseModel):
 
 class CustomersCreate(CustomersBase):
     name: str
-    phone: str
+    phone: Optional[str] = None
 
 
 class CustomersUpdate(CustomersBase):

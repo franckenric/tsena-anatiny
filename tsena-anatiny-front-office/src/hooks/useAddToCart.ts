@@ -1,6 +1,6 @@
-import { useCallback } from "react";
-import { useHistory, useLocation } from "react-router-dom";
+import { useCallback, useEffect, useRef } from "react";
 import { useAuth } from "../contexts/AuthContext";
+import { useAuthModal } from "../contexts/AuthModalContext";
 import { useCart } from "../contexts/CartContext";
 import { useCartDrawer } from "../contexts/CartDrawerContext";
 import { useToast } from "../contexts/ToastContext";
@@ -16,33 +16,58 @@ export interface CartLine {
 
 export function useAddToCart() {
   const { customer, isBooting } = useAuth();
+  const { showLogin } = useAuthModal();
   const { refresh } = useCart();
   const { openCart } = useCartDrawer();
   const { success, error } = useToast();
   const { t } = useI18n();
-  const history = useHistory();
-  const location = useLocation();
+
+  // L'action mise en attente est rejouee apres la connexion : elle doit donc
+  // relire la session fraichement etablie, pas celle du rendu d'origine.
+  const customerRef = useRef(customer);
+  useEffect(() => {
+    customerRef.current = customer;
+  }, [customer]);
+
+  /**
+   * Portail d'authentification : sans session, la modale bloque l'interface et
+   * `retry` est rejoue une fois la connexion reussie.
+   */
+  const guardCustomer = useCallback(
+    (retry: () => Promise<boolean>): Promise<boolean> => {
+      if (isBooting) return Promise.resolve(false);
+      if (!customerRef.current) {
+        showLogin({
+          onSuccess: () => {
+            void retry();
+          }
+        });
+        return Promise.resolve(false);
+      }
+      return retry();
+    },
+    [isBooting, showLogin]
+  );
 
   const requireCustomer = useCallback((): boolean => {
     if (isBooting) return false;
     if (!customer) {
-      history.push("/connexion", {
-        from: location.pathname + location.search
-      });
+      showLogin();
       return false;
     }
     return true;
-  }, [customer, isBooting, history, location.pathname, location.search]);
+  }, [customer, isBooting, showLogin]);
 
-  const addSingle = useCallback(
+  const addSingleImpl = useCallback(
     async (product: Product, quantity: number): Promise<boolean> => {
-      if (!customer || !requireCustomer()) return false;
+      const current = customerRef.current;
+      if (!current) return false;
       const price = Number(product.selling_price ?? 0);
       const discount = Number(product.discount_price ?? 0);
       const unitCost = discount > 0 && discount < price ? discount : price;
       try {
         await cartItemsService.createCartItem({
-          customer_id: customer.id,
+          customer_id: current.id,
           product_id: product.id,
           variant_id: null,
           quantity,
@@ -57,17 +82,18 @@ export function useAddToCart() {
         return false;
       }
     },
-    [customer, requireCustomer, refresh, success, error, openCart, t]
+    [refresh, success, error, openCart, t]
   );
 
-  const addLines = useCallback(
+  const addLinesImpl = useCallback(
     async (product: Product, lines: CartLine[]): Promise<boolean> => {
-      if (!customer || !requireCustomer()) return false;
+      const current = customerRef.current;
+      if (!current) return false;
       const totalQty = lines.reduce((sum, l) => sum + l.quantity, 0);
       try {
         for (const line of lines) {
           await cartItemsService.createCartItem({
-            customer_id: customer.id,
+            customer_id: current.id,
             product_id: product.id,
             variant_id: line.variant.id,
             quantity: line.quantity,
@@ -83,7 +109,19 @@ export function useAddToCart() {
         return false;
       }
     },
-    [customer, requireCustomer, refresh, success, error, openCart, t]
+    [refresh, success, error, openCart, t]
+  );
+
+  const addSingle = useCallback(
+    (product: Product, quantity: number): Promise<boolean> =>
+      guardCustomer(() => addSingleImpl(product, quantity)),
+    [guardCustomer, addSingleImpl]
+  );
+
+  const addLines = useCallback(
+    (product: Product, lines: CartLine[]): Promise<boolean> =>
+      guardCustomer(() => addLinesImpl(product, lines)),
+    [guardCustomer, addLinesImpl]
   );
 
   return { requireCustomer, addSingle, addLines };

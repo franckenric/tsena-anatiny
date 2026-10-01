@@ -9,6 +9,24 @@ from .users import Users
 PHONE_FORMAT_PATTERN = re.compile(r"^\+261\d{9}$")
 
 
+def clean_phone(value: Optional[str]) -> Optional[str]:
+    """Supprime les espaces d'un numero et verifie le format +261XXXXXXXXX.
+
+    Une saisie vide devient None : la colonne `phone` porte une contrainte
+    d'unicite, deux clients sans numero ne peuvent pas la partager.
+    """
+    if value is None:
+        return None
+
+    cleaned = value.replace(' ', '').strip()
+    if cleaned == '':
+        return None
+
+    if not PHONE_FORMAT_PATTERN.match(cleaned):
+        raise ValueError('Phone must match format +261 XX XX XXX XX')
+    return cleaned
+
+
 class CustomersBase(BaseModel):
     name: Optional[str] = None
     phone: Optional[str] = None
@@ -18,16 +36,7 @@ class CustomersBase(BaseModel):
     @field_validator('phone')
     @classmethod
     def validate_phone_format(cls, value: Optional[str]) -> Optional[str]:
-        if value is None:
-            return value
-
-        cleaned = value.replace(' ', '').strip()
-        if cleaned == '':
-            return cleaned
-
-        if not PHONE_FORMAT_PATTERN.match(cleaned):
-            raise ValueError('Phone must match format +261 XX XX XXX XX')
-        return cleaned
+        return clean_phone(value)
 
 
 class CustomersCreate(CustomersBase):

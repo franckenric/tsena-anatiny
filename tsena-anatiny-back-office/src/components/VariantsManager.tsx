@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import type {
-  ProductVariantNode
+  ProductVariantNode,
+  UpdateVariantPayload
 } from "../types/product";
 import { productsService } from "../services/products.service";
 import {
   Layers,
   Pencil,
   Plus,
+  Save,
   Trash2,
   Check,
   X
@@ -30,11 +32,11 @@ const pricingInputClass = "w-full rounded-lg border border-border/60 bg-panel px
 
 function VariantRow({
   node,
-  productId,
   depth,
   disabled,
   onEdit,
   onDelete,
+  onSave,
   addingChildParentId,
   childForm,
   onSetChildField,
@@ -44,11 +46,11 @@ function VariantRow({
   creatingChild
 }: {
   node: ProductVariantNode;
-  productId: number;
   depth: number;
   disabled?: boolean;
   onEdit: (variant: ProductVariantNode) => void;
   onDelete: (variant: ProductVariantNode) => void;
+  onSave: (variantId: number, patch: UpdateVariantPayload) => Promise<void>;
   addingChildParentId: number | null;
   childForm: { name: string; quantity: string; unit_cost: string; selling_price: string; discount_price: string };
   onSetChildField: (field: string, value: string) => void;
@@ -61,10 +63,86 @@ function VariantRow({
   const [nameValue, setNameValue] = useState(node.name);
   const [deleting, setDeleting] = useState(false);
 
+  const persistedDiscount = (node as ProductVariantNode & { discount_price?: number | null })
+    .discount_price;
+
+  const [quantityValue, setQuantityValue] = useState(
+    node.quantity != null ? String(node.quantity) : "0"
+  );
+  const [unitCostValue, setUnitCostValue] = useState(
+    node.unit_cost != null ? String(node.unit_cost) : ""
+  );
+  const [sellingPriceValue, setSellingPriceValue] = useState(
+    node.selling_price != null ? String(node.selling_price) : ""
+  );
+  const [discountPriceValue, setDiscountPriceValue] = useState(
+    persistedDiscount != null ? String(persistedDiscount) : ""
+  );
+  const [saving, setSaving] = useState(false);
+
   const stock = variantStock(node);
   const children = node.children ?? [];
   const hasChildren = children.length > 0;
   const isAddingChildHere = addingChildParentId === node.id;
+
+  const quantityNumber = Math.max(0, parseInt(quantityValue, 10) || 0);
+  const unitCostNumber = unitCostValue.trim()
+    ? Math.max(0, parseFloat(unitCostValue) || 0)
+    : null;
+  const sellingPriceNumber = sellingPriceValue.trim()
+    ? Math.max(0, parseFloat(sellingPriceValue) || 0)
+    : null;
+  const discountPriceNumber = discountPriceValue.trim()
+    ? Math.max(0, parseFloat(discountPriceValue) || 0)
+    : null;
+
+  const isDirty =
+    (!hasChildren && quantityNumber !== (node.quantity ?? 0)) ||
+    unitCostNumber !== (node.unit_cost ?? null) ||
+    sellingPriceNumber !== (node.selling_price ?? null) ||
+    discountPriceNumber !== (persistedDiscount ?? null);
+
+  const resetDraft = () => {
+    setQuantityValue(node.quantity != null ? String(node.quantity) : "0");
+    setUnitCostValue(node.unit_cost != null ? String(node.unit_cost) : "");
+    setSellingPriceValue(node.selling_price != null ? String(node.selling_price) : "");
+    setDiscountPriceValue(persistedDiscount != null ? String(persistedDiscount) : "");
+  };
+
+  useEffect(() => {
+    resetDraft();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    node.id,
+    node.quantity,
+    node.unit_cost,
+    node.selling_price,
+    persistedDiscount
+  ]);
+
+  const handleSave = async () => {
+    const patch: UpdateVariantPayload = {};
+    if (!hasChildren && quantityNumber !== (node.quantity ?? 0)) {
+      patch.quantity = quantityNumber;
+    }
+    if (unitCostNumber !== (node.unit_cost ?? null)) {
+      patch.unit_cost = unitCostNumber ?? undefined;
+    }
+    if (sellingPriceNumber !== (node.selling_price ?? null)) {
+      patch.selling_price = sellingPriceNumber ?? undefined;
+    }
+    if (discountPriceNumber !== (persistedDiscount ?? null)) {
+      patch.discount_price = discountPriceNumber ?? undefined;
+    }
+    if (Object.keys(patch).length === 0) return;
+
+    setSaving(true);
+    try {
+      await onSave(node.id, patch);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const confirmName = async () => {
     const trimmed = nameValue.trim();
@@ -118,17 +196,11 @@ function VariantRow({
                     <label className="text-[11px] text-muted">Stock:</label>
                     <input
                       type="number"
-                      key={node.quantity}
-                      defaultValue={node.quantity ?? 0}
-                      onBlur={async (e) => {
-                        const val = Math.max(0, parseInt(e.target.value, 10) || 0);
-                        if (val !== (node.quantity ?? 0)) {
-                          await productsService.updateVariant(productId, node.id, { quantity: val });
-                        }
-                      }}
-                      onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                      value={quantityValue}
+                      onChange={(e) => setQuantityValue(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") void handleSave(); }}
                       placeholder="0"
-                      disabled={disabled}
+                      disabled={disabled || saving}
                       className="w-20 rounded-lg border border-border/60 bg-panel px-2 py-0.5 text-[11px] font-medium text-ink focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand/20"
                     />
                     <span className="text-[11px] text-muted">pcs</span>
@@ -201,13 +273,11 @@ function VariantRow({
               <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-muted">Prix achat</label>
               <input
                 type="number"
-                value={node.unit_cost ?? ""}
-                onChange={async (e) => {
-                  const val = parseFloat(e.target.value) || 0;
-                  await productsService.updateVariant(productId, node.id, { unit_cost: val || undefined });
-                }}
+                value={unitCostValue}
+                onChange={(e) => setUnitCostValue(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") void handleSave(); }}
                 placeholder="0"
-                disabled={disabled}
+                disabled={disabled || saving}
                 className={pricingInputClass}
               />
             </div>
@@ -215,13 +285,11 @@ function VariantRow({
               <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-muted">Prix vente</label>
               <input
                 type="number"
-                value={node.selling_price ?? ""}
-                onChange={async (e) => {
-                  const val = parseFloat(e.target.value) || 0;
-                  await productsService.updateVariant(productId, node.id, { selling_price: val || undefined });
-                }}
+                value={sellingPriceValue}
+                onChange={(e) => setSellingPriceValue(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") void handleSave(); }}
                 placeholder="0"
-                disabled={disabled}
+                disabled={disabled || saving}
                 className={pricingInputClass}
               />
             </div>
@@ -229,16 +297,41 @@ function VariantRow({
               <label className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-muted">Prix promo</label>
               <input
                 type="number"
-                value={(node as ProductVariantNode & { discount_price?: number | null }).discount_price ?? ""}
-                onChange={async (e) => {
-                  const val = parseFloat(e.target.value) || 0;
-                  await productsService.updateVariant(productId, node.id, { discount_price: val || undefined });
-                }}
+                value={discountPriceValue}
+                onChange={(e) => setDiscountPriceValue(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") void handleSave(); }}
                 placeholder="0"
-                disabled={disabled}
+                disabled={disabled || saving}
                 className={pricingInputClass}
               />
             </div>
+          </div>
+        )}
+
+        {/* Save bar - appears only when the draft differs from the saved variant */}
+        {!editingName && isDirty && (
+          <div className="flex items-center justify-end gap-2 border-t border-border/40 pt-2">
+            <span className="mr-auto text-[10px] font-semibold text-amber-600">
+              Modifications non enregistrees
+            </span>
+            <button
+              type="button"
+              onClick={resetDraft}
+              disabled={saving}
+              className="inline-flex items-center gap-1 rounded-lg bg-gray-200 px-2.5 py-1.5 text-[11px] font-bold text-gray-600 transition hover:bg-gray-300 disabled:opacity-50"
+            >
+              <X className="h-3 w-3" />
+              Annuler
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleSave()}
+              disabled={saving || disabled}
+              className="inline-flex items-center gap-1 rounded-lg bg-emerald-500 px-2.5 py-1.5 text-[11px] font-bold text-white transition hover:bg-emerald-600 disabled:opacity-50"
+            >
+              <Save className="h-3 w-3" />
+              {saving ? "Enregistrement..." : "Enregistrer"}
+            </button>
           </div>
         )}
       </div>
@@ -325,11 +418,11 @@ function VariantRow({
             <VariantRow
               key={child.id}
               node={child}
-              productId={productId}
               depth={depth + 1}
               disabled={disabled}
               onEdit={onEdit}
               onDelete={onDelete}
+              onSave={onSave}
               addingChildParentId={addingChildParentId}
               childForm={childForm}
               onSetChildField={onSetChildField}
@@ -390,6 +483,18 @@ export function VariantsManager({
       } catch (err) {
         setError(err instanceof Error ? err.message : "Erreur renommage");
       }
+    }
+  };
+
+  const handleSaveVariant = async (variantId: number, patch: UpdateVariantPayload) => {
+    setError(null);
+    setNotice(null);
+    try {
+      await productsService.updateVariant(productId, variantId, patch);
+      setNotice("Variante enregistree");
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur mise a jour variante");
     }
   };
 
@@ -559,11 +664,11 @@ export function VariantsManager({
             <VariantRow
               key={node.id}
               node={node}
-              productId={productId}
               depth={0}
               disabled={disabled}
               onEdit={handleEdit}
               onDelete={handleDelete}
+              onSave={handleSaveVariant}
               addingChildParentId={addingChildParentId}
               childForm={childForm}
               onSetChildField={(field, value) => handleSetChildField(field, value)}

@@ -9,6 +9,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { NotificationsProvider } from "./contexts/NotificationsContext";
 import { CartProvider } from "./contexts/CartContext";
 import { ToastProvider } from "./contexts/ToastContext";
+import { AuthModalProvider } from "./contexts/AuthModalContext";
 import { CartDrawerProvider } from "./contexts/CartDrawerContext";
 import { MobileMenuProvider } from "./contexts/MobileMenuContext";
 import { PwaProvider } from "./contexts/PwaContext";
@@ -21,13 +22,15 @@ createRoot(document.getElementById("root")!).render(
           <NotificationsProvider>
             <CartProvider>
               <ToastProvider>
-                <CartDrawerProvider>
-                  <MobileMenuProvider>
-                    <PwaProvider>
-                      <App />
-                    </PwaProvider>
-                  </MobileMenuProvider>
-                </CartDrawerProvider>
+                <AuthModalProvider>
+                  <CartDrawerProvider>
+                    <MobileMenuProvider>
+                      <PwaProvider>
+                        <App />
+                      </PwaProvider>
+                    </MobileMenuProvider>
+                  </CartDrawerProvider>
+                </AuthModalProvider>
               </ToastProvider>
             </CartProvider>
           </NotificationsProvider>

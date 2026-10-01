@@ -685,5 +685,42 @@ def delete_products(
     products = crud.products.get(db=db, id=products_id)
     if not products:
         raise HTTPException(status_code=404, detail='Products not found')
-    products = crud.products.remove(db=db, id=products_id)
+
+    # Remove rows that reference the product first, otherwise the foreign
+    # keys (e.g. stock_movements.product_id) block the product deletion.
+    db.query(models.StockMovements).filter(
+        models.StockMovements.product_id == products_id
+    ).delete(synchronize_session=False)
+
+    db.query(models.CartItems).filter(
+        models.CartItems.product_id == products_id
+    ).delete(synchronize_session=False)
+
+    # Break the self-referencing variant hierarchy before deleting the variants.
+    db.query(models.ProductVariants).filter(
+        models.ProductVariants.product_id == products_id,
+        models.ProductVariants.parent_id.isnot(None),
+    ).update({models.ProductVariants.parent_id: None}, synchronize_session=False)
+
+    db.query(models.ProductVariants).filter(
+        models.ProductVariants.product_id == products_id
+    ).delete(synchronize_session=False)
+
+    db.query(models.ProductImages).filter(
+        models.ProductImages.product_id == products_id
+    ).delete(synchronize_session=False)
+
+    db.query(models.CommercialAssignments).filter(
+        models.CommercialAssignments.product_id == products_id
+    ).delete(synchronize_session=False)
+
+    db.query(models.Stock).filter(
+        models.Stock.product_id == products_id
+    ).delete(synchronize_session=False)
+
+    db.query(models.Products).filter(
+        models.Products.id == products_id
+    ).delete(synchronize_session=False)
+
+    db.commit()
     return schemas.Msg(msg='Products deleted successfully')

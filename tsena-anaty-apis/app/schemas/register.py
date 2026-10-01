@@ -1,18 +1,26 @@
 from typing import Optional
 from pydantic import BaseModel, EmailStr, field_validator
-from .customers import Customers
+from .customers import Customers, clean_phone
 
 
 class RegisterRequest(BaseModel):
     name: str
     email: EmailStr
     password: str
+    phone: Optional[str] = None
     delivery_address: Optional[str] = None
 
     @field_validator('email')
     @classmethod
     def normalize_email(cls, value: str) -> str:
         return value.strip().lower()
+
+    @field_validator('phone')
+    @classmethod
+    def validate_phone(cls, value: Optional[str]) -> Optional[str]:
+        # Meme regle que le schema Customer : le numero stocke doit toujours
+        # respecter le format +261 XX XX XXX XX.
+        return clean_phone(value)
 
     @field_validator('name')
     @classmethod

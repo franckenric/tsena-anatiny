@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { Redirect, useHistory, useLocation } from "react-router-dom";
-import { IonContent, IonPage } from "@ionic/react";
 import { Eye, EyeOff, LockKeyhole, Phone } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -58,10 +57,8 @@ export function LoginPage() {
   }
 
   return (
-    <IonPage className="bg-bg">
-      <IonContent>
-        <div className="relative isolate flex min-h-full flex-col justify-center overflow-hidden px-5 py-10">
-          <div className="absolute inset-0 -z-20 bg-[radial-gradient(circle_at_20%_0%,hsl(var(--brand-soft)/0.55),transparent_36%),radial-gradient(circle_at_100%_10%,hsl(var(--warning)/0.2),transparent_30%),linear-gradient(120deg,hsl(var(--bg)),hsl(var(--panel)))]" />
+    <div className="relative isolate flex min-h-dvh flex-col justify-center overflow-hidden bg-bg px-5 py-10">
+      <div className="absolute inset-0 -z-20 bg-[radial-gradient(circle_at_20%_0%,hsl(var(--brand-soft)/0.55),transparent_36%),radial-gradient(circle_at_100%_10%,hsl(var(--warning)/0.2),transparent_30%),linear-gradient(120deg,hsl(var(--bg)),hsl(var(--panel)))]" />
           <div className="absolute -left-28 top-24 -z-10 h-80 w-80 rounded-full border border-brand/20 bg-brand/10 blur-3xl" />
           <div className="absolute -right-40 bottom-20 -z-10 h-96 w-96 rounded-full border border-warning/20 bg-warning/10 blur-3xl" />
 
@@ -187,9 +184,7 @@ export function LoginPage() {
             <p className="mt-6 text-center text-xs text-muted">
               Réservé au personnel autorisé de Tsena Anatiny
             </p>
-          </div>
-        </div>
-      </IonContent>
-    </IonPage>
+      </div>
+    </div>
   );
 }

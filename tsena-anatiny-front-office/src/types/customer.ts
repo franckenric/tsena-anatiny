@@ -17,6 +17,8 @@ export interface RegisterPayload {
   name: string;
   email: string;
   password: string;
+  /** Numero de contact, envoye au format +261XXXXXXXXX. */
+  phone?: string;
   delivery_address?: string;
 }
 

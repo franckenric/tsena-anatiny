@@ -22,12 +22,11 @@ import {
 } from "../services/operations.service";
 import { customersService } from "../services/customers.service";
 import {
-  Card,
   Button,
-  DataTable,
+  DataList,
   Select,
   QuantityInput,
-  Pagination,
+  StatusBadge,
   FloatingActionButton
 } from "../components/index";
 import { Modal } from "../components/Modal";
@@ -1276,11 +1275,9 @@ export function ProductsPage() {
       accessor: "status",
       width: "10%",
       render: (v) => (
-        <span
-          className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${v === "active" ? "bg-success/20 text-success" : "bg-warning/20 text-warning"}`}
-        >
+        <StatusBadge tone={v === "active" ? "success" : "warning"} dot>
           {v === "active" ? "Actif" : "Inactif"}
-        </span>
+        </StatusBadge>
       )
     }
   ];
@@ -1310,13 +1307,16 @@ export function ProductsPage() {
             {notice}
           </div>
         )}
-        <Card
+        <DataList
           title="Catalogue produits"
-          description={`Total: ${total} produits`}
-          hideHeaderOnMobile
-          plainOnMobile
-          className="flex min-h-0 flex-1 flex-col"
-          bodyClassName="flex min-h-0 flex-1 flex-col"
+          description="Tous les produits et leur disponibilité"
+          itemLabel="produits"
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          onPageChange={setPage}
+          pageSize={pageSize}
+          onPageSizeChange={setPageSize}
           headerAction={
             <div className="flex items-center gap-2">
               <Button
@@ -1342,24 +1342,13 @@ export function ProductsPage() {
               </Button>
             </div>
           }
-        >
-          <Pagination
-            page={page}
-            totalPages={totalPages}
-            total={total}
-            onPageChange={setPage}
-            pageSize={pageSize}
-            onPageSizeChange={setPageSize}
-            showCount={false}
-            isLoading={isLoading}
-            className="mb-3"
-          />
-          <DataTable
-            columns={columns}
-            data={products}
-            isLoading={isLoading}
-            emptyMessage="Aucun produit trouvé"
-            gridCardRender={(prod) => {
+          columns={columns}
+          data={products}
+          isLoading={isLoading}
+          emptyMessage="Aucun produit trouvé"
+          emptyTitle="Aucun produit"
+          emptyIcon={<Boxes className="h-6 w-6" />}
+          gridCardRender={(prod) => {
               const stock = getProductStock(prod);
               const category =
                 prod.categorie ??
@@ -1383,16 +1372,13 @@ export function ProductsPage() {
                         <Boxes className="h-9 w-9 text-muted/50" />
                       </div>
                     )}
-                    <span
-                      className={`absolute right-2 top-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold text-white shadow-sm ${
-                        isActive ? "bg-success" : "bg-warning"
-                      }`}
+                    <StatusBadge
+                      tone={isActive ? "success" : "warning"}
+                      dot
+                      className="absolute right-2 top-2 bg-bg/90 shadow-sm backdrop-blur"
                     >
-                      <span
-                        className={`h-1.5 w-1.5 rounded-full ${isActive ? "bg-white" : "bg-white/70"}`}
-                      />
                       {isActive ? "Actif" : "Inactif"}
-                    </span>
+                    </StatusBadge>
                     {isProductDanger(prod) && (
                       <span
                         title={getProductDangerReason(prod) ?? undefined}
@@ -1498,7 +1484,6 @@ export function ProductsPage() {
               </div>
             )}
           />
-        </Card>
 
         <Modal
           isOpen={!!selectedForCart}

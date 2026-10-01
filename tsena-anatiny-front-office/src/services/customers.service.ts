@@ -47,6 +47,7 @@ export const customersService = {
   async register(payload: RegisterPayload): Promise<RegisterResponse> {
     return apiFetch<RegisterResponse>("/register/", {
       method: "POST",
+      skipAuth: true,
       body: JSON.stringify(payload)
     });
   },
@@ -87,6 +88,7 @@ export const customersService = {
   async verifyOtp(payload: VerifyOtpPayload): Promise<VerifyOtpResponse> {
     return apiFetch<VerifyOtpResponse>("/otp/verify", {
       method: "POST",
+      skipAuth: true,
       body: JSON.stringify(payload)
     });
   },
@@ -94,6 +96,7 @@ export const customersService = {
   async resendOtp(email: string): Promise<VerifyOtpResponse> {
     const response = await apiFetch<VerifyOtpResponse>("/otp/resend", {
       method: "POST",
+      skipAuth: true,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email })
     });

@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Link, useHistory } from "react-router-dom";
-import { ImageOff, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import type { Product } from "../types/product";
 import { formatAr, resolveImageUrl } from "../lib/utils";
+import { ProductImage } from "./ProductImage";
 import {
   getProductTotalStock,
   selectableVariants,
@@ -49,20 +50,12 @@ export function ProductCard({ product }: { product: Product }) {
       className="group relative flex flex-col overflow-hidden rounded-2xl border border-border/60 bg-panel shadow-card transition-all duration-300 hover:-translate-y-1 hover:shadow-lift hover:border-brand/30"
     >
       {/* Image */}
-      <div className="relative aspect-square overflow-hidden bg-bg">
-        {product.image ? (
-          <img
-            src={resolveImageUrl(product.image) ?? undefined}
-            alt={product.name}
-            loading="lazy"
-            className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-110"
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center text-muted/30">
-            <ImageOff className="h-12 w-12" />
-          </div>
-        )}
-
+      <ProductImage
+        src={resolveImageUrl(product.image)}
+        alt={product.name}
+        size="card"
+        imageClassName="group-hover:scale-110"
+      >
         {/* Gradient overlay */}
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-ink/10 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
 
@@ -107,7 +100,7 @@ export function ProductCard({ product }: { product: Product }) {
             <Plus className="h-4 w-4" strokeWidth={2.5} />
           )}
         </button>
-      </div>
+      </ProductImage>
 
       {/* Content */}
       <div className="flex flex-1 flex-col gap-1.5 px-3.5 pb-3.5 pt-3">

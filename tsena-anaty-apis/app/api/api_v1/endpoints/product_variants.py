@@ -56,6 +56,7 @@ def _build_tree(nodes: List[models.ProductVariants], parent_id: int | None = Non
                     "quantity": node.quantity or 0,
                     "unit_cost": node.unit_cost,
                     "selling_price": node.selling_price,
+                    "discount_price": node.discount_price,
                     "image": node.image,
                     "children": _build_tree(nodes, node.id),
                 }

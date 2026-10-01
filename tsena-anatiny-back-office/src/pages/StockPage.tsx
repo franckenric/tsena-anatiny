@@ -12,13 +12,12 @@ import { lotsService, stockService } from "../services/operations.service";
 import { productsService } from "../services/products.service";
 import {
   Layout,
-  Card,
   Button,
-  DataTable,
+  DataList,
   Input,
   QuantityInput,
   Select,
-  Pagination
+  StatusBadge
 } from "../components/index";
 import { Modal } from "../components/Modal";
 import { Boxes, Package, Pencil, Plus, Trash2 } from "lucide-react";
@@ -609,11 +608,9 @@ export function StockPage() {
       accessor: "reserved",
       width: "15%",
       render: (v) => (
-        <span
-          className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${v ? "bg-warning/20 text-warning" : "bg-success/20 text-success"}`}
-        >
+        <StatusBadge tone={v ? "warning" : "success"} dot>
           {v ? "Réservé" : "Disponible"}
-        </span>
+        </StatusBadge>
       )
     }
   ];
@@ -634,13 +631,16 @@ export function StockPage() {
             {error}
           </div>
         )}
-        <Card
+        <DataList
           title="Stocks"
-          description={`Total: ${total} entrées`}
-          hideHeaderOnMobile
-          plainOnMobile
-          className="flex min-h-0 flex-1 flex-col"
-          bodyClassName="flex min-h-0 flex-1 flex-col"
+          description="Niveaux de stock par produit"
+          itemLabel="entrées"
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          onPageChange={setPage}
+          pageSize={pageSize}
+          onPageSizeChange={setPageSize}
           headerAction={
             <Button
               variant="primary"
@@ -653,25 +653,13 @@ export function StockPage() {
               Entrée stock
             </Button>
           }
-        >
-          <Pagination
-            page={page}
-            totalPages={totalPages}
-            total={total}
-            onPageChange={setPage}
-            pageSize={pageSize}
-            onPageSizeChange={setPageSize}
-            showCount={false}
-            itemLabel="entrées"
-            isLoading={isLoading}
-            className="mb-3"
-          />
-          <DataTable
-            columns={columns}
-            data={stocks}
-            isLoading={isLoading}
-            emptyMessage="Aucun stock"
-            gridCardRender={(s) => {
+          columns={columns}
+          data={stocks}
+          isLoading={isLoading}
+          emptyMessage="Aucun stock"
+          emptyTitle="Aucun stock"
+          emptyIcon={<Boxes className="h-6 w-6" />}
+          gridCardRender={(s) => {
               const product =
                 s.product ?? products.find((p) => p.id === s.product_id);
               const name = product?.name ?? `Produit #${s.product_id}`;
@@ -689,11 +677,12 @@ export function StockPage() {
                         </p>
                       ) : null}
                     </div>
-                    <span
-                      className={`inline-flex shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${s.reserved ? "bg-warning/20 text-warning" : "bg-success/20 text-success"}`}
+                    <StatusBadge
+                      tone={s.reserved ? "warning" : "success"}
+                      dot
                     >
                       {s.reserved ? "Réservé" : "Disponible"}
-                    </span>
+                    </StatusBadge>
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2.5 border-t border-border/50 pt-3">
                     <div>
@@ -759,7 +748,6 @@ export function StockPage() {
               </div>
             )}
           />
-        </Card>
         <Modal
           isOpen={isModalOpen}
           onClose={() => {

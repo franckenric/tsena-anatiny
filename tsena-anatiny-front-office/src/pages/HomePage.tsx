@@ -31,6 +31,7 @@ import {
 } from "../services/products.service";
 import type { Category, Product } from "../types/product";
 import { ProductCard } from "../components/ProductCard";
+import { ProductImage } from "../components/ProductImage";
 import { ProductGridSkeleton } from "../components/Skeletons";
 import { PromoCodeCard } from "../components/PromoCodeCard";
 import { Page } from "../components/Page";
@@ -209,10 +210,11 @@ function GreetingHero({
           <div className="relative z-10 mt-7 hidden shrink-0 lg:block">
             <div className="absolute -left-6 -top-6 h-16 w-16 rounded-2xl bg-white/10 backdrop-blur-sm" />
             <div className="group relative w-56 rotate-2 overflow-hidden rounded-3xl bg-panel shadow-lift ring-1 ring-white/40 transition-transform duration-500 hover:rotate-0">
-              <img
+              <ProductImage
                 src={image}
                 alt={featured.name}
-                className="aspect-square w-full object-cover"
+                size="card"
+                loading="eager"
               />
               <div className="flex items-center justify-between gap-2 px-4 py-3">
                 <div className="min-w-0">

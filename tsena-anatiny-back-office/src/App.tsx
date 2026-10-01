@@ -1,5 +1,4 @@
-import { Route } from "react-router-dom";
-import { IonRouterOutlet } from "@ionic/react";
+import { Redirect, Route, Switch } from "react-router-dom";
 import { DashboardPage } from "./pages/DashboardPage";
 import { LoginPage } from "./pages/LoginPage";
 import { UsersPage } from "./pages/UsersPage";
@@ -26,7 +25,7 @@ import { useAuth } from "./contexts/AuthContext";
 
 function App() {
   return (
-    <IonRouterOutlet>
+    <Switch>
       <Route exact path="/login" component={LoginPage} />
       <ProtectedRoute exact path="/dashboard" component={DashboardPage} />
       <ProtectedRoute exact path="/users" component={UsersPage} />
@@ -42,8 +41,8 @@ function App() {
         <ProtectedRoute exact path="/arrivals" component={ArrivalsPage} />
       <ProtectedRoute exact path="/lots" component={LotsPage} />
       <ProtectedRoute exact path="/lots/new" component={LotFormPage} />
-      <ProtectedRoute exact path="/lots/:id(\\d+)/edit" component={LotFormPage} />
-      <ProtectedRoute exact path="/lots/:id(\\d+)" component={LotDetailsPage} />
+      <ProtectedRoute exact path="/lots/:id/edit" component={LotFormPage} />
+      <ProtectedRoute exact path="/lots/:id" component={LotDetailsPage} />
       <ProtectedRoute exact path="/stock-movements" component={StockMovementsPage} />
       <ProtectedRoute exact path="/orders/new" component={OrderEditPage} />
       <ProtectedRoute exact path="/orders/:id/edit" component={OrderEditPage} />
@@ -60,7 +59,10 @@ function App() {
       <Route exact path="/">
         <Landing />
       </Route>
-    </IonRouterOutlet>
+      <Route>
+        <Redirect to="/" />
+      </Route>
+    </Switch>
   );
 }
 

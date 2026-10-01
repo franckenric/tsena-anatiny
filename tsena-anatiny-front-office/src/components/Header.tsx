@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useHistory, useLocation } from "react-router-dom";
 import { Menu, ShoppingBag, LogOut, User, ChevronDown, Download, Bell } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
+import { useAuthModal } from "../contexts/AuthModalContext";
 import { useCart } from "../contexts/CartContext";
 import { useCartDrawer } from "../contexts/CartDrawerContext";
 import { useMobileMenu } from "../contexts/MobileMenuContext";
@@ -13,6 +14,7 @@ import { cn } from "../lib/utils";
 
 export function Header() {
   const { customer, isBooting, logout } = useAuth();
+  const { showLogin, showRegister } = useAuthModal();
   const { count } = useCart();
   const { openCart } = useCartDrawer();
   const { openMenu } = useMobileMenu();
@@ -74,7 +76,7 @@ export function Header() {
           <img
             src="/logo.png"
             alt="Tsena Anatiny"
-            className="h-7 w-7 rounded-xl object-contain shadow-md shadow-brand/20 sm:h-8 sm:w-8"
+            className="h-8 w-8 shrink-0 rounded-xl object-contain shadow-md shadow-brand/20"
           />
           <span className="hidden text-lg font-display font-bold text-ink sm:block">
             Tsena&nbsp;Anatiny
@@ -145,7 +147,17 @@ export function Header() {
 
           <button
             type="button"
-            onClick={openCart}
+            onClick={() => {
+              if (customer) {
+                openCart();
+                return;
+              }
+              showLogin({
+                onSuccess: () => {
+                  openCart();
+                }
+              });
+            }}
             className="relative flex h-9 w-9 items-center justify-center rounded-xl text-muted transition hover:bg-brand/10 hover:text-brand active:scale-95"
             aria-label={t("header.openCart")}
           >
@@ -236,18 +248,20 @@ export function Header() {
             </div>
           ) : (
             <div className="hidden items-center gap-1.5 sm:flex">
-              <Link
-                to="/connexion"
+              <button
+                type="button"
+                onClick={() => showLogin()}
                 className="flex h-9 items-center rounded-xl px-3 text-sm font-semibold text-ink transition hover:bg-bg active:scale-[0.98]"
               >
                 {t("nav.login")}
-              </Link>
-              <Link
-                to="/inscription"
+              </button>
+              <button
+                type="button"
+                onClick={() => showRegister()}
                 className="flex h-9 items-center rounded-xl bg-gradient-to-r from-brand to-[hsl(30,90%,55%)] px-3 text-sm font-bold text-white shadow-md shadow-brand/20 transition-all hover:shadow-lg hover:shadow-brand/30 active:scale-[0.98]"
               >
                 {t("nav.createAccount")}
-              </Link>
+              </button>
             </div>
           )}
         </div>

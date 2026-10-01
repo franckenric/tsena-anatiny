@@ -5,11 +5,10 @@ import type { Column } from "../components/index";
 import { usersService } from "../services/users.service";
 import { rolesService } from "../services/roles.service";
 import {
-  Card,
   Button,
-  DataTable,
-  Pagination,
-  FloatingActionButton
+  DataList,
+  FloatingActionButton,
+  StatusBadge
 } from "../components/index";
 import { UserForm } from "../components/UserForm";
 import { Modal } from "../components/Modal";
@@ -150,13 +149,9 @@ export function UsersPage() {
       header: "Statut",
       accessor: "is_active",
       render: (value) => (
-        <span
-          className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
-            value ? "bg-success/20 text-success" : "bg-warning/20 text-warning"
-          }`}
-        >
+        <StatusBadge tone={value ? "success" : "warning"} dot>
           {value ? "Actif" : "Inactif"}
-        </span>
+        </StatusBadge>
       ),
       width: "10%"
     }
@@ -186,38 +181,29 @@ export function UsersPage() {
           </div>
         )}
 
-        <Card
+        <DataList
           title="Liste des utilisateurs"
-          description={`Total: ${total} utilisateurs`}
-          hideHeaderOnMobile
-          plainOnMobile
-          className="flex min-h-0 flex-1 flex-col"
-          bodyClassName="flex min-h-0 flex-1 flex-col"
+          description="Comptes et droits d'accès au back office"
+          itemLabel="utilisateurs"
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          onPageChange={setPage}
+          pageSize={pageSize}
+          onPageSizeChange={setPageSize}
           headerAction={
             <Button onClick={handleCreate} variant="primary">
               <Plus className="mr-2 h-4 w-4" />
               Ajouter un utilisateur
             </Button>
           }
-        >
-          <Pagination
-            page={page}
-            totalPages={totalPages}
-            total={total}
-            onPageChange={setPage}
-            pageSize={pageSize}
-            onPageSizeChange={setPageSize}
-            showCount={false}
-            itemLabel="utilisateurs"
-            isLoading={isLoading}
-            className="mb-3"
-          />
-          <DataTable
-            columns={columns}
-            data={users}
-            isLoading={isLoading}
-            emptyMessage="Aucun utilisateur trouvé"
-            gridCardRender={(user) => {
+          columns={columns}
+          data={users}
+          isLoading={isLoading}
+          emptyMessage="Aucun utilisateur trouvé"
+          emptyTitle="Aucun utilisateur"
+          emptyIcon={<Users className="h-6 w-6" />}
+          gridCardRender={(user) => {
               const role = roles.find((item) => item.id === user.role_id);
               return (
                 <div className="flex flex-col">
@@ -231,11 +217,12 @@ export function UsersPage() {
                         {user.phone_numer ? ` · ${user.phone_numer}` : ""}
                       </p>
                     </div>
-                    <span
-                      className={`inline-flex shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${user.is_active ? "bg-success/20 text-success" : "bg-warning/20 text-warning"}`}
+                    <StatusBadge
+                      tone={user.is_active ? "success" : "warning"}
+                      dot
                     >
                       {user.is_active ? "Actif" : "Inactif"}
-                    </span>
+                    </StatusBadge>
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2.5 border-t border-border/50 pt-3">
                     <div>
@@ -285,7 +272,6 @@ export function UsersPage() {
               </>
             )}
           />
-        </Card>
 
         <Modal
           isOpen={isModalOpen}

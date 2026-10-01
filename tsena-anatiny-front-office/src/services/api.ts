@@ -80,30 +80,42 @@ async function parseError(response: Response): Promise<string> {
   }
 }
 
+export interface ApiFetchOptions extends RequestInit {
+  /**
+   * Endpoint public (inscription, OTP...) : aucune authentification n'est
+   * requise. Utile car l'obtention du jeton de service ne doit jamais bloquer
+   * ces appels.
+   */
+  skipAuth?: boolean;
+}
+
 export async function apiFetch<T = unknown>(
   path: string,
-  options: RequestInit = {}
+  options: ApiFetchOptions = {}
 ): Promise<T> {
-  const method = (options.method ?? "GET").toUpperCase();
+  const { skipAuth = false, ...init } = options;
+  const method = (init.method ?? "GET").toUpperCase();
   const isRead = method === "GET" || method === "HEAD" || method === "OPTIONS";
 
   let token: string | null = null;
-  try {
-    token = await getApiToken();
-  } catch (err) {
-    if (!isRead) throw err;
+  if (!skipAuth) {
+    try {
+      token = await getApiToken();
+    } catch (err) {
+      if (!isRead) throw err;
+    }
   }
 
-  const headers = new Headers(options.headers);
+  const headers = new Headers(init.headers);
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);
   }
-  if (options.body && !headers.has("Content-Type")) {
+  if (init.body && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
 
   const response = await fetch(buildApiUrl(path), {
-    ...options,
+    ...init,
     headers
   });
 
@@ -124,10 +136,17 @@ export interface ApiUser {
   email?: string;
 }
 
+/**
+ * Restaure l'utilisateur a partir du jeton deja stocke. Ne declenche jamais de
+ * connexion au compte de service : sans session ouverte, il n'y a rien a
+ * restaurer.
+ */
 export async function getApiUser(): Promise<ApiUser> {
-  const token = await getApiToken();
+  const token = getStoredApiToken();
+  if (!token) throw new Error("Aucune session active");
   const user = await apiFetch<ApiUser>(`/login/test-token/${token}`, {
-    method: "POST"
+    method: "POST",
+    skipAuth: true
   });
   return user;
 }

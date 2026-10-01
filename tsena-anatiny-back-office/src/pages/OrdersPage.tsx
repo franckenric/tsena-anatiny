@@ -18,16 +18,15 @@ import type {
   OrderStatus
 } from "../types/operations";
 import type { Customer } from "../types/customer";
-import type { Column } from "../components/index";
+import type { Column, StatusTone } from "../components/index";
 import { ordersService } from "../services/operations.service";
 import { useNotifications } from "../contexts/NotificationsContext";
 import {
   Layout,
-  Card,
   Button,
-  DataTable,
+  DataList,
   Select,
-  Pagination,
+  StatusBadge,
   FloatingActionButton
 } from "../components/index";
 import {
@@ -36,18 +35,11 @@ import {
   buildOrderReceiptHtml
 } from "../components/OrderFormComponent";
 
-const STATUS_COLORS: Record<OrderStatus, string> = {
-  draft: "bg-sky-100 text-sky-700",
-  confirmed: "bg-brand/20 text-brand",
-  delivered: "bg-success/20 text-success",
-  cancelled: "bg-warning/20 text-warning"
-};
-
-const STATUS_SOLID: Record<OrderStatus, string> = {
-  draft: "bg-sky-600",
-  confirmed: "bg-brand",
-  delivered: "bg-success",
-  cancelled: "bg-warning"
+const STATUS_TONES: Record<OrderStatus, StatusTone> = {
+  draft: "info",
+  confirmed: "brand",
+  delivered: "success",
+  cancelled: "warning"
 };
 
 export function OrdersPage() {
@@ -435,11 +427,9 @@ export function OrdersPage() {
       accessor: "status",
       width: "11%",
       render: (v: OrderStatus) => (
-        <span
-          className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${STATUS_COLORS[v] ?? "bg-muted/20 text-muted"}`}
-        >
+        <StatusBadge tone={STATUS_TONES[v] ?? "neutral"}>
           {STATUS_LABELS[v] ?? v}
-        </span>
+        </StatusBadge>
       )
     },
     {
@@ -467,29 +457,6 @@ export function OrdersPage() {
             Gestion des commandes
           </div>
         </div>
-        <div className="flex items-center gap-3 rounded-2xl border border-border/60 bg-panel/65 px-4 py-3">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-brand">
-            <ClipboardList className="h-4 w-4" />
-          </div>
-          <div className="w-full sm:w-64">
-            <Select
-              label="Filtrer par statut"
-              value={statusFilter || "all"}
-              onValueChange={(value) => {
-                setStatusFilter(value === "all" ? "" : (value as OrderStatus));
-                setPage(1);
-              }}
-              options={[
-                { label: "Tous les statuts", value: "all" },
-                ...(Object.keys(STATUS_LABELS) as OrderStatus[]).map((s) => ({
-                  label: STATUS_LABELS[s],
-                  value: s
-                }))
-              ]}
-              placeholder="Tous les statuts"
-            />
-          </div>
-        </div>
         {notice && (
           <div
             className={`rounded-2xl border px-4 py-3 text-sm text-ink ${
@@ -506,13 +473,16 @@ export function OrdersPage() {
             {error}
           </div>
         )}
-        <Card
+        <DataList
           title="Commandes"
-          description={`Total: ${total} commandes`}
-          hideHeaderOnMobile
-          plainOnMobile
-          className="flex min-h-0 flex-1 flex-col"
-          bodyClassName="flex min-h-0 flex-1 flex-col"
+          description="Suivi et facturation des commandes"
+          itemLabel="commandes"
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          onPageChange={setPage}
+          pageSize={pageSize}
+          onPageSizeChange={setPageSize}
           headerAction={
             <Button
               variant="primary"
@@ -522,25 +492,33 @@ export function OrdersPage() {
               Nouvelle commande
             </Button>
           }
-        >
-          <Pagination
-            page={page}
-            totalPages={totalPages}
-            total={total}
-            onPageChange={setPage}
-            pageSize={pageSize}
-            onPageSizeChange={setPageSize}
-            showCount={false}
-            itemLabel="commandes"
-            isLoading={isLoading}
-            className="mb-3"
-          />
-          <DataTable
-            columns={columns}
-            data={orders}
-            isLoading={isLoading}
-            emptyMessage="Aucune commande"
-            gridCardRender={(o) => {
+          toolbar={
+            <div className="w-full sm:w-64">
+              <Select
+                label="Filtrer par statut"
+                value={statusFilter || "all"}
+                onValueChange={(value) => {
+                  setStatusFilter(value === "all" ? "" : (value as OrderStatus));
+                  setPage(1);
+                }}
+                options={[
+                  { label: "Tous les statuts", value: "all" },
+                  ...(Object.keys(STATUS_LABELS) as OrderStatus[]).map((s) => ({
+                    label: STATUS_LABELS[s],
+                    value: s
+                  }))
+                ]}
+                placeholder="Tous les statuts"
+              />
+            </div>
+          }
+          columns={columns}
+          data={orders}
+          isLoading={isLoading}
+          emptyMessage="Aucune commande"
+          emptyTitle="Aucune commande"
+          emptyIcon={<ClipboardList className="h-6 w-6" />}
+          gridCardRender={(o) => {
               const reference = o.order_number ?? `#${o.id}`;
               const customer = o.customer;
               const count = getOrderProductCount(o);
@@ -563,12 +541,9 @@ export function OrdersPage() {
                         {customer?.phone ? ` · ${customer.phone}` : ""}
                       </p>
                     </div>
-                    <span
-                      className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold text-white shadow-sm ${STATUS_SOLID[status] ?? "bg-muted"}`}
-                    >
-                      <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                    <StatusBadge tone={STATUS_TONES[status] ?? "neutral"} dot>
                       {STATUS_LABELS[status] ?? status}
-                    </span>
+                    </StatusBadge>
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2.5 border-t border-border/50 pt-3">
                     <div>
@@ -669,7 +644,6 @@ export function OrdersPage() {
               </div>
             )}
           />
-        </Card>
       </div>
     </Layout>
   );

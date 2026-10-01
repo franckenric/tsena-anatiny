@@ -17,7 +17,13 @@ import {
   ordersService
 } from "../services/operations.service";
 import { productsService } from "../services/products.service";
-import { Layout, Card, Button, DataTable, Input } from "../components/index";
+import {
+  Layout,
+  Button,
+  DataList,
+  Input,
+  StatusBadge
+} from "../components/index";
 import { Modal } from "../components/Modal";
 import {
   ArrowLeft,
@@ -776,50 +782,50 @@ export function LotDetailsPage() {
           />
         </div>
 
-        <Card
+        <DataList
           title="Produits du lot"
           description={`${productRows.length} produit${productRows.length > 1 ? "s" : ""} · ${formatAr(totalPurchase)} d'achat`}
-          hideHeaderOnMobile
-          plainOnMobile
           headerAction={
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-brand/10 px-2.5 py-1 text-xs font-bold text-brand ring-1 ring-brand/20">
+            <StatusBadge tone="brand">
               <Package className="h-3.5 w-3.5" />
               {productRows.length} produit{productRows.length > 1 ? "s" : ""}
-            </span>
+            </StatusBadge>
           }
-        >
-          <div className="mb-3 flex flex-wrap items-center gap-3 rounded-xl border border-border/60 bg-bg/30 px-4 py-3">
-            <p className="shrink-0 text-xs font-semibold uppercase tracking-wide text-muted">
-              PV estimé
-            </p>
-            <input
-              type="range"
-              min={25}
-              max={500}
-              step={25}
-              value={estimatedMargin}
-              onChange={(e) => setEstimatedMargin(Number(e.target.value))}
-              className="min-w-40 flex-1 accent-brand"
-            />
-            <span className="shrink-0 text-xs font-semibold text-muted">
-              500%
-            </span>
-            <span className="w-14 shrink-0 text-right text-sm font-bold text-brand">
-              {estimatedMargin}%
-            </span>
-          </div>
-          <DataTable
-            columns={stockLotColumns}
-            data={productRows}
-            isLoading={false}
-            emptyMessage="Aucun mouvement entrée dans ce lot"
-            getRowKey={(row) =>
-              row.variant_id
-                ? `${row.id}-v${row.variant_id}`
-                : `${row.id}-p${row.product_id}`
-            }
-            tableMaxHeight="calc(100vh - 24rem)"
-            gridCardRender={(row) => {
+          searchable={false}
+          toolbar={
+            <div className="flex w-full flex-wrap items-center gap-3">
+              <p className="shrink-0 text-xs font-semibold uppercase tracking-wide text-muted">
+                PV estimé
+              </p>
+              <input
+                type="range"
+                min={25}
+                max={500}
+                step={25}
+                value={estimatedMargin}
+                onChange={(e) => setEstimatedMargin(Number(e.target.value))}
+                className="min-w-40 flex-1 accent-brand"
+              />
+              <span className="shrink-0 text-xs font-semibold text-muted">
+                500%
+              </span>
+              <span className="w-14 shrink-0 text-right text-sm font-bold text-brand">
+                {estimatedMargin}%
+              </span>
+            </div>
+          }
+          columns={stockLotColumns}
+          data={productRows}
+          isLoading={false}
+          emptyMessage="Aucun mouvement entrée dans ce lot"
+          emptyTitle="Aucun mouvement entrée dans ce lot"
+          emptyIcon={<Package className="h-6 w-6" />}
+          getRowKey={(row) =>
+            row.variant_id
+              ? `${row.id}-v${row.variant_id}`
+              : `${row.id}-p${row.product_id}`
+          }
+          gridCardRender={(row) => {
               const fallbackProduct = productById[row.product_id];
               const productName =
                 row.product?.name ||
@@ -850,9 +856,9 @@ export function LotDetailsPage() {
                         </p>
                       )}
                     </div>
-                    <span className="inline-flex shrink-0 rounded-full bg-brand/15 px-2 py-0.5 text-[11px] font-bold text-brand">
+                    <StatusBadge tone="brand">
                       {row.quantity} pcs
-                    </span>
+                    </StatusBadge>
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2.5 border-t border-border/50 pt-3">
                     <div>
@@ -892,7 +898,6 @@ export function LotDetailsPage() {
               );
             }}
           />
-        </Card>
 
         <Modal
           isOpen={isExpensesModalOpen}
@@ -935,11 +940,15 @@ export function LotDetailsPage() {
                   Ajouter
                 </Button>
               </div>
-              <DataTable
+              <DataList
                 columns={lotExpenseColumns}
                 data={lotExpenses}
                 isLoading={false}
                 emptyMessage="Aucune dépense enregistrée"
+                emptyTitle="Aucune dépense enregistrée"
+                emptyIcon={<Wallet className="h-6 w-6" />}
+                showPagination={false}
+                searchable={false}
                 gridCardRender={(expense) => (
                   <div className="flex flex-col">
                     <div className="flex items-start justify-between gap-3">
@@ -951,9 +960,9 @@ export function LotDetailsPage() {
                           {expense.description || "—"}
                         </p>
                       </div>
-                      <span className="inline-flex shrink-0 rounded-full bg-warning/15 px-2 py-0.5 text-[11px] font-bold text-warning">
+                      <StatusBadge tone="warning">
                         {formatAr(Number(expense.amount || 0))}
-                      </span>
+                      </StatusBadge>
                     </div>
                     {expense.created_at && (
                       <div className="mt-3 border-t border-border/50 pt-3">

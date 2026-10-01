@@ -4,11 +4,10 @@ import type { CommercialAssignment } from "../types/operations";
 import type { Column } from "../components/index";
 import { assignmentsService } from "../services/operations.service";
 import {
-  Card,
   Button,
-  DataTable,
-  Pagination,
-  FloatingActionButton
+  DataList,
+  FloatingActionButton,
+  StatusBadge
 } from "../components/index";
 import { Handshake, Pencil, Plus, Trash2 } from "lucide-react";
 import { Layout } from "../components/Layout";
@@ -107,13 +106,16 @@ export function CommercialAssignmentsPage() {
             {error}
           </div>
         )}
-        <Card
+        <DataList
           title="Affectations"
-          description={`Total: ${total} affectations`}
-          hideHeaderOnMobile
-          plainOnMobile
-          className="flex min-h-0 flex-1 flex-col"
-          bodyClassName="flex min-h-0 flex-1 flex-col"
+          description="Répartition des produits par commercial"
+          itemLabel="affectations"
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          onPageChange={setPage}
+          pageSize={pageSize}
+          onPageSizeChange={setPageSize}
           headerAction={
             <Button
               variant="primary"
@@ -123,42 +125,28 @@ export function CommercialAssignmentsPage() {
               Nouvelle affectation
             </Button>
           }
-        >
-          <Pagination
-            page={page}
-            totalPages={totalPages}
-            total={total}
-            onPageChange={setPage}
-            pageSize={pageSize}
-            onPageSizeChange={setPageSize}
-            showCount={false}
-            itemLabel="affectations"
-            isLoading={isLoading}
-            className="mb-3"
-          />
-          <DataTable
-            columns={columns}
-            data={assignments}
-            isLoading={isLoading}
-            emptyMessage="Aucune affectation"
-            gridCardRender={(a) => (
-              <div className="flex flex-col">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-ink">
-                      {a.user?.email ?? `#${a.user_id}`}
-                    </p>
-                    <p className="mt-0.5 truncate text-xs text-muted">
-                      {a.product?.name ?? `#${a.product_id}`}
-                      {a.product?.sku ? ` · ${a.product.sku}` : ""}
-                    </p>
-                  </div>
-                  <span className="inline-flex shrink-0 rounded-full bg-brand/15 px-2 py-0.5 text-[11px] font-bold text-brand">
-                    {a.quantity} pcs
-                  </span>
+          columns={columns}
+          data={assignments}
+          isLoading={isLoading}
+          emptyMessage="Aucune affectation"
+          emptyTitle="Aucune affectation"
+          emptyIcon={<Handshake className="h-6 w-6" />}
+          gridCardRender={(a) => (
+            <div className="flex flex-col">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-ink">
+                    {a.user?.email ?? `#${a.user_id}`}
+                  </p>
+                  <p className="mt-0.5 truncate text-xs text-muted">
+                    {a.product?.name ?? `#${a.product_id}`}
+                    {a.product?.sku ? ` · ${a.product.sku}` : ""}
+                  </p>
                 </div>
+                <StatusBadge tone="brand">{a.quantity} pcs</StatusBadge>
               </div>
-            )}
+            </div>
+          )}
             actions={(a) => (
               <>
                 <Button
@@ -188,7 +176,6 @@ export function CommercialAssignmentsPage() {
               </>
             )}
           />
-        </Card>
       </div>
     </Layout>
   );

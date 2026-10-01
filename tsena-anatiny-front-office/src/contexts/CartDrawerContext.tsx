@@ -18,10 +18,12 @@ import {
   X
 } from "lucide-react";
 import { useAuth } from "./AuthContext";
+import { useAuthModal } from "./AuthModalContext";
 import { useCart } from "./CartContext";
 import { useI18n } from "../contexts/I18nContext";
 import { cartItemsService } from "../services/operations.service";
 import type { CartItem } from "../types/operations";
+import { ProductImage } from "../components/ProductImage";
 import { formatAr, resolveImageUrl } from "../lib/utils";
 
 interface CartDrawerContextValue {
@@ -34,6 +36,7 @@ const CartDrawerContext = createContext<CartDrawerContextValue | null>(null);
 
 export function CartDrawerProvider({ children }: { children: ReactNode }) {
   const { customer } = useAuth();
+  const { showLogin, showRegister } = useAuthModal();
   const { count, refresh } = useCart();
   const { t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
@@ -175,21 +178,27 @@ export function CartDrawerProvider({ children }: { children: ReactNode }) {
                     </p>
                   </div>
                   <div className="flex w-full flex-col gap-2">
-                    <Link
-                      to="/connexion"
-                      onClick={closeCart}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        closeCart();
+                        showLogin();
+                      }}
                       className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand px-5 text-sm font-semibold text-white shadow-lg shadow-brand/35 transition duration-200 hover:-translate-y-0.5 hover:bg-brand/90"
                     >
                       {t("nav.login")}
                       <ArrowRight className="h-4 w-4" />
-                    </Link>
-                    <Link
-                      to="/inscription"
-                      onClick={closeCart}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        closeCart();
+                        showRegister();
+                      }}
                       className="inline-flex h-12 w-full items-center justify-center rounded-xl border border-border bg-panel/80 px-5 text-sm font-semibold text-ink transition duration-200 hover:-translate-y-0.5 hover:border-brand/35 hover:bg-panel"
                     >
                       {t("nav.createAccount")}
-                    </Link>
+                    </button>
                   </div>
                 </div>
               ) : isLoading ? (
@@ -244,17 +253,12 @@ export function CartDrawerProvider({ children }: { children: ReactNode }) {
                         key={item.id}
                         className="group flex gap-3 rounded-2xl border border-border/70 bg-panel/80 p-3 transition duration-200 hover:border-brand/35"
                       >
-                        {imageUrl ? (
-                          <img
-                            src={imageUrl}
-                            alt={name}
-                            className="h-20 w-20 shrink-0 rounded-xl border border-border object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-brand/5 text-brand/40">
-                            <ShoppingBag className="h-8 w-8" />
-                          </div>
-                        )}
+                        <ProductImage
+                          src={imageUrl}
+                          alt={name}
+                          size="xs"
+                          className="border border-border bg-brand/5 text-brand/40"
+                        />
 
                         <div className="flex min-w-0 flex-1 flex-col">
                           <div className="flex items-start justify-between gap-2">

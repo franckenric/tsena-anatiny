@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useHistory, useLocation, useParams } from "react-router-dom";
 import {
   ArrowLeft,
-  ImageOff,
   PackageCheck,
   PackageX,
   ShoppingBag,
@@ -23,6 +22,7 @@ import { useToast } from "../contexts/ToastContext";
 import { useI18n } from "../contexts/I18nContext";
 import { useAddToCart, type CartLine } from "../hooks/useAddToCart";
 import { ProductDetailSkeleton } from "../components/Skeletons";
+import { ProductImage, isRealImage } from "../components/ProductImage";
 import { Page } from "../components/Page";
 import { QuantityInput } from "../components/QuantityInput";
 import {
@@ -55,11 +55,11 @@ export function ProductPage() {
   const galleryImages = useMemo(() => {
     if (!product) return [];
     const urls: string[] = [];
-    if (product.image && product.image !== "/No_Image_Available.jpg") {
+    if (isRealImage(product.image)) {
       urls.push(resolveImageUrl(product.image) ?? product.image);
     }
     for (const img of product.images ?? []) {
-      if (img.image && !urls.includes(img.image)) {
+      if (isRealImage(img.image) && !urls.includes(img.image)) {
         urls.push(resolveImageUrl(img.image) ?? img.image);
       }
     }
@@ -210,7 +210,7 @@ export function ProductPage() {
       onClick={handleGoBack}
       aria-label={t("product.back")}
       title={t("product.back")}
-      className="fixed left-4 top-20 z-50 flex h-11 w-11 items-center justify-center rounded-full border border-border/70 bg-panel/90 text-ink shadow-lg backdrop-blur-md transition hover:bg-panel active:scale-95 sm:left-6"
+      className="fixed left-4 top-[calc(env(safe-area-inset-top)+4.75rem)] z-40 flex h-11 w-11 items-center justify-center rounded-full border border-border/70 bg-panel/90 text-ink shadow-lg backdrop-blur-md transition hover:bg-panel active:scale-95 sm:left-6"
     >
       <ArrowLeft className="h-5 w-5" />
     </button>
@@ -255,23 +255,17 @@ export function ProductPage() {
     <Page>
       {backButton}
 
-      <div className="page-shell pb-10 pt-6 sm:pb-14">
+      <div className="page-shell pb-8 pt-6 sm:pb-14">
         <div className="grid gap-6 lg:grid-cols-[1fr_420px] lg:gap-10">
           {/* ── Gallery ── */}
           <div className="animate-fade-in lg:sticky lg:top-24 lg:self-start">
-            <div className="relative overflow-hidden rounded-3xl bg-bg">
-              {selectedImage ? (
-                <img
-                  src={selectedImage}
-                  alt={product.name}
-                  className="aspect-square w-full object-cover"
-                />
-              ) : (
-                <div className="flex aspect-square w-full items-center justify-center text-muted/20">
-                  <ImageOff className="h-20 w-20" />
-                </div>
-              )}
-
+            <ProductImage
+              src={selectedImage}
+              alt={product.name}
+              size="lg"
+              loading="eager"
+              className="rounded-3xl"
+            >
               {hasDiscount && (
                 <span className="absolute right-4 top-4 inline-flex items-center rounded-full bg-accent px-3 py-1.5 text-xs font-extrabold uppercase tracking-wide text-white shadow-lg">
                   -{discountPercent}%
@@ -283,26 +277,26 @@ export function ProductPage() {
                   {galleryImages.indexOf(selectedImage) + 1}/{galleryImages.length}
                 </span>
               )}
-            </div>
+            </ProductImage>
 
             {galleryImages.length > 1 && (
-              <div className="mt-3 flex gap-2 overflow-x-auto scrollbar-hide pb-1">
+              <div className="-mx-4 mt-3 flex gap-2 overflow-x-auto scrollbar-hide px-4 pb-1 sm:mx-0 sm:px-0">
                 {galleryImages.map((url) => (
                   <button
                     key={url}
                     type="button"
                     onClick={() => setSelectedImage(url)}
                     className={cn(
-                      "h-[72px] w-[72px] shrink-0 overflow-hidden rounded-2xl transition-all duration-200",
+                      "shrink-0 transition-all duration-200",
                       selectedImage === url
                         ? "ring-2 ring-brand ring-offset-2 ring-offset-bg"
                         : "opacity-50 hover:opacity-80"
                     )}
                   >
-                    <img
+                    <ProductImage
                       src={url}
                       alt={t("product.preview", { name: product.name })}
-                      className="h-full w-full object-cover"
+                      size="thumb"
                     />
                   </button>
                 ))}
@@ -313,7 +307,7 @@ export function ProductPage() {
           {/* ── Info ── */}
           <div className="flex flex-col gap-5">
             {/* Top row: category + stock */}
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {product.categorie?.name && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-brand-soft px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-brand">
                   <Tags className="h-3 w-3" />
@@ -348,8 +342,8 @@ export function ProductPage() {
             </h1>
 
             {/* SKU */}
-            <div className="flex items-center gap-2 text-[11px] text-muted/50">
-              <span>REF: {product.sku}</span>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted/50">
+              <span className="min-w-0 break-all">REF: {product.sku}</span>
               {product.unit && (
                 <>
                   <span className="text-border">·</span>
@@ -357,6 +351,18 @@ export function ProductPage() {
                 </>
               )}
             </div>
+
+            {/* ── Description ── */}
+            {product.description?.trim() && (
+              <div className="rounded-2xl border border-border/60 bg-bg/30 p-4">
+                <p className="mb-1.5 text-[11px] font-bold uppercase tracking-widest text-muted">
+                  {t("common.description")}
+                </p>
+                <p className="whitespace-pre-line break-words text-sm leading-relaxed text-ink">
+                  {product.description}
+                </p>
+              </div>
+            )}
 
             {/* ── Price block ── */}
             <div className="rounded-2xl border border-border/40 bg-bg/50 p-3.5 sm:p-4">
@@ -469,7 +475,7 @@ export function ProductPage() {
                             <div
                               key={variant.id}
                               className={cn(
-                                "flex items-center justify-between gap-3 rounded-xl border px-3.5 py-2.5 transition-all duration-200",
+                                "flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-xl border px-3.5 py-2.5 transition-all duration-200",
                                 vSoldOut
                                   ? "border-border/20 bg-bg/20 opacity-50"
                                   : isSelected
@@ -488,7 +494,7 @@ export function ProductPage() {
                                     {variant.name || `#${variant.id}`}
                                   </p>
                                 </div>
-                                <div className="mt-0.5 flex items-center gap-1.5 text-[11px]">
+                                <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px]">
                                   {vSoldOut ? (
                                     <span className="font-semibold text-danger">
                                       {t("common.exhausted")}
@@ -534,64 +540,44 @@ export function ProductPage() {
                   })()}
                 </div>
               ) : (
-                <div className="grid grid-cols-2 items-center gap-2">
-                  {hasDiscount ? (
-                    <>
-                      <p className="text-sm text-muted/50 line-through">
-                        {formatAr(originalPrice)}
-                      </p>
-                      <div className="flex items-center justify-end gap-2">
-                        <p className="text-[11px] font-medium text-muted/50">
-                          {t("product.unitPrice")}
-                        </p>
-                        <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-bold text-accent">
+                <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
+                  <div className="min-w-0">
+                    {hasDiscount && (
+                      <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted/50 line-through">
+                        <span>{formatAr(originalPrice)}</span>
+                        <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[10px] font-bold text-accent not-italic no-underline">
                           -{discountPercent}%
                         </span>
-                      </div>
-                      <p className="text-2xl font-extrabold tracking-tight text-brand sm:text-3xl">
-                        {formatAr(displayPrice)}
                       </p>
-                      <div className="flex justify-end">
-                        <QuantityInput
-                          value={quantity}
-                          onChange={setQuantity}
-                          min={1}
-                          max={stock > 0 ? stock : undefined}
-                          disabled={stock <= 0}
-                        />
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <p className="text-[11px] font-medium text-muted/50">
-                        {t("product.unitPrice")}
-                      </p>
-                      <div />
-                      <p className="text-2xl font-extrabold tracking-tight text-brand sm:text-3xl">
-                        {formatAr(displayPrice)}
-                      </p>
-                      <div className="flex justify-end">
-                        <QuantityInput
-                          value={quantity}
-                          onChange={setQuantity}
-                          min={1}
-                          max={stock > 0 ? stock : undefined}
-                          disabled={stock <= 0}
-                        />
-                      </div>
-                    </>
-                  )}
+                    )}
+                    <p className="text-[11px] font-medium text-muted/50">
+                      {t("product.unitPrice")}
+                    </p>
+                    <p className="mt-0.5 break-words text-2xl font-extrabold tracking-tight text-brand sm:text-3xl">
+                      {formatAr(displayPrice)}
+                    </p>
+                  </div>
+                  <QuantityInput
+                    value={quantity}
+                    onChange={setQuantity}
+                    min={1}
+                    max={stock > 0 ? stock : undefined}
+                    disabled={stock <= 0}
+                    className="shrink-0"
+                  />
                 </div>
               )}
             </div>
 
             {/* ── Total recap ── */}
-            <div className="flex items-center justify-between rounded-2xl bg-accent/10 px-5 py-3.5">
-              <div className="flex items-center gap-2.5 text-sm font-semibold text-brand">
-                <ShoppingBag className="h-4.5 w-4.5" />
-                {totalQty > 0
-                  ? t("common.article", { count: totalQty })
-                  : t("common.total")}
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-2xl bg-accent/10 px-4 py-3.5 sm:px-5">
+              <div className="flex min-w-0 items-center gap-2.5 text-sm font-semibold text-brand">
+                <ShoppingBag className="h-4 w-4 shrink-0" />
+                <span className="truncate">
+                  {totalQty > 0
+                    ? t("common.article", { count: totalQty })
+                    : t("common.total")}
+                </span>
               </div>
               <span className="text-xl font-extrabold text-brand">
                 {formatAr(total)}

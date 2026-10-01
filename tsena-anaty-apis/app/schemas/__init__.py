@@ -15,7 +15,8 @@ from .customers import (
   Customers,
   CustomersCreate,
   CustomersUpdate,
-  ResponseCustomers
+  ResponseCustomers,
+  clean_phone
 )
 from .commercial_assignments import ( 
   CommercialAssignments,  

@@ -1,3 +1,4 @@
+import logging
 import secrets
 from datetime import datetime, timedelta
 from typing import Any
@@ -8,9 +9,12 @@ from sqlalchemy.orm import Session
 from app import crud, models, schemas
 from app.api import deps
 from app.api.api_v1.endpoints.notifications import notify_account_created
+from app.core.email import send_otp_email
 from app.core.security import get_password_hash, verify_password
 
 router = APIRouter()
+
+logger = logging.getLogger(__name__)
 
 OTP_LENGTH = 6
 OTP_TTL_MINUTES = 10
@@ -34,6 +38,9 @@ def issue_otp(db: Session, email: str) -> str:
     normalized = _normalize_email(email)
     _cleanup_expired(db, normalized)
     code = f"{secrets.randbelow(10 ** OTP_LENGTH):0{OTP_LENGTH}d}"
+    # Affiche le code dans les logs de l'API pour les tests (quand l'email/SMS
+    # n'est pas encore configure).
+    logger.warning("[OTP] Code de verification pour %s : %s", normalized, code)
     row = models.OtpCodes(
         email=normalized,
         code_hash=get_password_hash(code),
@@ -88,7 +95,7 @@ def resend_otp(
     db: Session = Depends(deps.get_db),
     payload: schemas.OtpRequest,
 ) -> Any:
-    """Issue a fresh OTP and notify the back-office to relay it by email."""
+    """Issue a fresh OTP, send it by email and notify the back-office to relay it."""
     normalized = _normalize_email(payload.email)
     user = crud.users.get_by_email(db, email=normalized)
     if not user:
@@ -100,5 +107,6 @@ def resend_otp(
         where=[{"key": "users_id", "operator": "==", "value": user.id}],
     )
     code = issue_otp(db, normalized)
+    send_otp_email(to=normalized, code=code)
     notify_account_created(db, customer, email=normalized, otp=code)
     return schemas.OtpVerifyResponse(success=True, email=normalized)

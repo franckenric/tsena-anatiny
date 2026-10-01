@@ -126,6 +126,44 @@
     }
   }
 
+  @keyframes modal-pop {
+    from {
+      opacity: 0;
+      transform: translateY(28px) scale(0.965);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes blob {
+    0%,
+    100% {
+      transform: translate(0, 0) scale(1);
+    }
+    50% {
+      transform: translate(10px, -12px) scale(1.12);
+    }
+  }
+
+  .animate-modal-pop {
+    animation: modal-pop 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .animate-blob {
+    animation: blob 9s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-modal-pop,
+    .animate-blob,
+    .animate-fade-up,
+    .animate-fade-in {
+      animation: none;
+    }
+  }
+
   @keyframes spin {
     to {
       transform: rotate(360deg);

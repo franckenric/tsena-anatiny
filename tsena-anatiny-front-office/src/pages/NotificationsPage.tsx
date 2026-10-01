@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Link, useHistory } from "react-router-dom";
+import { useHistory } from "react-router-dom";
 import {
   ArrowRight,
   Bell,
@@ -9,6 +9,7 @@ import {
   Trash2
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
+import { useAuthModal } from "../contexts/AuthModalContext";
 import { useNotifications } from "../contexts/NotificationsContext";
 import { useI18n } from "../contexts/I18nContext";
 import { PageLoader } from "../components/Spinner";
@@ -36,6 +37,7 @@ export function NotificationsPage() {
   const history = useHistory();
   const { t } = useI18n();
   const { customer, isBooting } = useAuth();
+  const { showLogin, showRegister } = useAuthModal();
   const { notifications, unreadCount, isLoading, refresh, markAllRead, clear } =
     useNotifications();
 
@@ -73,19 +75,21 @@ export function NotificationsPage() {
             </p>
           </div>
           <div className="flex w-full flex-col gap-3">
-            <Link
-              to="/connexion"
+            <button
+              type="button"
+              onClick={() => showLogin()}
               className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-ink px-6 py-3.5 text-sm font-bold text-white transition hover:bg-ink/90 active:scale-[0.98]"
             >
               {t("nav.login")}
               <ArrowRight className="h-4 w-4" />
-            </Link>
-            <Link
-              to="/inscription"
+            </button>
+            <button
+              type="button"
+              onClick={() => showRegister()}
               className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-brand px-6 py-3.5 text-sm font-bold text-white shadow-glow transition hover:bg-brand/90 active:scale-[0.98]"
             >
               {t("nav.createAccount")}
-            </Link>
+            </button>
           </div>
         </div>
       </Page>

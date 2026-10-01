@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useHistory } from "react-router-dom";
 import { ArrowLeft, Lock } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
+import { useAuthModal } from "../contexts/AuthModalContext";
 import { useCart } from "../contexts/CartContext";
 import { useI18n } from "../contexts/I18nContext";
 import {
@@ -22,6 +23,7 @@ import { computeDiscountAmount, getAppliedPromo, setAppliedPromo, type AppliedPr
 
 export function CheckoutPage() {
   const { customer, isBooting, apiUser } = useAuth();
+  const { showLogin } = useAuthModal();
   const { clear } = useCart();
   const { t } = useI18n();
   const history = useHistory();
@@ -40,7 +42,7 @@ export function CheckoutPage() {
   useEffect(() => {
     if (isBooting) return;
     if (!customer) {
-      history.push("/connexion", { from: "/commande" });
+      showLogin();
       return;
     }
     setAddress(customer.delivery_address ?? "");

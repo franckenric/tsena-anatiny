@@ -6,6 +6,11 @@ export interface NavItem {
   labelKey: string;
   icon: LucideIcon;
   exact?: boolean;
+  /**
+   * Renseigne quand l'entree ouvre la modale d'authentification au lieu de
+   * naviguer. Le champ `to` reste renseigne pour l'etat actif et l'accessibilite.
+   */
+  authModalMode?: "login" | "register";
 }
 
 export interface NavSection {
@@ -41,8 +46,18 @@ export function accountSectionItems(isLoggedIn: boolean): NavItem[] {
     ];
   }
   return [
-    { to: "/connexion", labelKey: "nav.login", icon: UserRound },
-    { to: "/inscription", labelKey: "nav.createAccount", icon: UserRound }
+    {
+      to: "/connexion",
+      labelKey: "nav.login",
+      icon: UserRound,
+      authModalMode: "login"
+    },
+    {
+      to: "/inscription",
+      labelKey: "nav.createAccount",
+      icon: UserRound,
+      authModalMode: "register"
+    }
   ];
 }
 

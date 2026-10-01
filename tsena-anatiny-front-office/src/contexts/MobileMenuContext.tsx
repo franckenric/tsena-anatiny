@@ -10,6 +10,7 @@ import {
 import { Link, useHistory, useLocation } from "react-router-dom";
 import { LogOut, ShoppingBag, X } from "lucide-react";
 import { useAuth } from "./AuthContext";
+import { useAuthModal } from "./AuthModalContext";
 import { useI18n } from "./I18nContext";
 import { SHOP_ITEMS, accountSectionItems, isNavActive } from "../lib/nav";
 import { cn } from "../lib/utils";
@@ -24,6 +25,7 @@ const MobileMenuContext = createContext<MobileMenuContextValue | null>(null);
 
 export function MobileMenuProvider({ children }: { children: ReactNode }) {
   const { customer, logout } = useAuth();
+  const { openAuthModal } = useAuthModal();
   const { t } = useI18n();
   const history = useHistory();
   const { pathname } = useLocation();
@@ -31,6 +33,14 @@ export function MobileMenuProvider({ children }: { children: ReactNode }) {
 
   const openMenu = useCallback(() => setIsOpen(true), []);
   const closeMenu = useCallback(() => setIsOpen(false), []);
+
+  const openAuth = useCallback(
+    (mode: "login" | "register") => {
+      closeMenu();
+      openAuthModal(mode);
+    },
+    [closeMenu, openAuthModal]
+  );
 
   useEffect(() => {
     if (!isOpen) return;
@@ -159,6 +169,20 @@ export function MobileMenuProvider({ children }: { children: ReactNode }) {
               {sectionLabel(t("nav.account"))}
               {accountItems.map((item) => {
                 const Icon = item.icon;
+                const { authModalMode } = item;
+                if (authModalMode) {
+                  return (
+                    <button
+                      key={item.to}
+                      type="button"
+                      onClick={() => openAuth(authModalMode)}
+                      className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold text-muted transition hover:bg-brand/10 hover:text-ink active:scale-[0.98]"
+                    >
+                      <Icon className="h-4 w-4 shrink-0" />
+                      {t(item.labelKey)}
+                    </button>
+                  );
+                }
                 return navLink(
                   item.to,
                   t(item.labelKey),
@@ -184,20 +208,20 @@ export function MobileMenuProvider({ children }: { children: ReactNode }) {
                 </button>
               ) : (
                 <>
-                  <Link
-                    to="/connexion"
-                    onClick={closeMenu}
+                  <button
+                    type="button"
+                    onClick={() => openAuth("login")}
                     className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-brand px-3 text-sm font-semibold text-white shadow-lg shadow-brand/35 transition duration-200 hover:-translate-y-0.5 hover:bg-brand/90"
                   >
                     {t("nav.login")}
-                  </Link>
-                  <Link
-                    to="/inscription"
-                    onClick={closeMenu}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openAuth("register")}
                     className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-border bg-panel/80 px-3 text-sm font-semibold text-ink transition duration-200 hover:-translate-y-0.5 hover:border-brand/35 hover:bg-panel"
                   >
                     {t("nav.createAccount")}
-                  </Link>
+                  </button>
                 </>
               )}
             </div>

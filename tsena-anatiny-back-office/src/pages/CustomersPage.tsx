@@ -10,10 +10,9 @@ import {
 } from "lucide-react";
 import {
   Button,
-  Card,
-  DataTable,
+  DataList,
   Layout,
-  Pagination,
+  StatusBadge,
   FloatingActionButton
 } from "../components/index";
 import { Modal } from "../components/Modal";
@@ -362,13 +361,16 @@ export function CustomersPage() {
           </div>
         )}
 
-        <Card
+        <DataList
           title="Liste des clients"
-          description={`Total: ${total} clients`}
-          hideHeaderOnMobile
-          plainOnMobile
-          className="flex min-h-0 flex-1 flex-col"
-          bodyClassName="flex min-h-0 flex-1 flex-col"
+          description="Répertoire et coordonnées"
+          itemLabel="clients"
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          onPageChange={setPage}
+          pageSize={pageSize}
+          onPageSizeChange={setPageSize}
           headerAction={
             <Button
               variant="primary"
@@ -378,25 +380,13 @@ export function CustomersPage() {
               Ajouter un client
             </Button>
           }
-        >
-          <Pagination
-            page={page}
-            totalPages={totalPages}
-            total={total}
-            onPageChange={setPage}
-            pageSize={pageSize}
-            onPageSizeChange={setPageSize}
-            showCount={false}
-            itemLabel="clients"
-            isLoading={isLoading}
-            className="mb-3"
-          />
-          <DataTable
-            columns={columns}
-            data={customers}
-            isLoading={isLoading}
-            emptyMessage="Aucun client trouvé"
-            gridCardRender={(customer) => (
+          columns={columns}
+          data={customers}
+          isLoading={isLoading}
+          emptyMessage="Aucun client trouvé"
+          emptyTitle="Aucun client"
+          emptyIcon={<UserRound className="h-6 w-6" />}
+          gridCardRender={(customer) => (
               <div className="flex flex-col">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -407,13 +397,13 @@ export function CustomersPage() {
                       {customer.phone}
                     </p>
                   </div>
-                  <span className="inline-flex shrink-0 rounded-full bg-brand/15 px-2 py-0.5 text-[11px] font-semibold text-brand">
+                  <StatusBadge tone="brand">
                     {customer.created_at
                       ? new Date(customer.created_at).toLocaleDateString(
                           "fr-FR"
                         )
                       : "—"}
-                  </span>
+                  </StatusBadge>
                 </div>
                 <div className="mt-3 border-t border-border/50 pt-3">
                   <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
@@ -463,7 +453,6 @@ export function CustomersPage() {
               </>
             )}
           />
-        </Card>
 
         <Modal
           isOpen={!!selectedForCart}

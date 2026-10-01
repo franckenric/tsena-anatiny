@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useHistory } from "react-router-dom";
 import { ArrowRight, ShoppingCart, Trash2 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
+import { useAuthModal } from "../contexts/AuthModalContext";
 import { useCart } from "../contexts/CartContext";
 import { useI18n } from "../contexts/I18nContext";
 import {
@@ -12,6 +13,7 @@ import type { CartItem } from "../types/operations";
 import { PageLoader } from "../components/Spinner";
 import { Page } from "../components/Page";
 import { QuantityInput } from "../components/QuantityInput";
+import { ProductImage } from "../components/ProductImage";
 import { formatAr, resolveImageUrl } from "../lib/utils";
 import {
   computeDiscountAmount,
@@ -22,6 +24,7 @@ import {
 
 export function CartPage() {
   const { customer, isBooting } = useAuth();
+  const { showLogin, showRegister } = useAuthModal();
   const { refresh } = useCart();
   const { t } = useI18n();
   const history = useHistory();
@@ -138,18 +141,20 @@ export function CartPage() {
           <h1 className="text-2xl font-bold text-ink">{t("cart.empty")}</h1>
           <p className="max-w-md text-muted">{t("cart.loginHint")}</p>
           <div className="flex gap-3">
-            <Link
-              to="/connexion"
+            <button
+              type="button"
+              onClick={() => showLogin()}
               className="rounded-2xl bg-ink px-6 py-3 text-sm font-bold text-white transition hover:bg-ink/90"
             >
               {t("nav.login")}
-            </Link>
-            <Link
-              to="/inscription"
+            </button>
+            <button
+              type="button"
+              onClick={() => showRegister()}
               className="rounded-2xl bg-brand px-6 py-3 text-sm font-bold text-white transition hover:bg-brand/90"
             >
               {t("nav.createAccount")}
-            </Link>
+            </button>
           </div>
         </div>
       </Page>
@@ -211,17 +216,12 @@ export function CartPage() {
                 key={item.id}
                 className="flex flex-wrap items-center gap-4 rounded-3xl border border-border bg-panel p-4 shadow-card"
               >
-                {imageUrl ? (
-                  <img
-                    src={imageUrl}
-                    alt={name}
-                    className="h-20 w-20 shrink-0 rounded-2xl border border-border object-cover"
-                  />
-                ) : (
-                  <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-bg text-muted/40">
-                    <ShoppingCart className="h-7 w-7" />
-                  </div>
-                )}
+                <ProductImage
+                  src={imageUrl}
+                  alt={name}
+                  size="xs"
+                  className="border border-border"
+                />
 
                 <div className="min-w-0 flex-1">
                   <Link

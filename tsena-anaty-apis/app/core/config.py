@@ -63,5 +63,21 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_ID: str = os.getenv("GOOGLE_CLIENT_ID", "")
     GOOGLE_CLIENT_SECRET: str = os.getenv("GOOGLE_CLIENT_SECRET", "")
 
+    # Gmail SMTP: envoi du code de verification par email.
+    # SMTP_USER = adresse Gmail, SMTP_PASSWORD = mot de passe d'application
+    # Google (16 caracteres), PAS le mot de passe du compte.
+    SMTP_HOST: str = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
+    SMTP_USER: str = os.getenv("SMTP_USER", "")
+    SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
+    # Adresse d'expedition affichee; retombe sur SMTP_USER si vide.
+    SMTP_FROM: str = os.getenv("SMTP_FROM", "")
+    SMTP_STARTTLS: bool = os.getenv("SMTP_STARTTLS", "1").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+
 
 settings = Settings()

@@ -9,10 +9,9 @@ import { stockMovementsService } from "../services/operations.service";
 import { productsService } from "../services/products.service";
 import {
   Layout,
-  Card,
   Button,
-  DataTable,
-  Pagination,
+  DataList,
+  StatusBadge,
   FloatingActionButton
 } from "../components/index";
 import {
@@ -276,13 +275,16 @@ export function StockMovementsPage() {
             {error}
           </div>
         )}
-        <Card
+        <DataList
           title="Mouvements"
-          description={`Total: ${total} mouvements`}
-          hideHeaderOnMobile
-          plainOnMobile
-          className="flex min-h-0 flex-1 flex-col"
-          bodyClassName="flex min-h-0 flex-1 flex-col"
+          description="Entrées et sorties de stock"
+          itemLabel="mouvements"
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          onPageChange={setPage}
+          pageSize={pageSize}
+          onPageSizeChange={setPageSize}
           headerAction={
             <Button
               variant="primary"
@@ -292,25 +294,13 @@ export function StockMovementsPage() {
               Nouveau mouvement
             </Button>
           }
-        >
-          <Pagination
-            page={page}
-            totalPages={totalPages}
-            total={total}
-            onPageChange={setPage}
-            pageSize={pageSize}
-            onPageSizeChange={setPageSize}
-            showCount={false}
-            itemLabel="mouvements"
-            isLoading={isLoading}
-            className="mb-3"
-          />
-          <DataTable
-            columns={columns}
-            data={displayMovements}
-            isLoading={isLoading}
-            emptyMessage="Aucun mouvement"
-            gridCardRender={(m) => {
+          columns={columns}
+          data={displayMovements}
+          isLoading={isLoading}
+          emptyMessage="Aucun mouvement"
+          emptyTitle="Aucun mouvement"
+          emptyIcon={<ArrowLeftRight className="h-6 w-6" />}
+          gridCardRender={(m) => {
               const productName =
                 m.product?.name ??
                 products.find((p) => p.id === m.product_id)?.name ??
@@ -337,11 +327,12 @@ export function StockMovementsPage() {
                         {m.user?.email ?? `#${m.user_id}`}
                       </p>
                     </div>
-                    <span
-                      className={`inline-flex shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${m.type === "in_stock" ? "bg-success/20 text-success" : "bg-warning/20 text-warning"}`}
+                    <StatusBadge
+                      tone={m.type === "in_stock" ? "success" : "warning"}
+                      dot
                     >
                       {m.type === "in_stock" ? "Entrée" : "Sortie"}
-                    </span>
+                    </StatusBadge>
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2.5 border-t border-border/50 pt-3">
                     <div>
@@ -415,7 +406,6 @@ export function StockMovementsPage() {
               </>
             )}
           />
-        </Card>
       </div>
     </Layout>
   );

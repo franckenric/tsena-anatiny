@@ -4,11 +4,10 @@ import type { Category } from "../types/product";
 import type { Column } from "../components/index";
 import { categoriesService } from "../services/categories.service";
 import {
-  Card,
   Button,
-  DataTable,
-  Pagination,
-  FloatingActionButton
+  DataList,
+  FloatingActionButton,
+  StatusBadge
 } from "../components/index";
 import { Pencil, Plus, Tags, Trash2 } from "lucide-react";
 import { Layout } from "../components/Layout";
@@ -70,15 +69,9 @@ export function CategoriesPage() {
       header: "Statut",
       accessor: "status",
       render: (v) => (
-        <span
-          className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
-            v === "active"
-              ? "bg-success/20 text-success"
-              : "bg-warning/20 text-warning"
-          }`}
-        >
+        <StatusBadge tone={v === "active" ? "success" : "warning"} dot>
           {v === "active" ? "Active" : "Inactive"}
-        </span>
+        </StatusBadge>
       ),
       width: "15%"
     }
@@ -104,13 +97,16 @@ export function CategoriesPage() {
             {error}
           </div>
         )}
-        <Card
+        <DataList
           title="Liste des catégories"
-          description={`Total: ${total} catégories`}
-          hideHeaderOnMobile
-          plainOnMobile
-          className="flex min-h-0 flex-1 flex-col"
-          bodyClassName="flex min-h-0 flex-1 flex-col"
+          description="Gérez le catalogue et son organisation"
+          itemLabel="catégories"
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          onPageChange={setPage}
+          pageSize={pageSize}
+          onPageSizeChange={setPageSize}
           headerAction={
             <Button
               variant="primary"
@@ -120,71 +116,59 @@ export function CategoriesPage() {
               Ajouter une catégorie
             </Button>
           }
-        >
-          <Pagination
-            page={page}
-            totalPages={totalPages}
-            total={total}
-            onPageChange={setPage}
-            pageSize={pageSize}
-            onPageSizeChange={setPageSize}
-            showCount={false}
-            itemLabel="catégories"
-            isLoading={isLoading}
-            className="mb-3"
-          />
-          <DataTable
-            columns={columns}
-            data={categories}
-            isLoading={isLoading}
-            emptyMessage="Aucune catégorie trouvée"
-            gridCardRender={(cat) => (
-              <div className="flex flex-col">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-ink">
-                      {cat.name}
-                    </p>
-                    <p className="mt-0.5 line-clamp-2 text-xs text-muted">
-                      {cat.description || "Aucune description"}
-                    </p>
-                  </div>
-                  <span
-                    className={`inline-flex shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${cat.status === "active" ? "bg-success/20 text-success" : "bg-warning/20 text-warning"}`}
-                  >
-                    {cat.status === "active" ? "Active" : "Inactive"}
-                  </span>
+          columns={columns}
+          data={categories}
+          isLoading={isLoading}
+          emptyMessage="Aucune catégorie trouvée"
+          emptyTitle="Aucune catégorie"
+          emptyIcon={<Tags className="h-6 w-6" />}
+          gridCardRender={(cat) => (
+            <div className="flex flex-col">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-ink">
+                    {cat.name}
+                  </p>
+                  <p className="mt-0.5 line-clamp-2 text-xs text-muted">
+                    {cat.description || "Aucune description"}
+                  </p>
                 </div>
+                <StatusBadge
+                  tone={cat.status === "active" ? "success" : "warning"}
+                  dot
+                >
+                  {cat.status === "active" ? "Active" : "Inactive"}
+                </StatusBadge>
               </div>
-            )}
-            actions={(cat) => (
-              <>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  disabled={isFormLoading}
-                  onClick={() => history.push(`/categories/${cat.id}/edit`)}
-                  title="Modifier"
-                  aria-label="Modifier"
-                  className="h-8 w-8 p-0"
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="danger"
-                  disabled={isFormLoading}
-                  onClick={() => handleDelete(cat)}
-                  title="Supprimer"
-                  aria-label="Supprimer"
-                  className="h-8 w-8 p-0"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </>
-            )}
-          />
-        </Card>
+            </div>
+          )}
+          actions={(cat) => (
+            <>
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={isFormLoading}
+                onClick={() => history.push(`/categories/${cat.id}/edit`)}
+                title="Modifier"
+                aria-label="Modifier"
+                className="h-8 w-8 p-0"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                size="sm"
+                variant="danger"
+                disabled={isFormLoading}
+                onClick={() => handleDelete(cat)}
+                title="Supprimer"
+                aria-label="Supprimer"
+                className="h-8 w-8 p-0"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </>
+          )}
+        />
       </div>
     </Layout>
   );

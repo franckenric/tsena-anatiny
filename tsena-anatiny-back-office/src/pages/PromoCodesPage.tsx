@@ -7,11 +7,10 @@ import type { Column } from "../components/index";
 import { promoCodesService } from "../services/promo-codes.service";
 import { formatAr } from "../components/OrderFormComponent";
 import {
-  Card,
   Button,
-  DataTable,
-  Pagination,
-  FloatingActionButton
+  DataList,
+  FloatingActionButton,
+  StatusBadge
 } from "../components/index";
 import { Pencil, Plus, TicketPercent, Trash2 } from "lucide-react";
 import { Layout } from "../components/Layout";
@@ -116,15 +115,9 @@ export function PromoCodesPage() {
       header: "Statut",
       accessor: "status",
       render: (v) => (
-        <span
-          className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
-            v === "active"
-              ? "bg-success/20 text-success"
-              : "bg-warning/20 text-warning"
-          }`}
-        >
+        <StatusBadge tone={v === "active" ? "success" : "warning"} dot>
           {v === "active" ? "Actif" : "Inactif"}
-        </span>
+        </StatusBadge>
       ),
       width: "10%"
     }
@@ -150,13 +143,16 @@ export function PromoCodesPage() {
             {error}
           </div>
         )}
-        <Card
+        <DataList
           title="Liste des codes promo"
-          description={`Total: ${total} codes`}
-          hideHeaderOnMobile
-          plainOnMobile
-          className="flex min-h-0 flex-1 flex-col"
-          bodyClassName="flex min-h-0 flex-1 flex-col"
+          description="Réductions et campagnes marketing"
+          itemLabel="codes promo"
+          page={page}
+          totalPages={totalPages}
+          total={total}
+          onPageChange={setPage}
+          pageSize={pageSize}
+          onPageSizeChange={setPageSize}
           headerAction={
             <Button
               variant="primary"
@@ -166,25 +162,13 @@ export function PromoCodesPage() {
               Ajouter un code
             </Button>
           }
-        >
-          <Pagination
-            page={page}
-            totalPages={totalPages}
-            total={total}
-            onPageChange={setPage}
-            pageSize={pageSize}
-            onPageSizeChange={setPageSize}
-            showCount={false}
-            itemLabel="codes promo"
-            isLoading={isLoading}
-            className="mb-3"
-          />
-          <DataTable
-            columns={columns}
-            data={promoCodes}
-            isLoading={isLoading}
-            emptyMessage="Aucun code promo trouvé"
-            gridCardRender={(promo) => (
+          columns={columns}
+          data={promoCodes}
+          isLoading={isLoading}
+          emptyMessage="Aucun code promo trouvé"
+          emptyTitle="Aucun code promo"
+          emptyIcon={<TicketPercent className="h-6 w-6" />}
+          gridCardRender={(promo) => (
               <div className="flex flex-col gap-2">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -204,11 +188,12 @@ export function PromoCodesPage() {
                       {promo.max_uses ? ` / ${promo.max_uses}` : ""} fois
                     </p>
                   </div>
-                  <span
-                    className={`inline-flex shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${promo.status === "active" ? "bg-success/20 text-success" : "bg-warning/20 text-warning"}`}
+                  <StatusBadge
+                    tone={promo.status === "active" ? "success" : "warning"}
+                    dot
                   >
                     {promo.status === "active" ? "Actif" : "Inactif"}
-                  </span>
+                  </StatusBadge>
                 </div>
               </div>
             )}
@@ -239,7 +224,6 @@ export function PromoCodesPage() {
               </>
             )}
           />
-        </Card>
       </div>
     </Layout>
   );

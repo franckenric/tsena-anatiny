@@ -163,9 +163,10 @@ export function UsersPage() {
     >
       <FloatingActionButton
         label="Nouvel utilisateur"
+        hideOnMobile
         onClick={handleCreate}
       />
-      <div className="animate-fade-up flex flex-col gap-6">
+      <div className="animate-fade-up page-fill">
         <div className="hidden items-center justify-between rounded-2xl border border-border/60 bg-panel/65 px-4 py-3 sm:flex">
           <div className="inline-flex items-center gap-2 text-sm font-semibold text-ink">
             <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-brand/15 text-brand ring-1 ring-brand/20">
@@ -182,8 +183,6 @@ export function UsersPage() {
         )}
 
         <DataList
-          title="Liste des utilisateurs"
-          description="Comptes et droits d'accès au back office"
           itemLabel="utilisateurs"
           page={page}
           totalPages={totalPages}
@@ -192,9 +191,15 @@ export function UsersPage() {
           pageSize={pageSize}
           onPageSizeChange={setPageSize}
           headerAction={
-            <Button onClick={handleCreate} variant="primary">
-              <Plus className="mr-2 h-4 w-4" />
-              Ajouter un utilisateur
+            <Button
+              onClick={handleCreate}
+              variant="primary"
+              aria-label="Ajouter un utilisateur"
+              title="Ajouter un utilisateur"
+              className="h-9 w-9 shrink-0 p-0 sm:h-12 sm:w-auto sm:px-5"
+            >
+              <Plus className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Ajouter un utilisateur</span>
             </Button>
           }
           columns={columns}

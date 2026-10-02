@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app import crud, models, schemas
 from app.api import deps
+from app.core.ws import connection_manager
 
 router = APIRouter()
 
@@ -59,6 +60,18 @@ def read_notifications(
         unread_count=unread_count,
         data=[schemas.Notifications.model_validate(item) for item in data],
     )
+
+
+@router.get("/presence", response_model=schemas.ResponsePresence)
+def read_presence(
+    current_user: models.Users = Depends(deps.get_current_active_user),
+) -> Any:
+    """Snapshot of who is online right now.
+
+    The back-office reads this once on load, then keeps the counters up to
+    date through the `presence.updated` websocket events.
+    """
+    return schemas.ResponsePresence(**connection_manager.presence_snapshot())
 
 
 @router.post("/read-all")

@@ -156,22 +156,22 @@ export function DataList<T extends { id?: number | string }>({
     onPageChange != null &&
     total != null &&
     totalPages != null;
-  const hasToolbar = searchable || toolbar || (allowViewToggle && !isMobile);
+  const hasToolbar = searchable || toolbar || allowViewToggle;
   const skeletonCount = pageSize ? Math.min(pageSize, 8) : 6;
   const totalCount = total ?? rows.length;
 
   const header = (title || description || headerAction) && (
-    <div className="flex flex-col gap-3 border-b border-border/50 bg-bg/40 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+    <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border/50 bg-bg/40 px-3 py-2 sm:px-6 sm:py-3">
       <div className="min-w-0">
         {title && (
           <h3 className="font-display text-lg font-bold text-ink">{title}</h3>
         )}
         {description && (
-          <p className="mt-0.5 text-sm text-muted">{description}</p>
+          <p className="mt-0.5 hidden text-sm text-muted sm:block">{description}</p>
         )}
       </div>
       {headerAction && (
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
+        <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2">
           {headerAction}
         </div>
       )}
@@ -179,10 +179,10 @@ export function DataList<T extends { id?: number | string }>({
   );
 
   const toolbarRow = hasToolbar && (
-    <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-      <div className="flex w-full flex-col gap-2 sm:max-w-xl sm:flex-row sm:items-center">
+    <div className="flex shrink-0 flex-wrap items-center gap-2 px-4 py-2.5 sm:flex-nowrap sm:justify-between sm:gap-3 sm:px-6 sm:py-3">
+      <div className="flex min-w-0 flex-1 items-center gap-2 sm:max-w-xl">
         {searchable && (
-          <label className="relative block w-full sm:max-w-xs">
+          <label className="relative block min-w-0 flex-1 sm:max-w-xs sm:flex-none">
             <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
             <input
               type="text"
@@ -208,7 +208,12 @@ export function DataList<T extends { id?: number | string }>({
         </span>
       </div>
 
-      <div className="flex items-center justify-between gap-2 sm:justify-end">
+      <div
+        className={cn(
+          "flex items-center gap-2",
+          toolbar ? "w-full sm:w-auto sm:justify-end" : "shrink-0"
+        )}
+      >
         {toolbar}
         {allowViewToggle && !isMobile && (
           <div className="flex items-center gap-0.5 rounded-xl border border-border/70 bg-panel/60 p-1">
@@ -223,25 +228,30 @@ export function DataList<T extends { id?: number | string }>({
                 type="button"
                 onClick={() => setView(option.key)}
                 aria-pressed={view === option.key}
+                aria-label={`Vue ${option.key === "table" ? "tableau" : "cartes"}`}
+                title={`Vue ${option.key === "table" ? "tableau" : "cartes"}`}
                 className={cn(
-                  "inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition",
+                  "inline-flex h-8 w-8 items-center justify-center gap-1.5 rounded-lg p-0 text-xs font-semibold transition sm:w-auto sm:px-3",
                   view === option.key
                     ? "bg-brand text-white shadow-sm shadow-brand/25"
                     : "text-muted hover:bg-bg/70 hover:text-ink"
                 )}
               >
                 <option.icon className="h-3.5 w-3.5" />
-                {option.label}
+                <span className="hidden sm:inline">{option.label}</span>
               </button>
             ))}
           </div>
         )}
+        <span className="whitespace-nowrap text-xs font-semibold text-muted sm:hidden">
+          {totalCount} {itemLabel}
+        </span>
       </div>
     </div>
   );
 
   const footer = hasPagination && (
-    <div className="border-t border-border/50 px-4 py-3 sm:px-6">
+    <div className="shrink-0 border-t border-border/50 px-3 py-2 sm:px-6 sm:py-2.5">
       <Pagination
         page={page ?? 1}
         totalPages={totalPages ?? 1}
@@ -250,6 +260,7 @@ export function DataList<T extends { id?: number | string }>({
         pageSize={pageSize}
         onPageSizeChange={onPageSizeChange}
         itemLabel={itemLabel}
+        showCount={false}
         isLoading={isLoading}
       />
     </div>
@@ -258,11 +269,11 @@ export function DataList<T extends { id?: number | string }>({
   const renderSkeleton = () => {
     if (effectiveView === "grid") {
       return (
-        <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 sm:px-6 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 p-3 sm:grid-cols-2 sm:p-4 sm:px-6 xl:grid-cols-3">
           {Array.from({ length: skeletonCount }).map((_, index) => (
             <div
               key={index}
-              className="animate-pulse space-y-3 rounded-2xl border border-border/50 bg-panel/50 p-4"
+              className="animate-pulse space-y-3 rounded-2xl border border-border/50 bg-panel/50 p-3 sm:p-4"
             >
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-xl bg-border/60" />
@@ -317,7 +328,7 @@ export function DataList<T extends { id?: number | string }>({
 
     if (effectiveView === "grid") {
       return (
-        <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 sm:px-6 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 p-3 sm:grid-cols-2 sm:p-4 sm:px-6 xl:grid-cols-3">
           {filteredRows.map((row, index) => {
             const active = isRowActive?.(row);
             return (
@@ -325,7 +336,7 @@ export function DataList<T extends { id?: number | string }>({
                 key={rowKey(row, index)}
                 onClick={onRowClick ? () => onRowClick(row) : undefined}
                 className={cn(
-                  "group flex flex-col rounded-2xl border border-border/60 bg-panel/70 p-4 shadow-card transition-all",
+                  "group flex flex-col rounded-2xl border border-border/60 bg-panel/70 p-3 shadow-card transition-all sm:p-4",
                   onRowClick &&
                     "cursor-pointer hover:-translate-y-0.5 hover:border-brand/40 hover:shadow-lift",
                   active && "border-brand/60 ring-2 ring-brand/25"
@@ -361,7 +372,7 @@ export function DataList<T extends { id?: number | string }>({
                   )}
                 </div>
                 {actions && (
-                  <div className="mt-4 flex justify-end gap-1.5 border-t border-border/50 pt-3">
+                  <div className="data-list-actions mt-3 flex flex-wrap items-center justify-end gap-1.5 border-t border-border/50 pt-3">
                     {actions(row)}
                   </div>
                 )}
@@ -373,7 +384,7 @@ export function DataList<T extends { id?: number | string }>({
     }
 
     return (
-      <div className="overflow-x-auto px-4 pb-2 sm:px-6">
+      <div className="px-4 pb-2 sm:px-6">
         <table className="w-full border-separate border-spacing-0">
           <thead>
             <tr>
@@ -382,7 +393,7 @@ export function DataList<T extends { id?: number | string }>({
                   key={idx}
                   style={{ width: col.width }}
                   className={cn(
-                    "border-b border-border/60 pb-3 pt-2 text-[11px] font-bold uppercase tracking-[0.14em] text-muted",
+                    "sticky top-0 z-10 border-b border-border/60 bg-panel pb-3 pt-2 text-[11px] font-bold uppercase tracking-[0.14em] text-muted",
                     col.align === "right"
                       ? "text-right"
                       : col.align === "center"
@@ -394,7 +405,7 @@ export function DataList<T extends { id?: number | string }>({
                 </th>
               ))}
               {actions && (
-                <th className="border-b border-border/60 pb-3 pt-2 text-right text-[11px] font-bold uppercase tracking-[0.14em] text-muted">
+                <th className="sticky top-0 z-10 border-b border-border/60 bg-panel pb-3 pt-2 text-right text-[11px] font-bold uppercase tracking-[0.14em] text-muted">
                   Actions
                 </th>
               )}
@@ -431,7 +442,7 @@ export function DataList<T extends { id?: number | string }>({
                   ))}
                   {actions && (
                     <td className="border-b border-border/40 py-3 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
+                      <div className="data-list-actions flex items-center justify-end gap-1.5">
                         {actions(row)}
                       </div>
                     </td>
@@ -448,14 +459,16 @@ export function DataList<T extends { id?: number | string }>({
   return (
     <section
       className={cn(
-        "flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-border/70 bg-panel/75 shadow-card backdrop-blur",
+        "flex min-h-0 shrink flex-col overflow-hidden rounded-2xl border border-border/70 bg-panel/75 shadow-card backdrop-blur",
         className
       )}
     >
       {header}
       <div className={cn("flex min-h-0 flex-1 flex-col", bodyClassName)}>
         {toolbarRow}
-        {body()}
+        <div className="min-h-0 flex-1 overflow-auto overscroll-contain">
+          {body()}
+        </div>
         {footer}
       </div>
     </section>

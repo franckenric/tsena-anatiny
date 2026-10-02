@@ -81,9 +81,10 @@ export function CategoriesPage() {
     <Layout title="Catégories">
       <FloatingActionButton
         label="Nouvelle catégorie"
+        hideOnMobile
         onClick={() => history.push("/categories/new")}
       />
-      <div className="animate-fade-up flex flex-col gap-6">
+      <div className="animate-fade-up page-fill">
         <div className="hidden items-center justify-between rounded-2xl border border-border/60 bg-panel/65 px-4 py-3 sm:flex">
           <div className="inline-flex items-center gap-2 text-sm font-semibold text-ink">
             <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-brand/15 text-brand ring-1 ring-brand/20">
@@ -98,8 +99,6 @@ export function CategoriesPage() {
           </div>
         )}
         <DataList
-          title="Liste des catégories"
-          description="Gérez le catalogue et son organisation"
           itemLabel="catégories"
           page={page}
           totalPages={totalPages}
@@ -111,9 +110,12 @@ export function CategoriesPage() {
             <Button
               variant="primary"
               onClick={() => history.push("/categories/new")}
+              aria-label="Ajouter une catégorie"
+              title="Ajouter une catégorie"
+              className="h-9 w-9 shrink-0 p-0 sm:h-12 sm:w-auto sm:px-5"
             >
-              <Plus className="mr-2 h-4 w-4" />
-              Ajouter une catégorie
+              <Plus className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Ajouter une catégorie</span>
             </Button>
           }
           columns={columns}

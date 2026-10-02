@@ -214,9 +214,9 @@ export function Layout({ children, title }: LayoutProps) {
   );
 
   return (
-    <div className="flex min-h-dvh flex-col bg-bg">
+    <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-bg">
       <header
-        className="sticky top-0 z-50 w-full border-b border-border/60 bg-panel/85 backdrop-blur-xl"
+        className="z-50 w-full shrink-0 border-b border-border/60 bg-panel/85 backdrop-blur-xl"
         style={{ paddingTop: "env(safe-area-inset-top)" }}
       >
         <div className="page-shell flex h-14 items-center gap-2 sm:h-16">
@@ -367,11 +367,11 @@ export function Layout({ children, title }: LayoutProps) {
         </div>
       </header>
 
-      <main className="page-shell animate-fade-up flex flex-1 flex-col gap-6 pb-24 pt-4 lg:pb-10 lg:pt-6">
+      <main className="page-shell animate-fade-up flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto overscroll-contain pb-[4.5rem] pt-3 lg:pb-4 lg:pt-4">
         {children}
       </main>
 
-      <footer className="border-t border-border/50 bg-panel/60 backdrop-blur">
+      <footer className="hidden shrink-0 border-t border-border/50 bg-panel/60 backdrop-blur lg:block">
         <div className="page-shell flex flex-col gap-1 py-6 pb-24 text-xs text-muted sm:flex-row sm:items-center sm:justify-between lg:pb-6">
           <p>© {new Date().getFullYear()} Tsena Anatiny — Back Office</p>
           <p>Réservé au personnel autorisé</p>

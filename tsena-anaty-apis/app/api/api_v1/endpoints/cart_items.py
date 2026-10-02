@@ -113,6 +113,9 @@ def _resolve_customer(
     return customer
 
 
+# Alias sans slash final : sans lui, Starlette repond 307 vers une URL
+# absolue et le navigateur retire l'en-tete Authorization sur la redirection.
+@router.get('', include_in_schema=False)
 @router.get('/', response_model=schemas.ResponseCartItems)
 def read_cart_items(
     *,

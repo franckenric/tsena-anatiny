@@ -9,6 +9,7 @@ interface FloatingActionButtonProps {
   label: string;
   formId?: string;
   disabled?: boolean;
+  hideOnMobile?: boolean;
   className?: string;
 }
 
@@ -17,6 +18,7 @@ export function FloatingActionButton({
   label,
   formId,
   disabled = false,
+  hideOnMobile = false,
   className = ""
 }: FloatingActionButtonProps) {
   const location = useLocation();
@@ -56,8 +58,9 @@ export function FloatingActionButton({
             aria-label={label}
             title={label}
             className={cn(
-              "absolute bottom-[calc(4.5rem+env(safe-area-inset-bottom))] right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-brand to-[hsl(30,90%,55%)] text-white shadow-lift ring-1 ring-white/20 transition-all hover:brightness-110 active:scale-90 sm:right-6",
+              "fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-brand to-[hsl(30,90%,55%)] text-white shadow-lift ring-1 ring-white/20 transition-all hover:brightness-110 active:scale-90 sm:right-6 lg:bottom-6",
               disabled && "pointer-events-none opacity-50",
+              hideOnMobile && "hidden sm:flex",
               className
             )}
           >

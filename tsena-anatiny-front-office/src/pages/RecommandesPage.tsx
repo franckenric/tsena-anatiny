@@ -1,55 +1,50 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  productsService,
-  getProductTotalStock
-} from "../services/products.service";
+import { useCallback, useMemo } from "react";
+import { getProductTotalStock } from "../services/products.service";
 import type { Product } from "../types/product";
 import { ProductListing } from "../components/ProductListing";
 import { useI18n } from "../contexts/I18nContext";
 import { useRecommendations } from "../hooks/useRecommendations";
+import { useInfiniteProducts } from "../hooks/useInfiniteProducts";
 
 export function RecommandesPage() {
   const { t } = useI18n();
-  const [products, setProducts] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  const available = useMemo(
-    () =>
-      products.filter(
+  const transform = useCallback(
+    (items: Product[]) =>
+      items.filter(
         (p) => p.status !== "inactive" && getProductTotalStock(p) > 0
       ),
-    [products]
+    []
   );
+
+  const {
+    products,
+    total,
+    hasMore,
+    isLoading,
+    isLoadingMore,
+    error,
+    loadMore,
+    reload
+  } = useInfiniteProducts({}, { transform });
+
+  const available = useMemo(() => products, [products]);
 
   const { recommendations, isLoading: recLoading } =
     useRecommendations(available, 200);
-
-  const load = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const res = await productsService.getProducts(1, 200);
-      setProducts(res.items ?? []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t("error.generic"));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [t]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
 
   return (
     <ProductListing
       title={t("pages.rec.title")}
       subtitle={t("pages.rec.subtitle")}
       products={recommendations}
+      total={total}
       isLoading={isLoading || recLoading}
+      isLoadingMore={isLoadingMore}
+      hasMore={hasMore}
+      onLoadMore={loadMore}
       error={error}
-      onRetry={load}
+      onRetry={reload}
       emptyMessage={t("pages.rec.empty")}
     />
   );

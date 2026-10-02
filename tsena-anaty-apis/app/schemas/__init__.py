@@ -41,7 +41,8 @@ from .notifications import (
   Notifications,
   NotificationsCreate,
   NotificationsUpdate,
-  ResponseNotifications
+  ResponseNotifications,
+  ResponsePresence
 )
 from .otp import OtpRequest, OtpVerifyRequest, OtpVerifyResponse
 from .register import RegisterRequest, RegisterResponse

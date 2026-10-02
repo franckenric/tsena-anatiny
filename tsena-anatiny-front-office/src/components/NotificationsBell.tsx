@@ -1,18 +1,10 @@
-import { useEffect } from "react";
 import { useHistory } from "react-router-dom";
 import { Bell } from "lucide-react";
 import { useNotifications } from "../contexts/NotificationsContext";
 
 export function NotificationsBell() {
   const history = useHistory();
-  const { unreadCount, refresh } = useNotifications();
-
-  useEffect(() => {
-    const interval = window.setInterval(() => {
-      void refresh();
-    }, 60_000);
-    return () => window.clearInterval(interval);
-  }, [refresh]);
+  const { unreadCount } = useNotifications();
 
   return (
     <button

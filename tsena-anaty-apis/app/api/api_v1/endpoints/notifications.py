@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app import crud, models
 from app.api import deps
 from app.core.ws import connection_manager
+from app.db import session as db_session
 
 router = APIRouter()
 
@@ -22,6 +23,29 @@ STATUS_LABELS: dict[str, str] = {
 }
 
 
+def _resolve_role_id(user_id: Optional[int]) -> Optional[int]:
+    """Read the role of a connecting user from a short-lived session.
+
+    The session module is read at call time on purpose: a `Depends(get_db)`
+    session would keep a pooled connection checked out for the whole lifetime
+    of the socket.
+    """
+    if user_id is None:
+        return None
+    db = db_session.SessionLocal()
+    try:
+        row = (
+            db.query(models.Users.role_id)
+            .filter(models.Users.id == user_id)
+            .first()
+        )
+        return int(row[0]) if row and row[0] is not None else None
+    except Exception:
+        return None
+    finally:
+        db.close()
+
+
 @router.websocket("/notifications")
 async def notifications_endpoint(websocket: WebSocket) -> None:
     token = websocket.query_params.get("token")
@@ -34,14 +58,22 @@ async def notifications_endpoint(websocket: WebSocket) -> None:
             await websocket.close(code=1008)
             return
 
-    await connection_manager.connect(websocket, user_id=user_id)
+    role_id = _resolve_role_id(user_id)
+
+    await connection_manager.connect(websocket, user_id=user_id, role_id=role_id)
+    # The socket that just joined already knows it is online, so it is not
+    # notified of its own presence.
+    connection_manager.broadcast_presence(exclude=websocket)
     try:
         while True:
             await websocket.receive_text()
     except WebSocketDisconnect:
-        connection_manager.disconnect(websocket)
+        pass
     except Exception:
+        pass
+    finally:
         connection_manager.disconnect(websocket)
+        connection_manager.broadcast_presence()
 
 
 # ---------------------------------------------------------------------------

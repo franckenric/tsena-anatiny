@@ -51,3 +51,14 @@ class ResponseNotifications(BaseModel):
     count: int
     unread_count: int = 0
     data: Optional[List[Notifications]] = None
+
+
+class ResponsePresence(BaseModel):
+    """Live counters of the websockets currently held open."""
+
+    connected_customers: int = 0
+    connected_customer_sessions: int = 0
+    connected_staff: int = 0
+    connected_staff_sessions: int = 0
+    connected_users: int = 0
+    total_sessions: int = 0

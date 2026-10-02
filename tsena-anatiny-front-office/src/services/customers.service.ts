@@ -18,6 +18,8 @@ const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "/api/v1").replace(
 
 async function queryCustomers(where: unknown): Promise<Customer | null> {
   const payload = await apiFetch<{ count: number; data?: Customer[] }>(
+    // Slash final obligatoire: sans lui l'API repond 307 vers une URL absolue
+    // et le navigateur supprime l'en-tete Authorization sur la redirection.
     `/customers/?limit=1&where=${encodeURIComponent(JSON.stringify(where))}`
   );
   const items = Array.isArray(payload?.data) ? payload.data : [];

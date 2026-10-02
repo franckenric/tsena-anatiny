@@ -446,9 +446,10 @@ export function OrdersPage() {
     <Layout title="Commandes">
       <FloatingActionButton
         label="Nouvelle commande"
+        hideOnMobile
         onClick={() => history.push("/orders/new")}
       />
-      <div className="animate-fade-up flex flex-col gap-6">
+      <div className="animate-fade-up page-fill">
         <div className="hidden items-center justify-between rounded-2xl border border-border/60 bg-panel/65 px-4 py-3 sm:flex">
           <div className="inline-flex items-center gap-2 text-sm font-semibold text-ink">
             <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-brand/15 text-brand ring-1 ring-brand/20">
@@ -474,8 +475,6 @@ export function OrdersPage() {
           </div>
         )}
         <DataList
-          title="Commandes"
-          description="Suivi et facturation des commandes"
           itemLabel="commandes"
           page={page}
           totalPages={totalPages}
@@ -487,9 +486,12 @@ export function OrdersPage() {
             <Button
               variant="primary"
               onClick={() => history.push("/orders/new")}
+              aria-label="Nouvelle commande"
+              title="Nouvelle commande"
+              className="h-9 w-9 shrink-0 p-0 sm:h-12 sm:w-auto sm:px-5"
             >
-              <Plus className="mr-2 h-4 w-4" />
-              Nouvelle commande
+              <Plus className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Nouvelle commande</span>
             </Button>
           }
           toolbar={

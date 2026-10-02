@@ -24,7 +24,7 @@ interface PaginationProps {
 }
 
 const NAV_BUTTON =
-  "inline-flex h-9 min-w-9 items-center justify-center rounded-lg px-2 text-sm font-semibold transition disabled:pointer-events-none disabled:opacity-35";
+  "inline-flex h-8 min-w-7 items-center justify-center rounded-lg px-1.5 text-sm font-semibold transition disabled:pointer-events-none disabled:opacity-35 sm:h-9 sm:min-w-9 sm:px-2";
 
 export function Pagination({
   page,
@@ -44,31 +44,24 @@ export function Pagination({
   const safeTotalPages = Math.max(1, totalPages);
   const current = Math.min(Math.max(1, page), safeTotalPages);
 
-  const hasRange = pageSize != null && pageSize > 0;
-  const from = !hasRange || total === 0 ? 0 : (current - 1) * pageSize + 1;
-  const to = hasRange ? Math.min(current * pageSize, total) : total;
-
   const items = getPaginationItems(current, safeTotalPages);
+  const compactOnMobile = safeTotalPages > 5;
 
   return (
     <div
       className={cn(
-        "flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between",
+        "flex flex-wrap items-center justify-center gap-x-2 gap-y-2",
         className
       )}
     >
       {showCount && (
-        <p className="text-xs font-medium text-muted sm:text-sm">
-          {total === 0
-            ? `Aucun ${itemLabel}`
-            : hasRange
-              ? `${from}–${to} sur ${total} ${itemLabel}`
-              : `${total} ${itemLabel}`}
+        <p className="whitespace-nowrap text-xs font-medium text-muted">
+          {total === 0 ? `Aucun ${itemLabel}` : `${total} ${itemLabel}`}
         </p>
       )}
 
       <nav
-        className="flex flex-wrap items-center justify-center gap-1"
+        className="flex flex-wrap items-center justify-center gap-0.5 sm:gap-1"
         aria-label="Pagination"
       >
         {showPageSize && pageSize != null && onPageSizeChange != null && (
@@ -87,7 +80,7 @@ export function Pagination({
             disabled={isLoading}
             className={cn(
               NAV_BUTTON,
-              "mr-1 border border-border bg-bg text-muted hover:border-brand/50 hover:text-brand"
+              "mr-1 hidden border border-border bg-bg text-muted hover:border-brand/50 hover:text-brand sm:inline-flex"
             )}
           >
             {pageSize}
@@ -140,6 +133,9 @@ export function Pagination({
               disabled={isLoading || item === current}
               className={cn(
                 NAV_BUTTON,
+                compactOnMobile && Math.abs(item - current) > 1
+                  ? "hidden sm:inline-flex"
+                  : "",
                 item === current
                   ? "bg-brand text-white shadow-md shadow-brand/30"
                   : "text-muted hover:bg-brand/10 hover:text-ink"

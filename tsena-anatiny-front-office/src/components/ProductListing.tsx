@@ -3,6 +3,7 @@ import { ArrowLeft, PackageSearch } from "lucide-react";
 import { Page } from "./Page";
 import { ProductCard } from "./ProductCard";
 import { ProductGridSkeleton } from "./Skeletons";
+import { InfiniteScrollSentinel } from "./InfiniteScrollSentinel";
 import { useI18n } from "../contexts/I18nContext";
 import type { Product } from "../types/product";
 
@@ -14,6 +15,12 @@ interface ProductListingProps {
   emptyMessage: string;
   error?: string | null;
   onRetry?: () => void;
+  /** Total renvoye par l'API, affiche dans la pastille d'en-tete. */
+  total?: number;
+  /** Desactive le rendu du skeleton au chargement des lots suivants. */
+  isLoadingMore?: boolean;
+  hasMore?: boolean;
+  onLoadMore?: () => void;
 }
 
 export function ProductListing({
@@ -23,9 +30,14 @@ export function ProductListing({
   isLoading,
   emptyMessage,
   error,
-  onRetry
+  onRetry,
+  total,
+  isLoadingMore = false,
+  hasMore = false,
+  onLoadMore
 }: ProductListingProps) {
   const { t } = useI18n();
+  const visibleTotal = total ?? products.length;
   return (
     <Page>
       <div className="page-shell py-6 pb-12">
@@ -46,7 +58,7 @@ export function ProductListing({
           </div>
           {!isLoading && !error && products.length > 0 && (
             <span className="rounded-full bg-brand-soft px-3 py-1 text-xs font-bold text-brand">
-              {products.length}
+              {visibleTotal}
             </span>
           )}
         </header>
@@ -81,11 +93,21 @@ export function ProductListing({
             </Link>
           </div>
         ) : (
-          <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-6 md:grid-cols-3 lg:grid-cols-4">
-            {products.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
+          <>
+            <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-6 md:grid-cols-3 lg:grid-cols-4">
+              {products.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
+
+            {onLoadMore && (
+              <InfiniteScrollSentinel
+                hasMore={hasMore}
+                isLoading={isLoadingMore}
+                onLoadMore={onLoadMore}
+              />
+            )}
+          </>
         )}
       </div>
     </Page>

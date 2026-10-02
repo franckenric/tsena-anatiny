@@ -11,11 +11,88 @@ const PRODUCT_RELATION = JSON.stringify([
   "images{image,position}"
 ]);
 
+interface WhereClause {
+  key: string;
+  operator: string;
+  value?: unknown;
+}
+
+/** Une liste imbriquǸe est interpretǸe comme un groupe OR par l'API. */
+type Where = WhereClause | WhereClause[];
+
+const DEFAULT_PAGE_SIZE = 12;
+
+/**
+ * Taille des lots de produits charges par le scroll infini. Elle se regle
+ * sans recompiler via `VITE_PRODUCTS_PAGE_SIZE` (5 pour tester, 12 en
+ * production).
+ */
+export const PRODUCTS_PAGE_SIZE = (() => {
+  const raw = Number(import.meta.env.VITE_PRODUCTS_PAGE_SIZE);
+  return Number.isFinite(raw) && raw > 0
+    ? Math.min(Math.floor(raw), 100)
+    : DEFAULT_PAGE_SIZE;
+})();
+
+
+export interface ProductQuery {
+  /** Recherche plein texte applicative sur le nom, le SKU et la categorie. */
+  search?: string;
+  /** Restreint le catalogue a ces categories (cote serveur). */
+  categoryIds?: number[];
+  /** Exclude les produits inactifs (defaut : true). */
+  activeOnly?: boolean;
+}
+
+function buildWhere(query: ProductQuery): Where[] {
+  const where: Where[] = [];
+
+  if (query.activeOnly !== false) {
+    // `status` est nullable: un produit sans statut reste visible, seuls les
+    // produits explicitement inactifs sont retires.
+    where.push([
+      { key: "status", operator: "isNull" },
+      { key: "status", operator: "!=", value: "inactive" }
+    ]);
+  }
+
+  const search = (query.search ?? "").trim();
+  if (search) {
+    where.push([
+      { key: "name", operator: "like", value: search },
+      { key: "sku", operator: "like", value: search },
+      { key: "categorie.name", operator: "like", value: search }
+    ]);
+  }
+
+  const categoryIds = (query.categoryIds ?? []).filter(
+    (id) => Number.isFinite(id) && id > 0
+  );
+  if (categoryIds.length > 0) {
+    where.push({ key: "category_id", operator: "in", value: categoryIds });
+  }
+
+  return where;
+}
+
 export const productsService = {
-  async getProducts(page = 1, pageSize = 200): Promise<ProductListResponse> {
+  async getProducts(
+    page = 1,
+    pageSize = PRODUCTS_PAGE_SIZE,
+    query: ProductQuery = {}
+  ): Promise<ProductListResponse> {
     const skip = (page - 1) * pageSize;
+    const where = buildWhere(query);
+    const params = new URLSearchParams({
+      offset: String(skip),
+      limit: String(pageSize),
+      relation: PRODUCT_RELATION
+    });
+    if (where.length > 0) {
+      params.set("where", JSON.stringify(where));
+    }
     const payload = await apiFetch<{ count: number; data?: Product[] }>(
-      `/products/?offset=${skip}&limit=${pageSize}&relation=${encodeURIComponent(PRODUCT_RELATION)}`
+      `/products/?${params.toString()}`
     );
     return {
       items: Array.isArray(payload?.data) ? payload.data : [],

@@ -1,51 +1,48 @@
-import { useCallback, useEffect, useState } from "react";
-import {
-  productsService,
-  getProductTotalStock
-} from "../services/products.service";
+import { useCallback } from "react";
+import { getProductTotalStock } from "../services/products.service";
 import type { Product } from "../types/product";
 import { ProductListing } from "../components/ProductListing";
 import { useI18n } from "../contexts/I18nContext";
+import { useInfiniteProducts } from "../hooks/useInfiniteProducts";
 
 export function NouveautesPage() {
   const { t } = useI18n();
-  const [products, setProducts] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const res = await productsService.getProducts(1, 200);
-      const available = (res.items ?? []).filter(
-        (p) => p.status !== "inactive" && getProductTotalStock(p) > 0
-      );
-      const sorted = [...available].sort(
-        (a, b) =>
-          new Date(b.created_at ?? 0).getTime() -
-          new Date(a.created_at ?? 0).getTime()
-      );
-      setProducts(sorted);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t("error.generic"));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [t]);
+  const transform = useCallback(
+    (items: Product[]) =>
+      items
+        .filter((p) => p.status !== "inactive" && getProductTotalStock(p) > 0)
+        .sort(
+          (a, b) =>
+            new Date(b.created_at ?? 0).getTime() -
+            new Date(a.created_at ?? 0).getTime()
+        ),
+    []
+  );
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const {
+    products,
+    total,
+    hasMore,
+    isLoading,
+    isLoadingMore,
+    error,
+    loadMore,
+    reload
+  } = useInfiniteProducts({}, { transform });
 
   return (
     <ProductListing
       title={t("pages.new.title")}
       subtitle={t("pages.new.subtitle")}
       products={products}
+      total={total}
       isLoading={isLoading}
+      isLoadingMore={isLoadingMore}
+      hasMore={hasMore}
+      onLoadMore={loadMore}
       error={error}
-      onRetry={load}
+      onRetry={reload}
       emptyMessage={t("pages.new.empty")}
     />
   );

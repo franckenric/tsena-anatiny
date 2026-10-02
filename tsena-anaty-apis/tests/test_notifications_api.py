@@ -1,3 +1,4 @@
+import asyncio
 import json
 import threading
 import time
@@ -6,6 +7,7 @@ from urllib.parse import quote
 from fastapi import status
 from app import crud, schemas
 from app.core import security
+from app.core.ws import CUSTOMER_ROLE_ID, STAFF_ROLE_ID, ConnectionManager
 
 
 CUSTOMER_PHONE = '+261 33 12 345 67'
@@ -315,3 +317,111 @@ def test_notifications_rest_customer_scoped(client, db):
     assert resp.status_code == status.HTTP_200_OK, resp.text
     resp = client.get(f'/api/v1/notifications/?customer_id={customer_id}', headers=admin_headers)
     assert resp.json()['unread_count'] == 0
+
+
+def _token_for(user: schemas.Users) -> str:
+    return security.create_access_token(sub={'id': str(user.id), 'email': user.email})
+
+
+class _FakeSocket:
+    def __init__(self) -> None:
+        self.sent: list = []
+        self.accepted = False
+
+    async def accept(self) -> None:
+        self.accepted = True
+
+    async def send_text(self, message: str) -> None:
+        self.sent.append(json.loads(message))
+
+
+def test_presence_rest_follows_connected_customer(client, db):
+    _admin, admin_headers, _ = _auth(db)
+    customer_user = _customer_user(db)
+    customer_token = _token_for(customer_user)
+
+    resp = client.get('/api/v1/notifications/presence', headers=admin_headers)
+    assert resp.status_code == status.HTTP_200_OK, resp.text
+    assert resp.json()['connected_customers'] == 0
+
+    with client.websocket_connect(_ws_url(customer_token)):
+        resp = client.get('/api/v1/notifications/presence', headers=admin_headers)
+        assert resp.status_code == status.HTTP_200_OK, resp.text
+        body = resp.json()
+        assert body['connected_customers'] == 1
+        assert body['connected_customer_sessions'] == 1
+        assert body['connected_staff'] == 0
+
+    resp = client.get('/api/v1/notifications/presence', headers=admin_headers)
+    assert resp.status_code == status.HTTP_200_OK, resp.text
+    assert resp.json()['connected_customers'] == 0
+
+
+def test_presence_snapshot_counts_unique_customers():
+    manager = ConnectionManager()
+
+    async def scenario() -> dict:
+        first = _FakeSocket()
+        second = _FakeSocket()
+        staff = _FakeSocket()
+        anonymous = _FakeSocket()
+        await manager.connect(first, user_id=7, role_id=CUSTOMER_ROLE_ID)
+        await manager.connect(second, user_id=7, role_id=CUSTOMER_ROLE_ID)
+        await manager.connect(staff, user_id=1, role_id=STAFF_ROLE_ID)
+        await manager.connect(anonymous)
+        snapshot = manager.presence_snapshot()
+        manager.disconnect(second)
+        return {'full': snapshot, 'after': manager.presence_snapshot()}
+
+    result = asyncio.run(scenario())
+    full, after = result['full'], result['after']
+
+    # Un client sur deux onglets ne compte qu'une fois...
+    assert full['connected_customers'] == 1
+    # ...mais ses deux sessions sont visibles.
+    assert full['connected_customer_sessions'] == 2
+    assert full['connected_staff'] == 1
+    assert full['connected_users'] == 2
+    # La connexion anonyme n'est rattachée à aucun compte.
+    assert full['total_sessions'] == 4
+
+    assert after['connected_customers'] == 1
+    assert after['connected_customer_sessions'] == 1
+    assert after['total_sessions'] == 3
+
+
+def test_broadcast_presence_targets_staff_once_per_change():
+    manager = ConnectionManager()
+
+    async def scenario() -> tuple:
+        staff = _FakeSocket()
+        customer = _FakeSocket()
+        await manager.connect(staff, user_id=1, role_id=STAFF_ROLE_ID)
+        await manager.connect(customer, user_id=9, role_id=CUSTOMER_ROLE_ID)
+
+        manager.broadcast_presence()
+        await asyncio.sleep(0.05)
+        after_first = list(staff.sent)
+
+        # Aucun changement -> aucun nouvel envoi.
+        manager.broadcast_presence()
+        await asyncio.sleep(0.05)
+
+        # Le socket à l'origine du changement n'est pas notifié de lui-même.
+        manager.broadcast_presence(exclude=customer)
+        await asyncio.sleep(0.05)
+
+        manager.disconnect(customer)
+        manager.broadcast_presence()
+        await asyncio.sleep(0.05)
+
+        return after_first, list(staff.sent), list(customer.sent)
+
+    after_first, staff_sent, customer_sent = asyncio.run(scenario())
+
+    assert len(after_first) == 1
+    assert after_first[0]['type'] == 'presence.updated'
+    assert after_first[0]['data']['connected_customers'] == 1
+    assert len(staff_sent) == 2
+    assert staff_sent[1]['data']['connected_customers'] == 0
+    assert customer_sent == []

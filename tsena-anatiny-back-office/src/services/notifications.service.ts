@@ -19,15 +19,48 @@ export type AccountCreatedData = {
 
 export type NotificationData = OrderNotificationData | AccountCreatedData;
 
+/** Live counters of the websockets currently held open by the API. */
+export type PresenceStats = {
+  connected_customers: number;
+  connected_customer_sessions: number;
+  connected_staff: number;
+  connected_staff_sessions: number;
+  connected_users: number;
+  total_sessions: number;
+};
+
+export const EMPTY_PRESENCE: PresenceStats = {
+  connected_customers: 0,
+  connected_customer_sessions: 0,
+  connected_staff: 0,
+  connected_staff_sessions: 0,
+  connected_users: 0,
+  total_sessions: 0
+};
+
 export type OrderNotificationEvent =
   | { type: "order.created"; data: OrderNotificationData }
   | { type: "order.status_changed"; data: OrderNotificationData }
-  | { type: "account.created"; data: AccountCreatedData };
+  | { type: "account.created"; data: AccountCreatedData }
+  | { type: "presence.updated"; data: PresenceStats };
 
 export type NotificationKind =
   | "order.created"
   | "order.status_changed"
   | "account.created";
+
+function isPresenceStats(value: unknown): value is PresenceStats {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.connected_customers === "number" &&
+    typeof candidate.connected_customer_sessions === "number" &&
+    typeof candidate.connected_staff === "number" &&
+    typeof candidate.connected_staff_sessions === "number" &&
+    typeof candidate.connected_users === "number" &&
+    typeof candidate.total_sessions === "number"
+  );
+}
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "/api/v1").replace(
   /\/+$/,
@@ -50,12 +83,16 @@ export function parseNotificationEvent(
 ): OrderNotificationEvent | null {
   try {
     const payload = JSON.parse(raw) as OrderNotificationEvent;
+    if (!payload || !payload.data) {
+      return null;
+    }
+    if (payload.type === "presence.updated") {
+      return isPresenceStats(payload.data) ? payload : null;
+    }
     if (
-      !payload ||
-      (payload.type !== "order.created" &&
-        payload.type !== "order.status_changed" &&
-        payload.type !== "account.created") ||
-      !payload.data
+      payload.type !== "order.created" &&
+      payload.type !== "order.status_changed" &&
+      payload.type !== "account.created"
     ) {
       return null;
     }
@@ -115,6 +152,10 @@ async function restFetch<T>(path: string, init?: RequestInit): Promise<T> {
 
 export function fetchNotifications(): Promise<RestNotificationsResponse> {
   return restFetch("/notifications/");
+}
+
+export function fetchPresence(): Promise<PresenceStats> {
+  return restFetch<PresenceStats>("/notifications/presence");
 }
 
 export function markAllNotificationsRead(): Promise<{ success: boolean }> {

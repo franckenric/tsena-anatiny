@@ -724,7 +724,7 @@ function ArrivalForm({
       )}
 
       {/* Actions */}
-      <div className="flex gap-3 border-t border-border/60 pt-4 sm:pt-5">
+      <div className="flex flex-col gap-2 border-t border-border/60 pt-4 sm:flex-row sm:gap-3 sm:pt-5">
         <Button
           type="submit"
           variant="primary"

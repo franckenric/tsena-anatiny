@@ -4,10 +4,13 @@
 interface ImportMetaEnv {
   readonly VITE_API_BASE_URL?: string;
   readonly VITE_API_PROXY_TARGET?: string;
+  readonly VITE_API_EMAIL?: string;
   readonly VITE_API_PHONE?: string;
   readonly VITE_API_PASSWORD?: string;
   readonly VITE_FACEBOOK_APP_ID?: string;
   readonly VITE_GOOGLE_CLIENT_ID?: string;
+  /** Nombre de produits charges par page (defaut : 12). */
+  readonly VITE_PRODUCTS_PAGE_SIZE?: string;
 }
 
 interface ImportMeta {

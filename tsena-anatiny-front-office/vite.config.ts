@@ -136,6 +136,13 @@ export default defineConfig(({ mode }) => {
         "/api": {
           target: proxyTarget,
           changeOrigin: true
+        },
+        // Notifications WebSocket. Without this the socket URL built from
+        // window.location.host hits the dev server and never reaches the API.
+        "/ws": {
+          target: proxyTarget,
+          changeOrigin: true,
+          ws: true
         }
       }
     },

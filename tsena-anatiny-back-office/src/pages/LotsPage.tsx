@@ -134,9 +134,10 @@ export function LotsPage() {
     <Layout title="Lots">
       <FloatingActionButton
         label="Nouveau lot"
+        hideOnMobile
         onClick={() => history.push("/lots/new")}
       />
-      <div className="animate-fade-up flex flex-col gap-6">
+      <div className="animate-fade-up page-fill">
         <div className="hidden items-center justify-between rounded-2xl border border-border/60 bg-panel/65 px-4 py-3 sm:flex">
           <div className="inline-flex items-center gap-2 text-sm font-semibold text-ink">
             <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-brand/15 text-brand ring-1 ring-brand/20">
@@ -341,9 +342,9 @@ export function LotsPage() {
                             aria-label={`Modifier le lot #${lot.id}`}
                             onClick={() => history.push(`/lots/${lot.id}/edit`)}
                             disabled={isLoading}
-                            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-brand transition hover:bg-brand/20"
+                            className="-mr-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-brand transition hover:bg-brand/20"
                           >
-                            <Pencil className="h-3 w-3" />
+                            <Pencil className="h-3.5 w-3.5" />
                           </button>
                         </div>
                       ))}

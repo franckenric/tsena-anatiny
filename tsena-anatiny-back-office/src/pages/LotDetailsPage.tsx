@@ -783,8 +783,6 @@ export function LotDetailsPage() {
         </div>
 
         <DataList
-          title="Produits du lot"
-          description={`${productRows.length} produit${productRows.length > 1 ? "s" : ""} · ${formatAr(totalPurchase)} d'achat`}
           headerAction={
             <StatusBadge tone="brand">
               <Package className="h-3.5 w-3.5" />

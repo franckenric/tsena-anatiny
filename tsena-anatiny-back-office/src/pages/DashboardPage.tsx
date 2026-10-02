@@ -24,6 +24,7 @@ import {
   type DashboardProductInsights,
   type DashboardStats
 } from "../services/dashboard.service";
+import { useNotifications } from "../contexts/NotificationsContext";
 
 const defaultStats: DashboardStats = {
   users: 0,
@@ -132,6 +133,7 @@ const RANK_STYLES = [
 ];
 
 export function DashboardPage() {
+  const { presence, isConnected } = useNotifications();
   const [stats, setStats] = useState<DashboardStats>(defaultStats);
   const [orderInsights, setOrderInsights] =
     useState<DashboardOrderInsights>(defaultOrderInsights);
@@ -195,6 +197,17 @@ export function DashboardPage() {
     ],
     [stats]
   );
+
+  const presenceHint = useMemo(() => {
+    if (!isConnected) {
+      return "Compteur figé, reconnexion en cours";
+    }
+    const sessions = presence.connected_customer_sessions;
+    if (sessions > presence.connected_customers) {
+      return `${sessions.toLocaleString("fr-FR")} sessions ouvertes · ${presence.connected_staff.toLocaleString("fr-FR")} au back-office`;
+    }
+    return `${presence.connected_staff.toLocaleString("fr-FR")} au back-office`;
+  }, [isConnected, presence]);
 
   const chartData = useMemo(
     () => [
@@ -302,7 +315,7 @@ export function DashboardPage() {
         )}
 
         {/* ── KPIs ── */}
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <section className="grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-4">
           {kpis.map((kpi, idx) => (
             <article
               key={kpi.label}
@@ -334,6 +347,41 @@ export function DashboardPage() {
               )}
             </article>
           ))}
+
+          {/* ── Clients connectés (temps réel) ── */}
+          <article
+            className="animate-fade-up group relative overflow-hidden rounded-2xl border border-success/40 bg-panel/80 p-5 shadow-[0_18px_36px_-28px_rgba(8,18,38,0.6)] transition hover:-translate-y-0.5 hover:shadow-[0_24px_48px_-26px_rgba(8,18,38,0.75)]"
+            style={{ animationDelay: `${kpis.length * 70}ms` }}
+          >
+            <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-success/70 to-brand/70 opacity-70" />
+            <div className="flex items-start justify-between gap-2">
+              <span className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-success/15 text-success ring-1 ring-success/25">
+                <Users className="h-5 w-5" />
+              </span>
+              <span
+                className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-widest ring-1 ${
+                  isConnected
+                    ? "bg-success/10 text-success ring-success/30"
+                    : "bg-muted/10 text-muted ring-border"
+                }`}
+              >
+                {isConnected && (
+                  <span className="relative flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-75" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
+                  </span>
+                )}
+                {isConnected ? "En direct" : "Hors ligne"}
+              </span>
+            </div>
+            <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
+              Clients connectés
+            </p>
+            <p className="mt-1 block text-3xl font-bold text-ink tabular-nums">
+              {presence.connected_customers.toLocaleString("fr-FR")}
+            </p>
+            <p className="mt-1.5 truncate text-xs text-muted">{presenceHint}</p>
+          </article>
         </section>
 
         {/* ── Volumes & résumé ── */}

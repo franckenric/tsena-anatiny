@@ -11,12 +11,15 @@ import { useAuth } from "./AuthContext";
 import {
   buildWebSocketUrl,
   clearNotifications,
+  EMPTY_PRESENCE,
   fetchNotifications,
+  fetchPresence,
   markAllNotificationsRead,
   parseNotificationEvent,
   type AccountCreatedData,
   type NotificationKind,
   type OrderNotificationData,
+  type PresenceStats,
   type RestNotification
 } from "../services/notifications.service";
 import { sendSms } from "../services/sms.service";
@@ -42,6 +45,8 @@ type NotificationsContextValue = {
   unreadCount: number;
   isConnected: boolean;
   orderRefreshKey: number;
+  /** Live counters of the users connected to the front-office. */
+  presence: PresenceStats;
   markAllRead: () => void;
   clear: () => void;
 };
@@ -111,6 +116,7 @@ export function NotificationsProvider({
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [orderRefreshKey, setOrderRefreshKey] = useState(0);
+  const [presence, setPresence] = useState<PresenceStats>(EMPTY_PRESENCE);
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimer = useRef<number | null>(null);
 
@@ -133,7 +139,21 @@ export function NotificationsProvider({
         });
     };
 
+    // Snapshot initial: le WebSocket n'envoie un événement qu'au prochain
+    // changement, il faut donc amorcer les compteurs au chargement.
+    const seedPresence = () => {
+      fetchPresence()
+        .then((payload) => {
+          if (cancelled) return;
+          setPresence(payload);
+        })
+        .catch(() => {
+          // API indisponible: on garde le dernier compteur connu
+        });
+    };
+
     seedFromRest();
+    seedPresence();
 
     const connect = () => {
       if (cancelled) return;
@@ -143,11 +163,17 @@ export function NotificationsProvider({
       ws.onopen = () => {
         if (!cancelled) setIsConnected(true);
         seedFromRest();
+        seedPresence();
       };
 
       ws.onmessage = (event) => {
         const payload = parseNotificationEvent(event.data as string);
         if (!payload) return;
+
+        if (payload.type === "presence.updated") {
+          setPresence(payload.data);
+          return;
+        }
 
         if (payload.type === "account.created") {
           const data = payload.data;
@@ -234,12 +260,17 @@ export function NotificationsProvider({
     setNotifications([]);
   }, []);
 
+  // Sans session, les compteurs ne sont plus rafraîchis: on les remet à zéro
+  // plutôt que d'afficher une valeur figée.
+  const livePresence = token ? presence : EMPTY_PRESENCE;
+
   const value = useMemo<NotificationsContextValue>(
     () => ({
       notifications,
       unreadCount,
       isConnected,
       orderRefreshKey,
+      presence: livePresence,
       markAllRead,
       clear
     }),
@@ -248,6 +279,7 @@ export function NotificationsProvider({
       unreadCount,
       isConnected,
       orderRefreshKey,
+      livePresence,
       markAllRead,
       clear
     ]

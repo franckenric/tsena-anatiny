@@ -41,14 +41,10 @@ export function NotificationsPage() {
   const { notifications, unreadCount, isLoading, refresh, markAllRead, clear } =
     useNotifications();
 
+  // Un seul chargement a l'ouverture de la page : le WebSocket du contexte
+  // rafraichit la liste quand un evenement arrive.
   useEffect(() => {
     void refresh();
-
-    const interval = window.setInterval(() => {
-      void refresh();
-    }, 15_000);
-
-    return () => window.clearInterval(interval);
   }, [refresh]);
 
   if (isBooting) {

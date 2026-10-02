@@ -84,6 +84,20 @@
   .page-shell {
     @apply mx-auto w-full max-w-[calc(72rem+3rem)] px-4 sm:px-6;
   }
+
+  /**
+   * Remplit la hauteur restante du contenu sans deborder de l'ecran :
+   * les blocs d'information (bandeau, alerte) gardent leur taille et la
+   * liste (<section /> de DataList) absorbe la hauteur libre puis
+   * devient la seule zone qui defile.
+   */
+  .page-fill {
+    @apply flex min-h-0 flex-1 flex-col gap-6;
+  }
+
+  .page-fill > :where(:not(section)) {
+    flex-shrink: 0;
+  }
 }
 
 @layer utilities {
@@ -202,5 +216,18 @@
 
   .skeleton {
     @apply animate-pulse rounded-2xl bg-border/60;
+  }
+}
+
+/**
+ * Cibles tactiles des listes : sur mobile les pages forcent h-8 w-8 sur
+ * leurs boutons d'action de ligne, on remonte a 36px pour le doigt tout en
+ * gardant une presentation compacte. Regle non "layer" : elle l'emporte
+ * sur les utilitaires Tailwind.
+ */
+@media (max-width: 767px) {
+  .data-list-actions button {
+    min-height: 2.25rem;
+    min-width: 2.25rem;
   }
 }

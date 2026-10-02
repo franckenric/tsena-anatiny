@@ -8,7 +8,6 @@ import {
 } from "react";
 import { Link, useHistory, useLocation } from "react-router-dom";
 import {
-  ArrowDown,
   ArrowRight,
   BadgePercent,
   Banknote,
@@ -26,6 +25,7 @@ import {
 import { categoriesService } from "../services/categories.service";
 import {
   productsService,
+  PRODUCTS_PAGE_SIZE,
   getProductTotalStock,
   getProductDisplayPrice
 } from "../services/products.service";
@@ -33,6 +33,7 @@ import type { Category, Product } from "../types/product";
 import { ProductCard } from "../components/ProductCard";
 import { ProductImage } from "../components/ProductImage";
 import { ProductGridSkeleton } from "../components/Skeletons";
+import { InfiniteScrollSentinel } from "../components/InfiniteScrollSentinel";
 import { PromoCodeCard } from "../components/PromoCodeCard";
 import { Page } from "../components/Page";
 import { useAuth } from "../contexts/AuthContext";
@@ -45,21 +46,7 @@ import {
 import { useI18n } from "../contexts/I18nContext";
 import { useRecommendations } from "../hooks/useRecommendations";
 
-const PAGE_SIZE = 200;
-
-type SortKey = "pertinence" | "price-asc" | "price-desc" | "name" | "newest";
-
-function productPrice(product: Product): number {
-  return getProductDisplayPrice(product);
-}
-
-const SORT_KEYS: Record<SortKey, string> = {
-  pertinence: "home.sort.pertinence",
-  "price-asc": "home.sort.priceAsc",
-  "price-desc": "home.sort.priceDesc",
-  name: "home.sort.name",
-  newest: "home.sort.newest"
-};
+const PAGE_SIZE = PRODUCTS_PAGE_SIZE;
 
 function isAvailable(product: Product): boolean {
   if (product.status === "inactive") return false;
@@ -98,26 +85,38 @@ function AnnouncementBar() {
 
 function GreetingHero({
   featured,
+  search,
+  onSearch,
   onExplore,
   onNewest
 }: {
   featured: Product | null;
+  search: string;
+  onSearch: (value: string) => void;
   onExplore: () => void;
   onNewest: () => void;
 }) {
   const { customer, isBooting } = useAuth();
   const { t } = useI18n();
-  const history = useHistory();
-  const [query, setQuery] = useState("");
+  const [text, setText] = useState(search);
   const firstName = (customer?.name ?? "").trim().split(" ")[0] ?? "";
+
+  useEffect(() => {
+    setText(search);
+  }, [search]);
 
   const image = featured ? resolveImageUrl(featured.image) : null;
   const price = featured ? getProductDisplayPrice(featured) : 0;
 
   const handleSearch = (e: FormEvent) => {
     e.preventDefault();
-    const q = query.trim();
-    history.push(q ? `/?q=${encodeURIComponent(q)}` : "/");
+    const q = text.trim();
+    if (q !== search) onSearch(q);
+  };
+
+  const clearSearch = () => {
+    setText("");
+    if (search) onSearch("");
   };
 
   return (
@@ -159,11 +158,21 @@ function GreetingHero({
               <Search className="pointer-events-none ml-3 h-5 w-5 shrink-0 text-muted" />
               <input
                 type="search"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                value={text}
+                onChange={(e) => setText(e.target.value)}
                 placeholder={t("header.searchPlaceholder")}
                 className="min-w-0 flex-1 bg-transparent py-2 text-[15px] font-medium text-ink outline-none placeholder:text-muted/60"
               />
+              {text && (
+                <button
+                  type="button"
+                  onClick={clearSearch}
+                  aria-label={t("common.clearSearch")}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted transition hover:bg-bg hover:text-ink"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
               <button
                 type="submit"
                 aria-label={t("header.searchPlaceholder")}
@@ -464,7 +473,7 @@ export function HomePage() {
   const history = useHistory();
   const { search } = useLocation();
   const searchParams = new URLSearchParams(search);
-  const query = (searchParams.get("q") ?? "").toLowerCase().trim();
+  const query = (searchParams.get("q") ?? "").trim();
   const rawCats = searchParams.get("cats");
   const activeCategories = useMemo(() => {
     const set = new Set<number>();
@@ -476,6 +485,12 @@ export function HomePage() {
     }
     return set;
   }, [rawCats]);
+  // Identifiant stable des categories actives: rejoue l'effet de chargement
+  // uniquement quand la selection change reellement.
+  const categoryIdsKey = useMemo(
+    () => [...activeCategories].sort((a, b) => a - b).join(","),
+    [activeCategories]
+  );
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -484,37 +499,53 @@ export function HomePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [sort, setSort] = useState<SortKey>("pertinence");
 
   const productsRef = useRef<HTMLDivElement>(null);
+  // Empche une reponse perimee (recherche lancee puis remplacee) d'ecraser
+  // le resultat de la requete en cours.
+  const latestRequestRef = useRef(0);
 
-  const loadPage = useCallback(async (pageToLoad: number, append: boolean) => {
-    try {
+  const loadPage = useCallback(
+    async (pageToLoad: number, append: boolean, searchTerm: string) => {
+      const requestId = latestRequestRef.current + 1;
+      latestRequestRef.current = requestId;
       if (append) setIsLoadingMore(true);
       else setIsLoading(true);
-      const res = await productsService.getProducts(pageToLoad, PAGE_SIZE);
-      setTotal(typeof res.total === "number" ? res.total : 0);
-      setProducts((prev) => {
-        if (!append) return res.items ?? [];
-        const ids = new Set(prev.map((p) => p.id));
-        return [...prev, ...(res.items ?? []).filter((p) => !ids.has(p.id))];
-      });
-      setPage(pageToLoad);
-      return true;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t("home.errorCatalog"));
-      return false;
-    } finally {
-      if (append) setIsLoadingMore(false);
-      else setIsLoading(false);
-    }
-  }, [t]);
+      setError(null);
+      try {
+        const res = await productsService.getProducts(pageToLoad, PAGE_SIZE, {
+          search: searchTerm,
+          categoryIds: categoryIdsKey ? categoryIdsKey.split(",").map(Number) : []
+        });
+        if (requestId !== latestRequestRef.current) return false;
+        setTotal(typeof res.total === "number" ? res.total : 0);
+        setProducts((prev) => {
+          if (!append) return res.items ?? [];
+          const ids = new Set(prev.map((p) => p.id));
+          return [...prev, ...(res.items ?? []).filter((p) => !ids.has(p.id))];
+        });
+        setPage(pageToLoad);
+        return true;
+      } catch (err) {
+        if (requestId === latestRequestRef.current) {
+          setError(err instanceof Error ? err.message : t("home.errorCatalog"));
+        }
+        return false;
+      } finally {
+        if (requestId === latestRequestRef.current) {
+          if (append) setIsLoadingMore(false);
+          else setIsLoading(false);
+        }
+      }
+    },
+    [categoryIdsKey, t]
+  );
 
   useEffect(() => {
     let cancelled = false;
-    let mounted = true;
-    Promise.all([categoriesService.getCategories()])
-      .then(([catRes]) => {
+    categoriesService
+      .getCategories()
+      .then((catRes) => {
         if (cancelled) return;
         setCategories(
           (catRes.items ?? []).filter((c) => !c.status || c.status !== "inactive")
@@ -522,15 +553,18 @@ export function HomePage() {
       })
       .catch(() => {
         // catégories optionnelles
-      })
-      .finally(() => {
-        if (mounted) void loadPage(1, false);
       });
     return () => {
       cancelled = true;
-      mounted = false;
     };
-  }, [loadPage]);
+  }, []);
+
+  // Recherche et categories sont appliquees par l'API: on recharge la
+  // premiere page a chaque changement de critere.
+  useEffect(() => {
+    setPage(1);
+    void loadPage(1, false, query);
+  }, [loadPage, query]);
 
   const availableProducts = useMemo(
     () => products.filter(isAvailable),
@@ -549,57 +583,16 @@ export function HomePage() {
     [availableProducts]
   );
 
-  const filtered = useMemo(() => {
-    const list = products.filter((p) => {
-      if (p.status === "inactive") return false;
-      if (getProductTotalStock(p) <= 0) return false;
-      if (activeCategories.size > 0 && !activeCategories.has(p.category_id))
-        return false;
-      if (query) {
-        const name = (p.name ?? "").toLowerCase();
-        const category = (p.categorie?.name ?? "").toLowerCase();
-        const sku = (p.sku ?? "").toLowerCase();
-        if (
-          !name.includes(query) &&
-          !category.includes(query) &&
-          !sku.includes(query)
-        ) {
-          return false;
-        }
-      }
-      return true;
-    });
-
-    switch (sort) {
-      case "price-asc":
-        return [...list].sort((a, b) => productPrice(a) - productPrice(b));
-      case "price-desc":
-        return [...list].sort((a, b) => productPrice(b) - productPrice(a));
-      case "name":
-        return [...list].sort((a, b) =>
-          (a.name ?? "").localeCompare(b.name ?? "", "fr")
-        );
-      case "newest":
-        return [...list].sort(
-          (a, b) =>
-            new Date(b.created_at ?? 0).getTime() -
-            new Date(a.created_at ?? 0).getTime()
-        );
-    default:
-      return list;
-    }
-  }, [products, activeCategories, query, sort]);
+  const hasActiveFilter = Boolean(query) || activeCategories.size > 0;
 
   const recentProducts = useMemo(() => {
-    if (query || activeCategories.size > 0) return [];
+    if (hasActiveFilter) return [];
     const ids = getRecentProductIds();
     const byId = new Map(products.map((p) => [p.id, p]));
     return ids.map((id) => byId.get(id)).filter((p): p is Product => Boolean(p));
-  }, [products, query, activeCategories]);
+  }, [products, hasActiveFilter]);
 
   const { customer } = useAuth();
-
-  const hasActiveFilter = Boolean(query) || activeCategories.size > 0;
 
   const { recommendations: recommended } = useRecommendations(
     hasActiveFilter ? [] : availableProducts,
@@ -611,13 +604,24 @@ export function HomePage() {
       ? t("home.recommended")
       : t("home.toDiscover");
 
-  const updateCategories = (next: Set<number>) => {
-    const params = new URLSearchParams();
-    if (query) params.set("q", query);
-    if (next.size > 0) params.set("cats", [...next].join(","));
-    const qs = params.toString();
-    history.push(qs ? `/?${qs}` : "/");
-  };
+  const pushQuery = useCallback(
+    (nextQuery: string, nextCategories: Set<number>) => {
+      const params = new URLSearchParams();
+      if (nextQuery) params.set("q", nextQuery);
+      if (nextCategories.size > 0)
+        params.set("cats", [...nextCategories].join(","));
+      const qs = params.toString();
+      history.push(qs ? `/?${qs}` : "/");
+    },
+    [history]
+  );
+
+  const submitSearch = useCallback(
+    (value: string) => pushQuery(value, activeCategories),
+    [pushQuery, activeCategories]
+  );
+
+  const updateCategories = (next: Set<number>) => pushQuery(query, next);
 
   const toggleCategory = (id: number) => {
     const next = new Set(activeCategories);
@@ -635,20 +639,14 @@ export function HomePage() {
     history.push("/nouveautes");
   };
 
-  const selectedCategoryNames = useMemo(
-    () =>
-      [...activeCategories]
-        .map((id) => categories.find((c) => c.id === id)?.name)
-        .filter((n): n is string => Boolean(n)),
-    [activeCategories, categories]
-  );
-
   return (
     <Page>
       <div className="pb-8">
         <AnnouncementBar />
         <GreetingHero
-          featured={availableProducts[0] ?? null}
+          featured={hasActiveFilter ? null : availableProducts[0] ?? null}
+          search={query}
+          onSearch={submitSearch}
           onExplore={scrollToProducts}
           onNewest={goNewest}
         />
@@ -703,61 +701,11 @@ export function HomePage() {
               </h2>
               {!isLoading && (
                 <span className="rounded-full bg-brand-soft px-2.5 py-0.5 text-xs font-bold text-brand">
-                  {filtered.length}
+                  {total > 0 ? total : availableProducts.length}
                 </span>
               )}
             </div>
-            <label className="flex items-center gap-2">
-              <span className="hidden text-xs font-semibold uppercase tracking-widest text-muted sm:block">
-                {t("home.sort")}
-              </span>
-              <select
-                value={sort}
-                onChange={(e) => setSort(e.target.value as SortKey)}
-                className="h-10 rounded-xl border border-border bg-panel px-3 text-sm font-medium text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
-              >
-                {(Object.keys(SORT_KEYS) as SortKey[]).map((key) => (
-                  <option key={key} value={key}>
-                    {t(SORT_KEYS[key])}
-                  </option>
-                ))}
-              </select>
-            </label>
           </div>
-
-          {(hasActiveFilter || sort !== "pertinence") && (
-            <div className="mt-2 flex flex-wrap gap-2">
-              {query && (
-                <span className="rounded-full border border-border bg-panel px-3 py-1 text-xs font-medium text-muted">
-                  « {query} »
-                </span>
-              )}
-              {selectedCategoryNames.map((name) => (
-                <span
-                  key={name}
-                  className="flex items-center gap-1.5 rounded-full border border-brand/30 bg-brand-soft px-3 py-1 text-xs font-semibold text-brand"
-                >
-                  {name}
-                  <button
-                    type="button"
-                    aria-label={t("home.removeCategory", { name })}
-                    onClick={() => {
-                      const id = categories.find((c) => c.name === name)?.id;
-                      if (id != null) toggleCategory(id);
-                    }}
-                    className="text-brand transition hover:text-danger"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </span>
-              ))}
-              {!hasActiveFilter && sort !== "pertinence" && (
-                <span className="rounded-full border border-border bg-panel px-3 py-1 text-xs font-medium text-muted">
-                  {t("home.sortLabel", { sort: t(SORT_KEYS[sort]) })}
-                </span>
-              )}
-            </div>
-          )}
 
           {isLoading ? (
             <div className="mt-4">
@@ -769,14 +717,14 @@ export function HomePage() {
               <p className="text-sm font-medium text-danger">{error}</p>
               <button
                 type="button"
-                onClick={() => void loadPage(1, false)}
+                onClick={() => void loadPage(1, false, query)}
                 className="mt-1 inline-flex items-center gap-2 rounded-2xl bg-ink px-5 py-2.5 text-sm font-bold text-white transition hover:bg-ink/90 active:scale-95"
               >
                 <RefreshCcw className="h-4 w-4" />
                 {t("common.retry")}
               </button>
             </div>
-          ) : filtered.length === 0 ? (
+          ) : availableProducts.length === 0 ? (
             <div className="mt-4 flex flex-col items-center gap-3 rounded-[1.75rem] border border-border bg-panel p-14 text-center">
               <PackageSearch className="h-12 w-12 text-muted" />
               <p className="text-lg font-semibold text-ink">
@@ -789,32 +737,17 @@ export function HomePage() {
           ) : (
             <>
               <div className="mt-4 grid grid-cols-2 gap-3 sm:gap-6 md:grid-cols-3 lg:grid-cols-4">
-                {filtered.map((product) => (
+                {availableProducts.map((product) => (
                   <ProductCard key={product.id} product={product} />
                 ))}
               </div>
 
               {products.length < total && (
-                <div className="mt-10 flex justify-center">
-                  <button
-                    type="button"
-                    onClick={() => void loadPage(page + 1, true)}
-                    disabled={isLoadingMore}
-                    className="inline-flex items-center gap-2 rounded-2xl border border-ink px-6 py-3 text-sm font-bold text-ink transition hover:bg-ink hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {isLoadingMore ? (
-                      <>
-                        <span className="h-4 w-4 shrink-0 animate-spin-slow rounded-full border-2 border-current border-t-transparent" />
-                        {t("common.loading")}
-                      </>
-                    ) : (
-                      <>
-                        {t("home.loadMore")}
-                        <ArrowDown className="h-4 w-4" />
-                      </>
-                    )}
-                  </button>
-                </div>
+                <InfiniteScrollSentinel
+                  hasMore={products.length < total}
+                  isLoading={isLoadingMore}
+                  onLoadMore={() => void loadPage(page + 1, true, query)}
+                />
               )}
             </>
           )}

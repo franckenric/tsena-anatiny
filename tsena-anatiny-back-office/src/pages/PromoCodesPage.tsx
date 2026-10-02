@@ -127,9 +127,10 @@ export function PromoCodesPage() {
     <Layout title="Codes promo">
       <FloatingActionButton
         label="Nouveau code"
+        hideOnMobile
         onClick={() => history.push("/promo-codes/new")}
       />
-      <div className="animate-fade-up flex flex-col gap-6">
+      <div className="animate-fade-up page-fill">
         <div className="hidden items-center justify-between rounded-2xl border border-border/60 bg-panel/65 px-4 py-3 sm:flex">
           <div className="inline-flex items-center gap-2 text-sm font-semibold text-ink">
             <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-brand/15 text-brand ring-1 ring-brand/20">
@@ -144,8 +145,6 @@ export function PromoCodesPage() {
           </div>
         )}
         <DataList
-          title="Liste des codes promo"
-          description="Réductions et campagnes marketing"
           itemLabel="codes promo"
           page={page}
           totalPages={totalPages}
@@ -157,9 +156,12 @@ export function PromoCodesPage() {
             <Button
               variant="primary"
               onClick={() => history.push("/promo-codes/new")}
+              aria-label="Ajouter un code"
+              title="Ajouter un code"
+              className="h-9 w-9 shrink-0 p-0 sm:h-12 sm:w-auto sm:px-5"
             >
-              <Plus className="mr-2 h-4 w-4" />
-              Ajouter un code
+              <Plus className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Ajouter un code</span>
             </Button>
           }
           columns={columns}
@@ -172,7 +174,7 @@ export function PromoCodesPage() {
               <div className="flex flex-col gap-2">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <span className="rounded-lg bg-brand/10 px-2 py-1 font-mono text-xs font-bold tracking-wider text-brand">
+                    <span className="inline-block max-w-full break-all rounded-lg bg-brand/10 px-2 py-1 font-mono text-xs font-bold tracking-wider text-brand">
                       {promo.code}
                     </span>
                     <p className="mt-1.5 text-sm font-semibold text-ink">

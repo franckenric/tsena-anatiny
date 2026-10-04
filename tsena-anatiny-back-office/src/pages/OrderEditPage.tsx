@@ -280,10 +280,66 @@ function mapCartItemsFromApi(
   });
 }
 
+/** Lignes de commande issues des mouvements de stock. Ce sont les mouvements
+ *  "out_stock" qui font foi ; les autres types ne servent qu'a eviter de
+ *  renvoyer une carte vide si aucun "out_stock" n'est disponible. */
+function mapMovementsToCartItems(order: Order): CartItem[] {
+  const allMovements = order.stock_movements || [];
+  const outMovements = allMovements.filter(
+    (m) => !m.type || m.type === "out_stock"
+  );
+  // Si aucun mouvement "out_stock" n'est disponible (retour en stock, ou
+  // mouvements out supprimes lors d une annulation), on conserve les
+  // mouvements disponibles plutot que d afficher une carte produits vide.
+  const movements = outMovements.length > 0 ? outMovements : allMovements;
+  if (movements.length === 0) return [];
+
+  const aggregated = new Map<string, CartItem>();
+  for (const movement of movements) {
+    const productId = Number(movement.product_id || 0);
+    if (!productId) continue;
+    const variantId = movement.variant_id ?? null;
+    const key = `${productId}:${variantId ?? ""}`;
+    const existing = aggregated.get(key);
+    if (!existing) {
+      aggregated.set(key, {
+        product_id: productId,
+        variant_id: variantId,
+        product_name:
+          (movement.product?.name || "").trim() || `Produit #${productId}`,
+        variant_name: (movement.variant?.name || "").trim() || undefined,
+        variant_sku: movement.variant?.sku || undefined,
+        quantity: Number(movement.quantity || 0),
+        unit_cost: Number(movement.unit_cost || 0),
+        another_price: Number(movement.another_price || 0),
+        other_price_reason: movement.other_price_reason || undefined
+      });
+      continue;
+    }
+    existing.quantity += Number(movement.quantity || 0);
+    existing.another_price += Number(movement.another_price || 0);
+    if (!existing.other_price_reason && movement.other_price_reason) {
+      existing.other_price_reason = movement.other_price_reason;
+    }
+    if (!existing.unit_cost && movement.unit_cost) {
+      existing.unit_cost = Number(movement.unit_cost || 0);
+    }
+  }
+  return Array.from(aggregated.values());
+}
+
 function mapOrderToCartItems(
   order: Order,
   products: Product[]
 ): CartItem[] {
+  // Les mouvements font foi des qu'ils existent : ils decrivent l'etat
+  // confirme de la commande. Le front-office applique la meme hierarchie.
+  const fromMovements = mapMovementsToCartItems(order);
+  if (fromMovements.length > 0) return fromMovements;
+
+  // Repli : lignes en attente conservees dans la note. C'est le seul
+  // enregistrement qui survit a une annulation, car
+  // _rollback_order_stock_out supprime les mouvements de stock.
   const pendingLines = parsePendingLines(order.note);
   if (pendingLines.length > 0) {
     return pendingLines.map((line) => {
@@ -316,44 +372,6 @@ function mapOrderToCartItems(
             : undefined
       };
     });
-  }
-
-  const outMovements = (order.stock_movements || []).filter(
-    (m) => !m.type || m.type === "out_stock"
-  );
-
-  if (outMovements.length > 0) {
-    const aggregated = new Map<string, CartItem>();
-    for (const movement of outMovements) {
-      const productId = Number(movement.product_id || 0);
-      if (!productId) continue;
-      const variantId = movement.variant_id ?? null;
-      const key = `${productId}:${variantId ?? ""}`;
-      const existing = aggregated.get(key);
-      if (!existing) {
-        aggregated.set(key, {
-          product_id: productId,
-          variant_id: variantId,
-          product_name: movement.product?.name || `Produit #${productId}`,
-          variant_name: movement.variant?.name || undefined,
-          variant_sku: movement.variant?.sku || undefined,
-          quantity: Number(movement.quantity || 0),
-          unit_cost: Number(movement.unit_cost || 0),
-          another_price: Number(movement.another_price || 0),
-          other_price_reason: movement.other_price_reason || undefined
-        });
-        continue;
-      }
-      existing.quantity += Number(movement.quantity || 0);
-      existing.another_price += Number(movement.another_price || 0);
-      if (!existing.other_price_reason && movement.other_price_reason) {
-        existing.other_price_reason = movement.other_price_reason;
-      }
-      if (!existing.unit_cost && movement.unit_cost) {
-        existing.unit_cost = Number(movement.unit_cost || 0);
-      }
-    }
-    return Array.from(aggregated.values());
   }
 
   if (!order.product_id) return [];

@@ -3,10 +3,12 @@ import { getProductTotalStock } from "../services/products.service";
 import type { Product } from "../types/product";
 import { ProductListing } from "../components/ProductListing";
 import { useI18n } from "../contexts/I18nContext";
+import { usePageTitle } from "../contexts/PageTitleContext";
 import { useInfiniteProducts } from "../hooks/useInfiniteProducts";
 
 export function NouveautesPage() {
   const { t } = useI18n();
+  usePageTitle(t("pages.new.title"));
 
   const transform = useCallback(
     (items: Product[]) =>

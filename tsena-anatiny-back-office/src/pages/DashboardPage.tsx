@@ -8,9 +8,12 @@ import { Layout } from "../components/Layout";
 import {
   BarChart3,
   Boxes,
+  ChevronLeft,
+  ChevronRight,
   ClipboardList,
   Package,
   RefreshCw,
+  RotateCcw,
   ScanLine,
   Shapes,
   ShoppingCart,
@@ -24,7 +27,20 @@ import {
   type DashboardProductInsights,
   type DashboardStats
 } from "../services/dashboard.service";
+import {
+  getVisitsSummary,
+  type VisitsSummary,
+  type VisitDay
+} from "../services/visits.service";
 import { useNotifications } from "../contexts/NotificationsContext";
+
+const emptyVisits = (): VisitsSummary => ({
+  total: 0,
+  previous_week_total: 0,
+  week_start: null,
+  week_end: null,
+  by_day: []
+});
 
 const defaultStats: DashboardStats = {
   users: 0,
@@ -139,6 +155,9 @@ export function DashboardPage() {
     useState<DashboardOrderInsights>(defaultOrderInsights);
   const [productInsights, setProductInsights] =
     useState<DashboardProductInsights>(defaultProductInsights);
+  const [visits, setVisits] = useState<VisitsSummary>(emptyVisits);
+  // -1 = semaine precedente, 0 = semaine en cours, 1 = semaine suivante.
+  const [visitsWeekOffset, setVisitsWeekOffset] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -146,15 +165,19 @@ export function DashboardPage() {
     try {
       setIsLoading(true);
       setError(null);
-      const [nextStats, nextOrderInsights, nextProductInsights] =
+      const [nextStats, nextOrderInsights, nextProductInsights, nextVisits] =
         await Promise.all([
           dashboardService.getStats(),
           dashboardService.getOrderInsights(),
-          dashboardService.getProductInsights()
+          dashboardService.getProductInsights(),
+          // Le compteur de visites n'est pas critique : s'il echoue on garde un
+          // graphique vide plutot que de faire tomber tout le tableau de bord.
+          getVisitsSummary(visitsWeekOffset).catch(() => emptyVisits())
         ]);
       setStats(nextStats);
       setOrderInsights(nextOrderInsights);
       setProductInsights(nextProductInsights);
+      setVisits(nextVisits);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Erreur de chargement du dashboard"
@@ -167,6 +190,26 @@ export function DashboardPage() {
   useEffect(() => {
     void loadStats();
   }, []);
+
+  // Le changement de semaine recharge uniquement les visites : inutile de
+  // re-demander les commandes, le stock et les produits a chaque fleche.
+  const loadVisits = async (offset: number) => {
+    try {
+      const next = await getVisitsSummary(offset);
+      setVisits(next);
+    } catch {
+      setVisits(emptyVisits());
+    }
+  };
+
+  const goToVisitsWeek = (nextOffset: number) => {
+    setVisitsWeekOffset(nextOffset);
+    void loadVisits(nextOffset);
+  };
+
+  const refreshVisits = async () => {
+    await loadVisits(visitsWeekOffset);
+  };
 
   const kpis = useMemo(
     () => [
@@ -232,6 +275,116 @@ export function DashboardPage() {
 
   const totalFlow = stats.orders + stats.movements + stats.assignments;
 
+  // ── Visites du front-office (jour par jour sur la semaine affichee) ──
+  // Date du jour au format "AAAA-MM-JJ", pour comparer aux dates de l'API et
+  // reperer les colonnes qui n'ont pas encore de donnee.
+  const today = new Date().toLocaleDateString("sv-SE");
+
+  // L'API renvoie les sept jours de la semaine, du lundi au dimanche, jours
+  // sans visite inclus (count a 0) : pas de trou dans les barres, donc pas
+  // d'ambiguite entre « aucune visite » et « aucune donnee ».
+  const visitSeries = useMemo(() => visits.by_day ?? [], [visits.by_day]);
+
+  const maxVisits = useMemo(
+    () => Math.max(...visitSeries.map((day) => day.count), 1),
+    [visitSeries]
+  );
+
+  const visitsPerDayAverage = useMemo(() => {
+    if (visitSeries.length === 0) return 0;
+    const sum = visitSeries.reduce((acc, day) => acc + day.count, 0);
+    // Moyenne sur les sept jours, jours sans visite inclus : c'est le rythme
+    // du trafic, pas le total divise par les seuls jours actifs.
+    return Math.round(sum / visitSeries.length);
+  }, [visitSeries]);
+
+  const busiestVisitDay = useMemo(() => {
+    let best: VisitDay | null = null;
+    for (const day of visitSeries) {
+      if (day.count > 0 && (best === null || day.count > best.count)) {
+        best = day;
+      }
+    }
+    return best;
+  }, [visitSeries]);
+
+  const weekDeltaLabel = useMemo(() => {
+    const delta = visits.total - visits.previous_week_total;
+    if (delta === 0) {
+      return { text: "identique a la semaine precedente", tone: "text-muted" };
+    }
+    const percent =
+      visits.previous_week_total > 0
+        ? Math.round((delta / visits.previous_week_total) * 100)
+        : null;
+    const sign = delta > 0 ? "+" : "";
+    const text =
+      percent === null
+        ? `${sign}${delta} vs semaine precedente`
+        : `${sign}${delta} (${sign}${percent}%) vs semaine precedente`;
+    return {
+      text,
+      tone:
+        delta > 0 ? "text-success" : delta < 0 ? "text-warning" : "text-muted"
+    };
+  }, [visits.total, visits.previous_week_total]);
+
+  const formatVisitDay = (iso: string): string => {
+    // "AAAA-MM-JJ" est interprete comme UTC par new Date(), ce qui peut reculer
+    // le jour d'un cran. On passe par les parties de la chaine.
+    const [year, month, day] = iso.split("-").map(Number);
+    if (!year || !month || !day) return iso;
+    return new Date(year, month - 1, day).toLocaleDateString("fr-FR", {
+      day: "numeric",
+      month: "short"
+    });
+  };
+
+  const parseIsoDate = (iso: string): Date => {
+    const [year, month, day] = iso.split("-").map(Number);
+    return new Date(year, (month || 1) - 1, day || 1);
+  };
+
+  const formatWeekday = (iso: string): string => {
+    const [year, month, day] = iso.split("-").map(Number);
+    if (!year || !month || !day) return iso;
+    // "lun." -> "lun" : le point final ne sert a rien sous une barre et
+    // occupe de la largeur.
+    return new Date(year, month - 1, day)
+      .toLocaleDateString("fr-FR", { weekday: "short" })
+      .replace(/\.$/, "");
+  };
+
+  const visitsWeekLabel = useMemo(() => {
+    if (!visits.week_start || !visits.week_end) return "";
+    const start = parseIsoDate(visits.week_start);
+    const end = parseIsoDate(visits.week_end);
+    const sameMonth = start.getMonth() === end.getMonth();
+    const startLabel = start.toLocaleDateString("fr-FR", {
+      day: "numeric",
+      month: sameMonth ? undefined : "short"
+    });
+    const endLabel = end.toLocaleDateString("fr-FR", {
+      day: "numeric",
+      month: "short",
+      year: "numeric"
+    });
+    return `${startLabel} – ${endLabel}`;
+  }, [visits.week_start, visits.week_end]);
+
+  const visitsWeekCaption = useMemo(() => {
+    if (visitsWeekOffset === 0) return "Semaine en cours";
+    if (visitsWeekOffset === -1) return "Semaine precedente";
+    if (visitsWeekOffset === 1) return "Semaine suivante";
+    return visitsWeekOffset < 0
+      ? `Il y a ${Math.abs(visitsWeekOffset)} semaines`
+      : `Dans ${visitsWeekOffset} semaines`;
+  }, [visitsWeekOffset]);
+
+  // Tant qu'on n'a pas quitte la semaine en cours, le bouton « revenir » est
+  // inutile.
+  const isCurrentVisitsWeek = visitsWeekOffset === 0;
+
   const maxCommercialUnits = Math.max(
     ...orderInsights.byCommercial.map((item) => item.unitsSold),
     1
@@ -295,7 +448,10 @@ export function DashboardPage() {
               </div>
               <button
                 type="button"
-                onClick={loadStats}
+                onClick={() => {
+                  void loadStats();
+                  void refreshVisits();
+                }}
                 disabled={isLoading}
                 className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-border bg-panel px-4 text-sm font-semibold text-ink transition hover:border-brand/40 hover:bg-brand-soft/30 disabled:cursor-not-allowed disabled:opacity-60"
               >
@@ -385,7 +541,10 @@ export function DashboardPage() {
         </section>
 
         {/* ── Volumes & résumé ── */}
-        <section className="grid gap-4 xl:grid-cols-5">
+        {/* `grid-cols-1` est indispensable : sans colonne de base, la piste
+            implicite est en `auto` et seede sur le min-content des cartes, qui
+            sort alors du conteneur sur petit ecran au lieu de tronquer. */}
+        <section className="grid grid-cols-1 gap-4 xl:grid-cols-5">
           <article className={`${cardClass} xl:col-span-3`}>
             <div className="flex items-center gap-2">
               <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-brand/15 text-brand ring-1 ring-brand/25">
@@ -487,8 +646,194 @@ export function DashboardPage() {
           </article>
         </section>
 
+        {/* ── Visites du front-office (par semaine) ── */}
+        <section>
+          <article className={cardClass}>
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-brand/15 text-brand ring-1 ring-brand/25">
+                  <BarChart3 className="h-4 w-4" />
+                </span>
+                <div>
+                  <h3 className="font-display text-lg font-semibold text-ink">
+                    Visites du front-office
+                  </h3>
+                  <p className="text-sm text-muted">
+                    Un visiteur compte une fois par jour, tous appareils
+                  </p>
+                </div>
+              </div>
+
+              {/* Navigation par semaine : la semaine affichee, et les fleches
+                  pour reculer ou avancer d'une semaine. */}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => goToVisitsWeek(visitsWeekOffset - 1)}
+                  aria-label="Semaine precedente"
+                  title="Semaine precedente"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-panel text-ink transition hover:border-brand/40 hover:bg-brand-soft/30"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+
+                <div className="min-w-[11.5rem] rounded-xl border border-border/60 bg-bg/60 px-3 py-1.5 text-center">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-muted">
+                    {visitsWeekCaption}
+                  </p>
+                  <p className="text-sm font-bold text-ink">
+                    {isLoading ? "..." : visitsWeekLabel}
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => goToVisitsWeek(visitsWeekOffset + 1)}
+                  aria-label="Semaine suivante"
+                  title="Semaine suivante"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-panel text-ink transition hover:border-brand/40 hover:bg-brand-soft/30"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Chiffres de la semaine affichee. */}
+            <div className="mt-5 flex flex-wrap items-end gap-6">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
+                  Visites sur la semaine
+                </p>
+                <p className="mt-0.5 text-3xl font-bold text-ink tabular-nums">
+                  {isLoading ? "..." : visits.total.toLocaleString("fr-FR")}
+                </p>
+                {weekDeltaLabel && (
+                  <p className={`mt-1 text-xs font-semibold ${weekDeltaLabel.tone}`}>
+                    {weekDeltaLabel.text}
+                  </p>
+                )}
+              </div>
+
+              <div className="hidden sm:block">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
+                  Moyenne / jour
+                </p>
+                <p className="mt-0.5 text-2xl font-bold text-brand tabular-nums">
+                  {isLoading ? "..." : visitsPerDayAverage.toLocaleString("fr-FR")}
+                </p>
+                <p className="mt-1 text-xs text-muted">sur 7 jours</p>
+              </div>
+
+              {!isCurrentVisitsWeek && (
+                <button
+                  type="button"
+                  onClick={() => goToVisitsWeek(0)}
+                  className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-border bg-panel px-3 py-2 text-xs font-semibold text-ink transition hover:border-brand/40 hover:bg-brand-soft/30"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  Revenir a la semaine en cours
+                </button>
+              )}
+            </div>
+
+            {isLoading ? (
+              <Skeleton className="mt-6 h-44 w-full" />
+            ) : visitSeries.length === 0 ? (
+              <p className="mt-6 text-sm text-muted">
+                Aucune visite enregistree pour le moment.
+              </p>
+            ) : (
+              <>
+                {/* Une colonne par jour, du lundi au dimanche, hauteur
+                    proportionnelle au maximum de la semaine. */}
+                <div className="mt-6 flex h-44 items-end gap-1.5 sm:gap-2">
+                  {visitSeries.map((day) => {
+                    const heightPct = (day.count / maxVisits) * 100;
+                    // Jour deja ecoule : au-dela, la barre n'a pas encore de
+                    // donnee, on l'estompe pour ne pas la lire comme un zero.
+                    const isFuture = parseIsoDate(day.date) > new Date();
+                    const isToday = day.date === today;
+                    return (
+                      <div
+                        key={day.date}
+                        className={`group relative flex h-full min-w-0 flex-1 flex-col justify-end ${
+                          isToday ? "rounded-lg bg-brand/5" : ""
+                        }`}
+                      >
+                        {/* Valeur au-dessus des barres actives : lisible sans
+                            survol, sinon il faudrait hoverer chaque jour. */}
+                        {day.count > 0 && !isFuture && (
+                          <span className="mb-1 block text-center text-[10px] font-semibold text-muted tabular-nums">
+                            {day.count}
+                          </span>
+                        )}
+                        <div
+                          className="w-full rounded-t bg-gradient-to-t from-brand to-warning transition-all duration-500 group-hover:opacity-80"
+                          style={{
+                            height:
+                              day.count > 0
+                                ? `${Math.max(heightPct, 3)}%`
+                                : "3px",
+                            opacity:
+                              day.count > 0
+                                ? 0.35 + (heightPct / 100) * 0.65
+                                : isFuture
+                                  ? 0.08
+                                  : 0.15
+                          }}
+                        />
+                        <span
+                          className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 hidden -translate-x-1/2 whitespace-nowrap rounded-lg border border-border bg-panel px-2 py-1 text-[11px] font-semibold text-ink shadow-lg group-hover:block"
+                          role="tooltip"
+                        >
+                          {formatWeekday(day.date)} {formatVisitDay(day.date)} –{" "}
+                          {day.count.toLocaleString("fr-FR")}
+                          {day.count > 1 ? " visites" : " visite"}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Jour de la semaine sous chaque barre : la semaine se lit
+                    directement, du lundi au dimanche. */}
+                <div className="mt-2 flex gap-1.5 sm:gap-2">
+                  {visitSeries.map((day) => {
+                    const isToday = day.date === today;
+                    return (
+                      <span
+                        key={day.date}
+                        className={`min-w-0 flex-1 truncate text-center text-[11px] ${
+                          isToday ? "font-bold text-brand" : "text-muted"
+                        }`}
+                      >
+                        {formatWeekday(day.date)}
+                      </span>
+                    );
+                  })}
+                </div>
+
+                {busiestVisitDay && (
+                  <p className="mt-4 text-sm text-muted">
+                    Meilleur jour :{" "}
+                    <span className="font-semibold text-ink">
+                      {formatWeekday(busiestVisitDay.date)}{" "}
+                      {formatVisitDay(busiestVisitDay.date)}
+                    </span>{" "}
+                    avec{" "}
+                    <span className="font-semibold text-ink tabular-nums">
+                      {busiestVisitDay.count.toLocaleString("fr-FR")}
+                    </span>{" "}
+                    visites
+                  </p>
+                )}
+              </>
+            )}
+          </article>
+        </section>
+
         {/* ── Catégories & donut ── */}
-        <section className="grid gap-4 xl:grid-cols-5">
+        <section className="grid grid-cols-1 gap-4 xl:grid-cols-5">
           <article className={`${cardClass} xl:col-span-3`}>
             <div className="flex items-center gap-2">
               <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-warning/20 text-warning ring-1 ring-warning/25">
@@ -639,7 +984,7 @@ export function DashboardPage() {
         </section>
 
         {/* ── Commerciaux & produits vendus ── */}
-        <section className="grid gap-4 xl:grid-cols-5">
+        <section className="grid grid-cols-1 gap-4 xl:grid-cols-5">
           <article className={`${cardClass} xl:col-span-3`}>
             <div className="flex items-center gap-2">
               <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-brand/15 text-brand ring-1 ring-brand/25">

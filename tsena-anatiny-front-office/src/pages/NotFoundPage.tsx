@@ -3,9 +3,11 @@ import { Compass, Home } from "lucide-react";
 import { Page } from "../components/Page";
 import { OfflineNotice } from "../components/PwaUi";
 import { useI18n } from "../contexts/I18nContext";
+import { usePageTitle } from "../contexts/PageTitleContext";
 
 export function NotFoundPage() {
   const { t } = useI18n();
+  usePageTitle(t("notFound.title"));
 
   return (
     <Page>

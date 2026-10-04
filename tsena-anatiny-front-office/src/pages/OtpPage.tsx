@@ -4,11 +4,13 @@ import { ShieldCheck } from "lucide-react";
 import { customersService } from "../services/customers.service";
 import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
+import { usePageTitle } from "../contexts/PageTitleContext";
 import { Spinner } from "../components/Spinner";
 import { Page } from "../components/Page";
 
 export function OtpPage() {
   const { t } = useI18n();
+  usePageTitle(t("otp.title"));
   const { verifyOtp } = useAuth();
   const history = useHistory();
   const location = useLocation();

@@ -5,6 +5,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useAuthModal } from "../contexts/AuthModalContext";
 import { useCart } from "../contexts/CartContext";
 import { useI18n } from "../contexts/I18nContext";
+import { usePageTitle } from "../contexts/PageTitleContext";
 import {
   cartItemsService,
   promoCodesService
@@ -27,6 +28,7 @@ export function CartPage() {
   const { showLogin, showRegister } = useAuthModal();
   const { refresh } = useCart();
   const { t } = useI18n();
+  usePageTitle(t("cart.myCart"));
   const history = useHistory();
 
   const [items, setItems] = useState<CartItem[]>([]);

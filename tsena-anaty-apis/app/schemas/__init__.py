@@ -52,6 +52,7 @@ from .orders import (
   OrdersCreateRequest,
   OrdersUpdate,  
   OrdersUpdateRequest,
+  OrdersWithRelation,
   ResponseOrders
 )
 from .products import ( 
@@ -112,4 +113,10 @@ from .users import (
   UsersCreate,  
   UsersUpdate,  
   ResponseUsers
+)
+from .visits import (
+  Visits,
+  VisitsCreate,
+  VisitDay,
+  VisitsSummary,
 )

@@ -610,8 +610,38 @@ def update_orders(
                     for item in cart_items_for_confirmation:
                         db.delete(item)
 
-            if len(_pending_lines_from_note(orders.note)) > 0:
-                orders.note = _strip_pending_lines(orders.note)
+                # Une annulation (validation -> non validation) appelle
+                # _rollback_order_stock_out, qui SUPPRIME les mouvements de
+                # stock. Le marqueur "__pending_lines__" de la note est donc le
+                # seul enregistrement restant des produits commandes : on ne
+                # doit pas l'effacer ici, sinon la carte produits devient
+                # definitivement vide (client et back-office).
+                #
+                # Les deux bureaux le lisent en repli quand la commande n'a pas
+                # de mouvements. Le back-office le masque dans le champ "note"
+                # (stripPendingLines) et le reecrit a l'enregistrement
+                # (preservePendingLines) : il n'est donc jamais visible par
+                # l'utilisateur.
+                #
+                # Si la commande n'a jamais eu de marqueur (elle n'a pas passe
+                # par le panier client, elle a ete saisie a la main), on l'ecrit
+                # a partir des mouvements que l'on vient d'appliquer, afin que
+                # l'annulation ne perde pas l'information non plus.
+                if len(_pending_lines_from_note(orders.note)) == 0:
+                    orders.note = _note_with_pending_lines(
+                        orders.note,
+                        [
+                            {
+                                'product_id': movement.product_id,
+                                'variant_id': movement.variant_id,
+                                'quantity': movement.quantity,
+                                'unit_cost': movement.unit_cost,
+                                'another_price': movement.another_price,
+                                'other_price_reason': movement.other_price_reason,
+                            }
+                            for movement in movements
+                        ],
+                    )
 
         db.commit()
         db.refresh(orders)
@@ -705,7 +735,12 @@ def download_order_invoice_png(
     )
 
 
-@router.get('/{orders_id}', response_model=schemas.Orders)
+# `OrdersWithRelation` et non `Orders` : `Orders` ne declare ni `customer` ni
+# `stock_movements`, donc FastAPI les retirait de la reponse et la page
+# d'edition d'une commande (back-office) n'affichait jamais ses produits, meme
+# pour une commande confirmee. L'endpoint de liste utilise deja
+# `ResponseOrders` -> List[OrdersWithRelation].
+@router.get('/{orders_id}', response_model=schemas.OrdersWithRelation)
 def read_order_by_id(
     *,
     relation: str = "[]",

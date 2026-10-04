@@ -181,7 +181,7 @@ export const buildOrderReceiptHtml = ({
   const extraPriceLabel =
     trimmedOtherPriceReason.length > 0
       ? trimmedOtherPriceReason
-      : "Frais supplémentaires";
+      : "Frais de livraison";
 
   const resolvedOrderNumber =
     (orderNumber || "").trim() ||
@@ -722,7 +722,7 @@ export function OrderForm({
               <Receipt className="h-4 w-4" />
             </div>
             <p className="text-xs font-bold uppercase tracking-widest text-ink">
-              Frais supplémentaires
+              Frais de livraison
             </p>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">

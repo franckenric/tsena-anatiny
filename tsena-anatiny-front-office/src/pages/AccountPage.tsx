@@ -17,6 +17,7 @@ import {
 import { useAuth } from "../contexts/AuthContext";
 import { useAuthModal } from "../contexts/AuthModalContext";
 import { useI18n } from "../contexts/I18nContext";
+import { usePageTitle } from "../contexts/PageTitleContext";
 import { ordersService } from "../services/operations.service";
 import type { Order, OrderStatus } from "../types/operations";
 import { PageLoader } from "../components/Spinner";
@@ -52,6 +53,7 @@ export function AccountPage() {
   const { customer, isBooting, logout } = useAuth();
   const { showLogin, showRegister } = useAuthModal();
   const { t } = useI18n();
+  usePageTitle(t("nav.account"));
   const [orders, setOrders] = useState<Order[]>([]);
   const [allOrders, setAllOrders] = useState<Order[]>([]);
   const [totalOrders, setTotalOrders] = useState(0);

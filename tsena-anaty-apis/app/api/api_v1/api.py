@@ -20,6 +20,7 @@ from app.api.api_v1.endpoints import roles
 from app.api.api_v1.endpoints import stock
 from app.api.api_v1.endpoints import stock_movements
 from app.api.api_v1.endpoints import users
+from app.api.api_v1.endpoints import visits
 
 api_router = APIRouter()
 api_router.include_router(categories.router, prefix="/categories", tags=["categories"])
@@ -42,3 +43,4 @@ api_router.include_router(roles.router, prefix="/roles", tags=["roles"])
 api_router.include_router(stock.router, prefix="/stock", tags=["stock"])
 api_router.include_router(stock_movements.router, prefix="/stock_movements", tags=["stock_movements"])
 api_router.include_router(users.router, prefix="/users", tags=["users"])
+api_router.include_router(visits.router, prefix="/visits", tags=["visits"])

@@ -44,6 +44,7 @@ import {
   resolveImageUrl
 } from "../lib/utils";
 import { useI18n } from "../contexts/I18nContext";
+import { usePageTitle } from "../contexts/PageTitleContext";
 import { useRecommendations } from "../hooks/useRecommendations";
 
 const PAGE_SIZE = PRODUCTS_PAGE_SIZE;
@@ -470,6 +471,7 @@ function PromoBanner({ onPress }: { onPress: () => void }) {
 
 export function HomePage() {
   const { t } = useI18n();
+  usePageTitle(t("nav.shop"));
   const history = useHistory();
   const { search } = useLocation();
   const searchParams = new URLSearchParams(search);

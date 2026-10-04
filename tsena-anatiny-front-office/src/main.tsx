@@ -13,6 +13,13 @@ import { AuthModalProvider } from "./contexts/AuthModalContext";
 import { CartDrawerProvider } from "./contexts/CartDrawerContext";
 import { MobileMenuProvider } from "./contexts/MobileMenuContext";
 import { PwaProvider } from "./contexts/PwaContext";
+import { PageTitleProvider } from "./contexts/PageTitleContext";
+import { trackVisit } from "./services/visits.service";
+
+// Hors du rendu : une seule tentative par chargement de page. L'API dedoublonne
+// (visitor_key, visit_date), donc un double appel en mode StrictMode est sans
+// effet sur le compteur du back-office.
+trackVisit();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
@@ -26,7 +33,11 @@ createRoot(document.getElementById("root")!).render(
                   <CartDrawerProvider>
                     <MobileMenuProvider>
                       <PwaProvider>
-                        <App />
+                        {/* Doit envelopper <App /> : <Layout> rend <Header>,
+                            qui affiche le titre declare par chaque page. */}
+                        <PageTitleProvider>
+                          <App />
+                        </PageTitleProvider>
                       </PwaProvider>
                     </MobileMenuProvider>
                   </CartDrawerProvider>

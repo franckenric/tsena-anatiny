@@ -15,3 +15,4 @@ from .crud_roles import roles
 from .crud_stock import stock
 from .crud_stock_movements import stock_movements
 from .crud_users import users
+from .crud_visits import visits

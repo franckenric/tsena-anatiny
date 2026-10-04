@@ -3,6 +3,7 @@ import { useHistory, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useAuthModal } from "../contexts/AuthModalContext";
 import { useI18n } from "../contexts/I18nContext";
+import { usePageTitle } from "../contexts/PageTitleContext";
 import { Page } from "../components/Page";
 import { RegisterForm } from "../components/auth/RegisterForm";
 
@@ -15,6 +16,7 @@ export function RegisterPage() {
   const { handleFacebookCallback } = useAuth();
   const { showRegister } = useAuthModal();
   const { t } = useI18n();
+  usePageTitle(t("auth.registerTitle"));
   const history = useHistory();
   const location = useLocation();
   const from = (location.state as { from?: string } | null)?.from ?? "/compte";

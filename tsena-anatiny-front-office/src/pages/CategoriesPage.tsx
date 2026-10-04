@@ -19,9 +19,11 @@ import { Page } from "../components/Page";
 import { cn } from "../lib/utils";
 import { categoryEmoji, categoryGradient } from "../lib/categories";
 import { useI18n } from "../contexts/I18nContext";
+import { usePageTitle } from "../contexts/PageTitleContext";
 
 export function CategoriesPage() {
   const { t } = useI18n();
+  usePageTitle(t("categories.all"));
   const history = useHistory();
   const { pathname, search } = useLocation();
 

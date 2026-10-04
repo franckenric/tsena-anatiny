@@ -3,11 +3,13 @@ import { getProductTotalStock } from "../services/products.service";
 import type { Product } from "../types/product";
 import { ProductListing } from "../components/ProductListing";
 import { useI18n } from "../contexts/I18nContext";
+import { usePageTitle } from "../contexts/PageTitleContext";
 import { useRecommendations } from "../hooks/useRecommendations";
 import { useInfiniteProducts } from "../hooks/useInfiniteProducts";
 
 export function RecommandesPage() {
   const { t } = useI18n();
+  usePageTitle(t("pages.rec.title"));
 
   const transform = useCallback(
     (items: Product[]) =>

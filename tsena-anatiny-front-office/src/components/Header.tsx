@@ -8,6 +8,7 @@ import { useCartDrawer } from "../contexts/CartDrawerContext";
 import { useMobileMenu } from "../contexts/MobileMenuContext";
 import { useI18n } from "../contexts/I18nContext";
 import { usePwa } from "../contexts/PwaContext";
+import { useCurrentPageTitle } from "../contexts/PageTitleContext";
 import { NotificationsBell } from "./NotificationsBell";
 import { DESKTOP_NAV_ITEMS, isNavActive } from "../lib/nav";
 import { cn } from "../lib/utils";
@@ -20,6 +21,7 @@ export function Header() {
   const { openMenu } = useMobileMenu();
   const { t, language, setLanguage } = useI18n();
   const { canInstall, promptInstall } = usePwa();
+  const pageTitle = useCurrentPageTitle();
   const history = useHistory();
   const { pathname } = useLocation();
 
@@ -72,13 +74,19 @@ export function Header() {
           <Menu className="h-5 w-5" />
         </button>
 
-        <Link to="/" className="flex shrink-0 items-center gap-2.5">
+        {/* Comme le back-office : le titre de la page remplace le nom de la
+            marque sur petit ecran. `min-w-0` + `truncate` garantissent que le
+            titre se coupe plutot que de pousser les controles de droite. */}
+        <Link to="/" className="flex min-w-0 items-center gap-2.5">
           <img
             src="/logo.png"
             alt="Tsena Anatiny"
-            className="h-8 w-8 shrink-0 rounded-xl object-contain shadow-md shadow-brand/20"
+            className="h-7 w-7 shrink-0 rounded-xl object-contain shadow-md shadow-brand/20 sm:h-8 sm:w-8"
           />
-          <span className="hidden text-lg font-display font-bold text-ink sm:block">
+          <span className="truncate font-display text-base font-bold text-ink sm:text-lg lg:hidden">
+            {pageTitle || t("nav.shop")}
+          </span>
+          <span className="hidden font-display text-lg font-bold text-ink lg:block">
             Tsena&nbsp;Anatiny
           </span>
         </Link>

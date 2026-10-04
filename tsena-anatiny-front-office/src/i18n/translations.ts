@@ -286,6 +286,7 @@ export const dictionaries: Record<Language, Record<string, string>> = {
     "notifications.upToDate": "Tout est à jour",
     "notifications.markAllRead": "Tout marquer comme lu",
     "notifications.clear": "Effacer",
+    "notifications.clearAll": "Tout effacer",
     "notifications.empty": "Aucune notification pour le moment.",
     "notifications.emptyHint":
       "Les changements de statut de vos commandes apparaîtront ici.",
@@ -602,6 +603,7 @@ export const dictionaries: Record<Language, Record<string, string>> = {
     "notifications.upToDate": "Zava-drehetra farany",
     "notifications.markAllRead": "Asio marika voavaky daholo",
     "notifications.clear": "Fafao",
+    "notifications.clearAll": "Fafao daholo",
     "notifications.empty": "Tsy misy fampandrenesana amin'izao fotoana izao.",
     "notifications.emptyHint": "Ny fiovan'ny satan'ny baikonao dia hiseho eto.",
     "notifications.newOrder": "Baiko vaovao",

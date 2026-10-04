@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { CheckCircle2, Clock3, PackageCheck } from "lucide-react";
-import { cartItemsService, ordersService } from "../services/operations.service";
+import { ordersService } from "../services/operations.service";
 import type { Order, OrderStatus } from "../types/operations";
 import { PageLoader } from "../components/Spinner";
 import { StatusBadge } from "../components/StatusBadge";
@@ -9,25 +9,32 @@ import { Page } from "../components/Page";
 import { formatAr, formatDate } from "../lib/utils";
 import {
   getOrderLineItems,
-  getOrderLineItemsFromCart,
   getOrderOtherPriceReason,
-  getOrderTotal,
-  type OrderLineItem
+  getOrderTotal
 } from "../lib/orders";
-import { useAuth } from "../contexts/AuthContext";
 import { useI18n } from "../contexts/I18nContext";
+import { usePageTitle } from "../contexts/PageTitleContext";
 
 export function OrderSuccessPage() {
   const { orderId } = useParams<{ orderId: string }>();
-  const { customer } = useAuth();
   const { t } = useI18n();
   const [order, setOrder] = useState<Order | null>(null);
-  const [fallbackItems, setFallbackItems] = useState<OrderLineItem[] | null>(
-    null
-  );
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // `isConfirmed` n'est calcule qu'apres les retours anticipes, donc on derive
+  // le titre depuis `order` directement pour garder un ordre de hooks stable.
+  const isConfirmedStatus =
+    order?.status === "confirmed" || order?.status === "delivered";
+  usePageTitle(
+    isConfirmedStatus ? t("order.confirmedTitle") : t("order.createdTitle")
+  );
+
+  // Pas de repli sur le panier du client : l'API supprime les lignes de panier
+  // a la validation de la commande, donc le panier ne contient que des articles
+  // ajoutes depuis et afficherait de faux produits (et un faux total) sur une
+  // commande. Les seules sources fiables sont les mouvements de stock puis les
+  // lignes en attente stockees dans la note (voir getOrderLineItems).
   useEffect(() => {
     let cancelled = false;
     const id = Number(orderId);
@@ -41,18 +48,6 @@ export function OrderSuccessPage() {
       .then((data) => {
         if (cancelled) return;
         setOrder(data);
-        const directItems = data ? getOrderLineItems(data) : [];
-        if (data && directItems.length === 0 && customer) {
-          return cartItemsService
-            .getCartItemsWithProducts(customer.id)
-            .then((items) => {
-              if (!cancelled) setFallbackItems(getOrderLineItemsFromCart(items));
-            })
-            .catch(() => {
-              if (!cancelled) setFallbackItems([]);
-            });
-        }
-        return undefined;
       })
       .catch((err) => {
         if (!cancelled) {
@@ -65,7 +60,7 @@ export function OrderSuccessPage() {
     return () => {
       cancelled = true;
     };
-  }, [orderId, customer, t]);
+  }, [orderId, t]);
 
   if (isLoading) {
     return (
@@ -90,7 +85,7 @@ export function OrderSuccessPage() {
     );
   }
 
-  const items = fallbackItems ?? getOrderLineItems(order);
+  const items = getOrderLineItems(order);
   const total = getOrderTotal(order, items);
   const productsTotal = items.reduce(
     (sum, line) => sum + line.quantity * line.unit_cost,

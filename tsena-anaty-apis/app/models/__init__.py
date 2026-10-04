@@ -16,3 +16,4 @@ from .roles import Roles
 from .stock import Stock
 from .stock_movements import StockMovements
 from .users import Users
+from .visits import Visits

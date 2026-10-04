@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useHistory, useLocation, useParams } from "react-router-dom";
 import {
   ArrowLeft,
+  Loader2,
   PackageCheck,
   PackageX,
   ShoppingBag,
@@ -20,6 +21,7 @@ import type { Product } from "../types/product";
 import { useCartDrawer } from "../contexts/CartDrawerContext";
 import { useToast } from "../contexts/ToastContext";
 import { useI18n } from "../contexts/I18nContext";
+import { usePageTitle } from "../contexts/PageTitleContext";
 import { useAddToCart, type CartLine } from "../hooks/useAddToCart";
 import { ProductDetailSkeleton } from "../components/Skeletons";
 import { ProductImage, isRealImage } from "../components/ProductImage";
@@ -51,6 +53,8 @@ export function ProductPage() {
   const [selectedImage, setSelectedImage] = useState<string | undefined>(
     undefined
   );
+
+  usePageTitle(product?.name ?? t("nav.shop"));
 
   const galleryImages = useMemo(() => {
     if (!product) return [];
@@ -614,24 +618,43 @@ export function ProductPage() {
         </div>
       </div>
 
-      {/* ── Barre d'action mobile (au-dessus de la navigation basse) ── */}
-      <div className="fixed inset-x-0 z-50 border-t border-border/40 bg-panel/95 px-5 pb-3 pt-3 backdrop-blur-xl bottom-[calc(3.5rem+env(safe-area-inset-bottom))] sm:hidden">
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={handleAddToCart}
-            disabled={!canAdd}
-            className="flex w-full items-center justify-center gap-2.5 rounded-2xl bg-brand px-5 py-3.5 text-sm font-bold text-white shadow-glow transition-all duration-200 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <ShoppingBag className="h-4 w-4" />
-            {hasVariants && totalQty <= 0 && stock > 0
-              ? t("product.chooseVariant")
-              : isSubmitting
-                ? t("product.adding")
-                : t("product.addToCart")}
-          </button>
-        </div>
-      </div>
+      {/* ── Bouton flottant "ajouter au panier" (mobile) ──
+          Bouton circulaire posee au-dessus de la navigation basse : contrairement
+          a une barre pleine largeur, il ne masque plus le bas de la page et
+          laisse le contenu defiler. `touch-action: manipulation` (index.css)
+          autorise toujours le scroll quand on glisse sur le bouton. */}
+      <button
+        type="button"
+        onClick={handleAddToCart}
+        disabled={!canAdd}
+        aria-label={
+          hasVariants && totalQty <= 0 && stock > 0
+            ? t("product.chooseVariant")
+            : isSubmitting
+              ? t("product.adding")
+              : t("product.addToCart")
+        }
+        title={t("product.addToCart")}
+        className={cn(
+          "fixed right-4 z-[45] flex h-14 w-14 items-center justify-center",
+          "bottom-[calc(4.75rem+env(safe-area-inset-bottom))] sm:hidden",
+          "rounded-full bg-brand text-white shadow-lift shadow-brand/30",
+          "transition-all duration-200 active:scale-90",
+          "disabled:cursor-not-allowed disabled:opacity-40"
+        )}
+      >
+        {isSubmitting ? (
+          <Loader2 className="h-6 w-6 animate-spin" />
+        ) : (
+          <ShoppingBag className="h-6 w-6" />
+        )}
+
+        {!isSubmitting && totalQty > 0 && (
+          <span className="absolute -right-0.5 -top-0.5 flex h-6 min-w-6 items-center justify-center rounded-full bg-ink px-1.5 text-[11px] font-extrabold text-white shadow-md">
+            {totalQty}
+          </span>
+        )}
+      </button>
     </Page>
   );
 }

@@ -28,6 +28,22 @@ export function parsePendingLines(
   }
 }
 
+/** Premier libelle non vide (apres trim), sinon `undefined`.
+ *
+ *  Indispensable : `??` ne rattrape que null/undefined, donc un nom de produit
+ *  vide ("") passait au travers et affichait une ligne sans titre dans la
+ *  carte produit. Le back-office utilisait deja `||`.
+ */
+function firstNonEmpty(
+  ...candidates: Array<string | null | undefined>
+): string | undefined {
+  for (const candidate of candidates) {
+    const trimmed = typeof candidate === "string" ? candidate.trim() : "";
+    if (trimmed) return trimmed;
+  }
+  return undefined;
+}
+
 function toLineItems(
   source: Array<Record<string, unknown>>
 ): OrderLineItem[] {
@@ -42,39 +58,68 @@ function toLineItems(
         product_id: productId,
         variant_id: variantId,
         product_name:
-          typeof line.product_name === "string" && line.product_name.trim()
-            ? line.product_name
-            : `Produit #${productId}`,
-        variant_name:
-          typeof line.variant_name === "string" && line.variant_name.trim()
-            ? line.variant_name
-            : undefined,
+          firstNonEmpty(line.product_name as string | undefined) ??
+          `Produit #${productId}`,
+        variant_name: firstNonEmpty(
+          line.variant_name as string | undefined
+        ),
         quantity: Number(line.quantity || 0),
         unit_cost: Number(line.unit_cost || 0),
         another_price: Number(line.another_price || 0),
-        other_price_reason:
-          typeof line.other_price_reason === "string"
-            ? line.other_price_reason
-            : undefined
+        other_price_reason: firstNonEmpty(
+          line.other_price_reason as string | undefined
+        )
       };
     })
     .filter((line) => line.product_id > 0);
 }
 
 export function getOrderLineItems(order: Order): OrderLineItem[] {
-  const movements = order.stock_movements ?? [];
+  // Un mouvement sans product_id exploite (produit supprime, ligne corrompue)
+  // : on l'ignore, sinon la carte affiche une ligne parasite "Produit #0".
+  const movements = (order.stock_movements ?? []).filter(
+    (movement) => Number(movement.product_id || 0) > 0
+  );
+
   if (movements.length > 0) {
-    return movements.map((m) => ({
-      product_id: m.product_id ?? 0,
-      variant_id: m.variant_id ?? null,
-      product_name: m.product?.name ?? `Produit #${m.product_id ?? 0}`,
-      variant_name: m.variant?.name,
-      quantity: Number(m.quantity || 0),
-      unit_cost: Number(m.unit_cost || 0),
-      another_price: Number(m.another_price || 0),
-      other_price_reason: m.other_price_reason
-    }));
+    // Un meme produit/variante peut etre reparti sur plusieurs mouvements :
+    // on agrege comme le back-office pour que les deux bureaux affichent
+    // exactement les memes lignes.
+    const aggregated = new Map<string, OrderLineItem>();
+    for (const movement of movements) {
+      const productId = Number(movement.product_id || 0);
+      const variantId = movement.variant_id ?? null;
+      const key = `${productId}:${variantId ?? ""}`;
+      const quantity = Number(movement.quantity || 0);
+      const anotherPrice = Number(movement.another_price || 0);
+      const existing = aggregated.get(key);
+      if (!existing) {
+        aggregated.set(key, {
+          product_id: productId,
+          variant_id: variantId,
+          product_name:
+            firstNonEmpty(movement.product?.name) ?? `Produit #${productId}`,
+          variant_name: firstNonEmpty(movement.variant?.name),
+          quantity,
+          unit_cost: Number(movement.unit_cost || 0),
+          another_price: anotherPrice,
+          other_price_reason:
+            firstNonEmpty(movement.other_price_reason) ?? undefined
+        });
+        continue;
+      }
+      existing.quantity += quantity;
+      existing.another_price += anotherPrice;
+      if (!existing.other_price_reason && movement.other_price_reason) {
+        existing.other_price_reason = movement.other_price_reason;
+      }
+      if (!existing.unit_cost && movement.unit_cost) {
+        existing.unit_cost = Number(movement.unit_cost || 0);
+      }
+    }
+    return Array.from(aggregated.values());
   }
+
   return toLineItems(parsePendingLines(order.note));
 }
 

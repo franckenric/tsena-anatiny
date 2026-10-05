@@ -57,6 +57,23 @@ export interface CheckoutPayload {
   promo_code?: string;
 }
 
+export interface GuestCheckoutLine {
+  product_id: number;
+  variant_id?: number | null;
+  quantity: number;
+}
+
+/** Commande placee sans compte. Les prix sont recalcules par l'API. */
+export interface GuestCheckoutPayload {
+  customer_name: string;
+  customer_phone: string;
+  delivery_address?: string;
+  items: GuestCheckoutLine[];
+  status?: OrderStatus;
+  note?: string;
+  promo_code?: string;
+}
+
 export interface OrderMovement {
   product_id?: number;
   variant_id?: number | null;

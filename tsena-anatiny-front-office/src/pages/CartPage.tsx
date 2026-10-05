@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useHistory } from "react-router-dom";
 import { ArrowRight, ShoppingCart, Trash2 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
@@ -10,7 +10,6 @@ import {
   cartItemsService,
   promoCodesService
 } from "../services/operations.service";
-import type { CartItem } from "../types/operations";
 import { PageLoader } from "../components/Spinner";
 import { Page } from "../components/Page";
 import { QuantityInput } from "../components/QuantityInput";
@@ -22,93 +21,42 @@ import {
   setAppliedPromo,
   type AppliedPromo
 } from "../lib/promo";
+import {
+  getGuestPromo,
+  removeFromGuestCart,
+  setGuestPromo,
+  updateGuestCartQuantity
+} from "../lib/guestCart";
 
 export function CartPage() {
-  const { customer, isBooting } = useAuth();
-  const { showLogin, showRegister } = useAuthModal();
-  const { refresh } = useCart();
+  const { isBooting } = useAuth();
+  const { showLogin } = useAuthModal();
+  const { items, isGuest, refresh } = useCart();
   const { t } = useI18n();
   usePageTitle(t("cart.myCart"));
   const history = useHistory();
 
-  const [items, setItems] = useState<CartItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isUpdatingId, setIsUpdatingId] = useState<number | null>(null);
+  const [isUpdatingKey, setIsUpdatingKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [promo, setPromo] = useState<AppliedPromo | null>(null);
 
-  const load = useCallback(async () => {
-    if (!customer) return;
-    try {
-      setIsLoading(true);
-      setError(null);
-      const data = await cartItemsService.getCartItemsWithProducts(customer.id);
-      setItems(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t("error.loadCart"));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [customer, t]);
-
+  // Les quantites sont mises a jour en place par le contexte pour les deux
+  // sources de panier : une simple relecture suffit apres validation serveur.
   useEffect(() => {
-    if (isBooting) return;
-    if (!customer) {
-      setIsLoading(false);
-      return;
-    }
-    void load();
-  }, [isBooting, customer, load]);
+    setPromo(isGuest ? getGuestPromo() : getAppliedPromo());
+  }, [isGuest, items.length]);
 
-  const handleQuantityChange = async (item: CartItem, next: number) => {
-    if (next <= 0) {
-      await handleRemove(item.id);
-      return;
-    }
-    setIsUpdatingId(item.id);
-    setError(null);
-    const previous = item.quantity;
-    setItems((prev) =>
-      prev.map((i) => (i.id === item.id ? { ...i, quantity: next } : i))
-    );
-    try {
-      await cartItemsService.updateCartItem(item.id, { quantity: next });
-      await refresh();
-    } catch (err) {
-      setItems((prev) =>
-        prev.map((i) => (i.id === item.id ? { ...i, quantity: previous } : i))
-      );
-      setError(err instanceof Error ? err.message : t("error.update"));
-    } finally {
-      setIsUpdatingId(null);
-    }
-  };
-
-  const handleRemove = async (id: number) => {
-    setIsUpdatingId(id);
-    setError(null);
-    setItems((prev) => prev.filter((i) => i.id !== id));
-    try {
-      await cartItemsService.deleteCartItem(id);
-      await refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t("error.delete"));
-      await load();
-    } finally {
-      setIsUpdatingId(null);
-    }
-  };
-
-  const subtotal = items.reduce(
-    (sum, item) => sum + Number(item.quantity || 0) * Number(item.unit_cost || 0),
-    0
-  );
-
-  const [promo, setPromo] = useState<AppliedPromo | null>(() =>
-    getAppliedPromo()
+  const subtotal = useMemo(
+    () =>
+      items.reduce(
+        (sum, item) => sum + Number(item.quantity || 0) * Number(item.unit_cost || 0),
+        0
+      ),
+    [items]
   );
 
   useEffect(() => {
-    const stored = getAppliedPromo();
+    const stored = isGuest ? getGuestPromo() : getAppliedPromo();
     if (!stored || items.length === 0) return;
     let cancelled = false;
     promoCodesService
@@ -117,56 +65,73 @@ export function CartPage() {
         if (!cancelled) setPromo(stored);
       })
       .catch(() => {
-        setAppliedPromo(null);
+        if (isGuest) setGuestPromo(null);
+        else setAppliedPromo(null);
         if (!cancelled) setPromo(null);
       });
     return () => {
       cancelled = true;
     };
-  }, [items.length, subtotal]);
+  }, [items.length, subtotal, isGuest]);
 
   const discount = promo ? computeDiscountAmount(promo, subtotal) : 0;
+
+  const handleQuantityChange = useCallback(
+    async (
+      key: string,
+      productId: number,
+      variantId: number | null,
+      lineId: number,
+      next: number
+    ) => {
+      setIsUpdatingKey(key);
+      setError(null);
+      try {
+        if (isGuest) {
+          updateGuestCartQuantity(productId, variantId, next);
+        } else {
+          if (next <= 0) {
+            await cartItemsService.deleteCartItem(lineId);
+          } else {
+            await cartItemsService.updateCartItem(lineId, { quantity: next });
+          }
+        }
+        await refresh();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : t("error.update"));
+        await refresh();
+      } finally {
+        setIsUpdatingKey(null);
+      }
+    },
+    [isGuest, refresh, t]
+  );
+
+  const handleRemove = useCallback(
+    async (key: string, productId: number, variantId: number | null, lineId: number) => {
+      setIsUpdatingKey(key);
+      setError(null);
+      try {
+        if (isGuest) {
+          removeFromGuestCart(productId, variantId);
+        } else {
+          await cartItemsService.deleteCartItem(lineId);
+        }
+        await refresh();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : t("error.delete"));
+        await refresh();
+      } finally {
+        setIsUpdatingKey(null);
+      }
+    },
+    [isGuest, refresh, t]
+  );
 
   if (isBooting) {
     return (
       <Page>
         <PageLoader />
-      </Page>
-    );
-  }
-
-  if (!customer) {
-    return (
-      <Page>
-        <div className="page-shell flex flex-col items-center gap-4 py-20 text-center">
-          <ShoppingCart className="h-12 w-12 text-muted" />
-          <h1 className="text-2xl font-bold text-ink">{t("cart.empty")}</h1>
-          <p className="max-w-md text-muted">{t("cart.loginHint")}</p>
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={() => showLogin()}
-              className="rounded-2xl bg-ink px-6 py-3 text-sm font-bold text-white transition hover:bg-ink/90"
-            >
-              {t("nav.login")}
-            </button>
-            <button
-              type="button"
-              onClick={() => showRegister()}
-              className="rounded-2xl bg-brand px-6 py-3 text-sm font-bold text-white transition hover:bg-brand/90"
-            >
-              {t("nav.createAccount")}
-            </button>
-          </div>
-        </div>
-      </Page>
-    );
-  }
-
-  if (isLoading) {
-    return (
-      <Page>
-        <PageLoader label={t("common.loading")} />
       </Page>
     );
   }
@@ -197,6 +162,19 @@ export function CartPage() {
         {t("cart.myCart")}
       </h1>
 
+      {isGuest && (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-panel px-4 py-3">
+          <p className="text-sm text-muted">{t("cart.guestHint")}</p>
+          <button
+            type="button"
+            onClick={() => showLogin()}
+            className="text-sm font-semibold text-brand underline underline-offset-2"
+          >
+            {t("cart.loginToSave")}
+          </button>
+        </div>
+      )}
+
       {error && (
         <div className="mt-4 rounded-xl border border-danger/30 bg-danger/5 px-3 py-2.5 text-sm text-danger">
           {error}
@@ -205,22 +183,19 @@ export function CartPage() {
 
       <div className="mt-6 grid gap-8 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
-          {items.map((item) => {
-            const name =
-              item.product?.name ?? item.variant?.name ?? `Produit #${item.product_id}`;
-            const variantName = item.variant?.name;
+          {items.map((item, index) => {
+            const key = `${item.product_id}-${item.variant_id ?? 0}-${index}`;
             const unitPrice = Number(item.unit_cost || 0);
-            const imageUrl = resolveImageUrl(
-              item.variant?.image || item.product?.image || null
-            );
+            const imageUrl = resolveImageUrl(item.image ?? null);
+            const busy = isUpdatingKey === key;
             return (
               <div
-                key={item.id}
+                key={key}
                 className="flex flex-wrap items-center gap-4 rounded-3xl border border-border bg-panel p-4 shadow-card"
               >
                 <ProductImage
                   src={imageUrl}
-                  alt={name}
+                  alt={item.product_name}
                   size="xs"
                   className="border border-border"
                 />
@@ -230,11 +205,11 @@ export function CartPage() {
                     to={`/produit/${item.product_id}`}
                     className="line-clamp-2 text-sm font-semibold text-ink hover:text-brand"
                   >
-                    {name}
+                    {item.product_name}
                   </Link>
-                  {variantName && (
+                  {item.variant_name && (
                     <p className="mt-0.5 text-xs text-muted">
-                      {t("common.variant")}: {variantName}
+                      {t("common.variant")}: {item.variant_name}
                     </p>
                   )}
                   <p className="mt-1 text-sm font-bold text-brand">
@@ -244,9 +219,17 @@ export function CartPage() {
 
                 <QuantityInput
                   value={item.quantity}
-                  onChange={(value) => handleQuantityChange(item, value)}
+                  onChange={(value) =>
+                    handleQuantityChange(
+                      key,
+                      item.product_id,
+                      item.variant_id,
+                      item.id ?? 0,
+                      value
+                    )
+                  }
                   min={0}
-                  disabled={isUpdatingId === item.id}
+                  disabled={busy}
                 />
 
                 <p className="w-24 shrink-0 text-right text-sm font-bold text-ink">
@@ -255,8 +238,15 @@ export function CartPage() {
 
                 <button
                   type="button"
-                  onClick={() => handleRemove(item.id)}
-                  disabled={isUpdatingId === item.id}
+                  onClick={() =>
+                    handleRemove(
+                      key,
+                      item.product_id,
+                      item.variant_id,
+                      item.id ?? 0
+                    )
+                  }
+                  disabled={busy}
                   aria-label={t("cart.remove")}
                   className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-muted transition hover:bg-danger/10 hover:text-danger disabled:opacity-40"
                 >

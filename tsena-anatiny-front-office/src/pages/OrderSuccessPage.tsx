@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { CheckCircle2, Clock3, PackageCheck } from "lucide-react";
 import { ordersService } from "../services/operations.service";
+import { useAuth } from "../contexts/AuthContext";
 import type { Order, OrderStatus } from "../types/operations";
 import { PageLoader } from "../components/Spinner";
 import { StatusBadge } from "../components/StatusBadge";
@@ -18,6 +19,8 @@ import { usePageTitle } from "../contexts/PageTitleContext";
 export function OrderSuccessPage() {
   const { orderId } = useParams<{ orderId: string }>();
   const { t } = useI18n();
+  const { customer } = useAuth();
+  const isGuest = !customer;
   const [order, setOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -213,8 +216,13 @@ export function OrderSuccessPage() {
           className="inline-flex items-center gap-2 rounded-2xl bg-brand px-6 py-3 text-sm font-bold text-white shadow-glow transition hover:bg-brand/90"
         >
           <PackageCheck className="h-4 w-4" />
-          {t("order.track")}
+          {isGuest ? t("order.trackWithNumber") : t("order.track")}
         </Link>
+        {isGuest && (
+          <p className="max-w-sm text-center text-xs text-muted">
+            {t("order.guestTrackHint")}
+          </p>
+        )}
         <Link to="/" className="text-sm font-semibold text-muted hover:text-brand">
           {t("order.continue")}
         </Link>

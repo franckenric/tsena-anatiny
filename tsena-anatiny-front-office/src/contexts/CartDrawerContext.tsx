@@ -17,14 +17,13 @@ import {
   Trash2,
   X
 } from "lucide-react";
-import { useAuth } from "./AuthContext";
 import { useAuthModal } from "./AuthModalContext";
 import { useCart } from "./CartContext";
 import { useI18n } from "../contexts/I18nContext";
 import { cartItemsService } from "../services/operations.service";
-import type { CartItem } from "../types/operations";
 import { ProductImage } from "../components/ProductImage";
 import { formatAr, resolveImageUrl } from "../lib/utils";
+import { removeFromGuestCart, updateGuestCartQuantity } from "../lib/guestCart";
 
 interface CartDrawerContextValue {
   isOpen: boolean;
@@ -35,36 +34,13 @@ interface CartDrawerContextValue {
 const CartDrawerContext = createContext<CartDrawerContextValue | null>(null);
 
 export function CartDrawerProvider({ children }: { children: ReactNode }) {
-  const { customer } = useAuth();
-  const { showLogin, showRegister } = useAuthModal();
-  const { count, refresh } = useCart();
+  const { showLogin } = useAuthModal();
+  const { items, count, isGuest, refresh } = useCart();
   const { t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
-  const [items, setItems] = useState<CartItem[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
 
   const openCart = useCallback(() => setIsOpen(true), []);
   const closeCart = useCallback(() => setIsOpen(false), []);
-
-  useEffect(() => {
-    if (!isOpen || !customer) return;
-    let cancelled = false;
-    setIsLoading(true);
-    cartItemsService
-      .getCartItemsWithProducts(customer.id)
-      .then((data) => {
-        if (!cancelled) setItems(data);
-      })
-      .catch(() => {
-        if (!cancelled) setItems([]);
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [isOpen, customer, count]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -80,36 +56,37 @@ export function CartDrawerProvider({ children }: { children: ReactNode }) {
     };
   }, [isOpen, closeCart]);
 
-  const reloadItems = useCallback(async () => {
-    if (!customer) return;
+  const handleRemove = async (item: {
+    id?: number;
+    product_id: number;
+    variant_id: number | null;
+  }) => {
     try {
-      const data = await cartItemsService.getCartItemsWithProducts(customer.id);
-      setItems(data);
-    } catch {
-      setItems([]);
-    }
-  }, [customer]);
-
-  const handleRemove = async (id: number) => {
-    setItems((prev) => prev.filter((i) => i.id !== id));
-    try {
-      await cartItemsService.deleteCartItem(id);
+      if (isGuest) {
+        removeFromGuestCart(item.product_id, item.variant_id);
+      } else if (item.id != null) {
+        await cartItemsService.deleteCartItem(item.id);
+      }
       await refresh();
     } catch {
-      await reloadItems();
+      await refresh();
     }
   };
 
-  const handleUpdateQuantity = async (id: number, quantity: number) => {
+  const handleUpdateQuantity = async (
+    item: { id?: number; product_id: number; variant_id: number | null },
+    quantity: number
+  ) => {
     if (quantity < 1) return;
-    setItems((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, quantity } : item))
-    );
     try {
-      await cartItemsService.updateCartItem(id, { quantity });
+      if (isGuest) {
+        updateGuestCartQuantity(item.product_id, item.variant_id, quantity);
+      } else if (item.id != null) {
+        await cartItemsService.updateCartItem(item.id, { quantity });
+      }
       await refresh();
     } catch {
-      await reloadItems();
+      await refresh();
     }
   };
 
@@ -164,57 +141,7 @@ export function CartDrawerProvider({ children }: { children: ReactNode }) {
             </div>
 
             <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-5">
-              {!customer ? (
-                <div className="flex h-full flex-col items-center justify-center gap-4 py-16 text-center">
-                  <span className="flex h-16 w-16 items-center justify-center rounded-3xl bg-brand/10">
-                    <ShoppingBag className="h-8 w-8 text-brand" />
-                  </span>
-                  <div>
-                    <p className="font-display text-lg font-semibold text-ink">
-                      {t("cart.loginTitle")}
-                    </p>
-                    <p className="mt-1 max-w-xs text-sm leading-relaxed text-muted">
-                      {t("cart.loginSub")}
-                    </p>
-                  </div>
-                  <div className="flex w-full flex-col gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        closeCart();
-                        showLogin();
-                      }}
-                      className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand px-5 text-sm font-semibold text-white shadow-lg shadow-brand/35 transition duration-200 hover:-translate-y-0.5 hover:bg-brand/90"
-                    >
-                      {t("nav.login")}
-                      <ArrowRight className="h-4 w-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        closeCart();
-                        showRegister();
-                      }}
-                      className="inline-flex h-12 w-full items-center justify-center rounded-xl border border-border bg-panel/80 px-5 text-sm font-semibold text-ink transition duration-200 hover:-translate-y-0.5 hover:border-brand/35 hover:bg-panel"
-                    >
-                      {t("nav.createAccount")}
-                    </button>
-                  </div>
-                </div>
-              ) : isLoading ? (
-                <div className="space-y-4 py-4">
-                  {[0, 1, 2].map((i) => (
-                    <div key={i} className="flex gap-3">
-                      <div className="skeleton h-20 w-20 rounded-2xl" />
-                      <div className="flex-1 space-y-2">
-                        <div className="skeleton h-4 w-3/4 rounded-lg" />
-                        <div className="skeleton h-3 w-1/2 rounded-lg" />
-                        <div className="skeleton h-8 w-24 rounded-xl" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : items.length === 0 ? (
+              {items.length === 0 ? (
                 <div className="flex h-full flex-col items-center justify-center gap-4 py-16 text-center">
                   <span className="flex h-16 w-16 items-center justify-center rounded-3xl bg-brand/10">
                     <ShoppingBag className="h-8 w-8 text-brand" />
@@ -238,19 +165,14 @@ export function CartDrawerProvider({ children }: { children: ReactNode }) {
                 </div>
               ) : (
                 <ul className="space-y-3">
-                  {items.map((item) => {
-                    const name =
-                      item.product?.name ??
-                      item.variant?.name ??
-                      `Produit #${item.product_id}`;
+                  {items.map((item, index) => {
+                    const name = item.product_name;
                     const unitPrice = Number(item.unit_cost || 0);
-                    const imageUrl = resolveImageUrl(
-                      item.variant?.image || item.product?.image || null
-                    );
+                    const imageUrl = resolveImageUrl(item.image ?? null);
                     const quantity = Number(item.quantity || 1);
                     return (
                       <li
-                        key={item.id}
+                        key={`${item.product_id}-${item.variant_id ?? 0}-${index}`}
                         className="group flex gap-3 rounded-2xl border border-border/70 bg-panel/80 p-3 transition duration-200 hover:border-brand/35"
                       >
                         <ProductImage
@@ -267,7 +189,7 @@ export function CartDrawerProvider({ children }: { children: ReactNode }) {
                             </p>
                             <button
                               type="button"
-                              onClick={() => handleRemove(item.id)}
+                              onClick={() => handleRemove(item)}
                               aria-label={t("cart.removeShort")}
                               className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-muted transition hover:bg-warning/10 hover:text-warning"
                             >
@@ -275,9 +197,9 @@ export function CartDrawerProvider({ children }: { children: ReactNode }) {
                             </button>
                           </div>
 
-                          {item.variant?.name && (
+                          {item.variant_name && (
                             <p className="mt-0.5 truncate text-xs text-muted">
-                              {item.variant.name}
+                              {item.variant_name}
                             </p>
                           )}
 
@@ -286,7 +208,7 @@ export function CartDrawerProvider({ children }: { children: ReactNode }) {
                               <button
                                 type="button"
                                 onClick={() =>
-                                  handleUpdateQuantity(item.id, quantity - 1)
+                                  handleUpdateQuantity(item, quantity - 1)
                                 }
                                 disabled={quantity <= 1}
                                 aria-label={t("cart.decreaseQty")}
@@ -300,7 +222,7 @@ export function CartDrawerProvider({ children }: { children: ReactNode }) {
                               <button
                                 type="button"
                                 onClick={() =>
-                                  handleUpdateQuantity(item.id, quantity + 1)
+                                  handleUpdateQuantity(item, quantity + 1)
                                 }
                                 aria-label={t("cart.increaseQty")}
                                 className="flex h-7 w-7 items-center justify-center rounded-lg text-muted transition hover:bg-brand/10 hover:text-brand"
@@ -325,8 +247,20 @@ export function CartDrawerProvider({ children }: { children: ReactNode }) {
               )}
             </div>
 
-            {customer && items.length > 0 && (
+            {items.length > 0 && (
               <div className="border-t border-border/50 bg-bg/35 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 sm:px-6">
+                {isGuest && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      closeCart();
+                      showLogin();
+                    }}
+                    className="mb-3 w-full rounded-xl border border-border bg-panel/80 px-4 py-2.5 text-xs font-semibold text-muted transition hover:border-brand/35 hover:text-brand"
+                  >
+                    {t("cart.loginToSave")}
+                  </button>
+                )}
                 <div className="flex items-center justify-between rounded-2xl border border-border/70 bg-panel/80 px-4 py-3">
                   <span className="text-sm font-semibold text-muted">
                     {t("common.subtotal")}

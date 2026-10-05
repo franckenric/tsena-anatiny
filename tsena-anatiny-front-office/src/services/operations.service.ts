@@ -6,6 +6,7 @@ import type {
   CreateCartItemPayload,
   UpdateCartItemPayload,
   CheckoutPayload,
+  GuestCheckoutPayload,
   Order,
   OrderListResponse
 } from "../types/operations";
@@ -87,6 +88,18 @@ export const cartItemsService = {
     payload: CheckoutPayload
   ): Promise<Order> {
     return apiFetch<Order>(`/cart_items/checkout/${customerId}`, {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+  },
+
+  /**
+   * Commande sans compte. Le panier n'a jamais ete enregistre : les lignes
+   * partent avec la commande, et l'API en recalcule les prix depuis le
+   * catalogue. Aucun `unit_cost` n'est envoye, volontairement.
+   */
+  async checkoutGuest(payload: GuestCheckoutPayload): Promise<Order> {
+    return apiFetch<Order>("/cart_items/checkout-guest", {
       method: "POST",
       body: JSON.stringify(payload)
     });

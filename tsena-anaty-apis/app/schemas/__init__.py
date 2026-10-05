@@ -10,6 +10,8 @@ from .cart_items import (
   CartItemsUpdate,
   ResponseCartItems,
   CartCheckoutRequest,
+  GuestCheckoutItem,
+  GuestCartCheckoutRequest,
 )
 from .customers import (
   Customers,

@@ -6,12 +6,15 @@ import {
   setAppliedPromo,
   type AppliedPromo
 } from "../lib/promo";
+import { getGuestPromo, setGuestPromo } from "../lib/guestCart";
+import { useCart } from "../contexts/CartContext";
 import { useI18n } from "../contexts/I18nContext";
 
 export function PromoCodeCard() {
   const { t } = useI18n();
+  const { isGuest } = useCart();
   const [applied, setApplied] = useState<AppliedPromo | null>(() =>
-    getAppliedPromo()
+    isGuest ? getGuestPromo() : getAppliedPromo()
   );
   const [code, setCode] = useState("");
   const [isChecking, setIsChecking] = useState(false);
@@ -30,7 +33,8 @@ export function PromoCodeCard() {
         discount_type: res.discount_type,
         discount_value: res.discount_value
       };
-      setAppliedPromo(promo);
+      if (isGuest) setGuestPromo(promo);
+      else setAppliedPromo(promo);
       setApplied(promo);
       setCode("");
     } catch (err) {
@@ -41,7 +45,8 @@ export function PromoCodeCard() {
   };
 
   const handleRemove = () => {
-    setAppliedPromo(null);
+    if (isGuest) setGuestPromo(null);
+    else setAppliedPromo(null);
     setApplied(null);
     setError(null);
   };

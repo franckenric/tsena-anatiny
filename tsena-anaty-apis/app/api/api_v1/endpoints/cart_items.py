@@ -11,8 +11,10 @@ from app.api import deps
 from app.api.api_v1.endpoints.notifications import notify_order_created
 from app.crud.crud_promo_codes import InvalidPromoCode
 from app.enum.product_status import ProductStatusEnum
+from app.schemas.customers import clean_phone
 from app.schemas.orders import OrderMovementPayload
 from app.api.api_v1.endpoints.orders import (
+    _apply_order_stock_out,
     _generate_order_number,
     _note_with_pending_lines,
 )
@@ -21,6 +23,23 @@ router = APIRouter()
 
 
 PHONE_REQUIRED_DETAIL = 'customer_phone is required to place an order'
+
+
+def _clean_customer_phone(value: str | None, *, required: bool = True) -> str:
+    """Normalise un numero saisi par l'utilisateur au format `+261XXXXXXXXX`.
+
+    La colonne `customers.phone` est unique : sans normalisation, la meme
+    fiche serait dupliquee par deux saisies differentes (+261 34 12 345 67 vs
+    +261341234567).
+    """
+    if not value or not value.strip():
+        if required:
+            raise HTTPException(status_code=422, detail=PHONE_REQUIRED_DETAIL)
+        return ''
+    try:
+        return clean_phone(value.strip()) or ''
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 def _resolve_customer(
@@ -38,7 +57,6 @@ def _resolve_customer(
     collected when the order is placed (``require_phone=True``). It is stored
     on the customer record and reused for their next orders.
     """
-    phone = (customer_phone or '').strip()
     name = (customer_name or '').strip()
     address = (delivery_address or '').strip()
 
@@ -46,6 +64,8 @@ def _resolve_customer(
         customer = crud.customers.get(db=db, id=customer_id)
         if not customer:
             raise HTTPException(status_code=404, detail='Customer not found')
+
+        phone = _clean_customer_phone(customer_phone, required=False)
 
         if phone and customer.phone != phone:
             customer = crud.customers.update(
@@ -70,8 +90,7 @@ def _resolve_customer(
             db.flush()
         return customer
 
-    if not phone:
-        raise HTTPException(status_code=422, detail=PHONE_REQUIRED_DETAIL)
+    phone = _clean_customer_phone(customer_phone)
 
     customer = crud.customers.get_by_field(db=db, field='phone', value=phone)
     if customer is not None:
@@ -284,6 +303,172 @@ def delete_cart_item(
     return schemas.Msg(msg='Cart item deleted successfully')
 
 
+def _build_promo_discount(
+    *,
+    db: Session,
+    promo_code: str | None,
+    subtotal: float,
+) -> tuple[models.PromoCodes | None, float, str | None]:
+    """Valide un code promo contre le sous-total et retourne (code, remise, code normalise)."""
+    promo_code_str = (promo_code or "").strip().upper()
+    if not promo_code_str:
+        return None, 0.0, None
+
+    try:
+        promo_code_obj, discount_amount = crud.promo_codes.validate_for_subtotal(
+            db=db,
+            code=promo_code_str,
+            subtotal=subtotal,
+        )
+    except InvalidPromoCode as exc:
+        raise HTTPException(status_code=422, detail=f'Promo code invalide: {exc.reason}')
+    return promo_code_obj, discount_amount, promo_code_str
+
+
+def _price_order(
+    *,
+    db: Session,
+    customer: models.Customers,
+    lines: list[dict[str, Any]],
+    user_id: int,
+    promo_code: str | None,
+    status: ProductStatusEnum,
+    note: str | None,
+    order_number: str | None = None,
+    another_price: float | None = None,
+    other_price_reason: str | None = None,
+    current_user: models.Users | None = None,
+) -> models.Orders:
+    """Cree la commande, applique (ou differe) le stock et notifie le back-office.
+
+    `lines` porte des prix deja resolus cote serveur (`unit_cost`) : c'est la
+    seule source de verite pour la valorisation.
+    """
+    promo_code_obj, discount_amount, promo_code_str = _build_promo_discount(
+        db=db,
+        promo_code=promo_code,
+        subtotal=sum(float(line['quantity']) * float(line['unit_cost']) for line in lines),
+    )
+
+    order_status = status or ProductStatusEnum.draft
+    order_payload = schemas.OrdersCreateRequest(
+        order_number=order_number or _generate_order_number(),
+        user_id=user_id,
+        customer_id=customer.id,
+        customer_name=customer.name,
+        customer_phone=customer.phone,
+        delivery_address=customer.delivery_address,
+        another_price=another_price,
+        other_price_reason=other_price_reason,
+        promo_code=promo_code_str if discount_amount > 0 else None,
+        discount=discount_amount,
+        status=order_status,
+        note=note,
+        movements=[
+            OrderMovementPayload(
+                product_id=line['product_id'],
+                variant_id=line.get('variant_id'),
+                quantity=line['quantity'],
+                unit_cost=line['unit_cost'],
+                another_price=line.get('another_price') or 0,
+                other_price_reason=line.get('other_price_reason'),
+            )
+            for line in lines
+        ],
+    )
+
+    try:
+        order = crud.orders.create(
+            db=db,
+            obj_in=schemas.OrdersCreate(
+                **order_payload.model_dump(exclude={'customer', 'movement', 'movements'})
+            ),
+            commit=False,
+            refresh=False,
+        )
+        db.flush()
+
+        if order_status in (ProductStatusEnum.confirmed, ProductStatusEnum.delivered):
+            movement_user_id = order.user_id or (current_user.id if current_user else None)
+            for movement in order_payload.movements or []:
+                _apply_order_stock_out(
+                    db=db,
+                    order=order,
+                    product_id=movement.product_id,
+                    variant_id=movement.variant_id,
+                    quantity=movement.quantity,
+                    movement_user_id=movement_user_id,
+                    unit_cost=movement.unit_cost,
+                    another_price=movement.another_price,
+                    other_price_reason=movement.other_price_reason,
+                )
+        else:
+            # Statut non valide : les lignes sont stockees dans la note pour que
+            # la confirmation puisse plus tard sortir le stock.
+            pending_lines = [
+                {
+                    'product_id': line['product_id'],
+                    'product_name': line.get('product_name'),
+                    'variant_id': line.get('variant_id'),
+                    'variant_name': line.get('variant_name'),
+                    'quantity': line['quantity'],
+                    'unit_cost': line['unit_cost'],
+                    'another_price': line.get('another_price') or 0,
+                    'other_price_reason': line.get('other_price_reason'),
+                }
+                for line in lines
+            ]
+            if pending_lines:
+                order.note = _note_with_pending_lines(order.note, pending_lines)
+
+        db.commit()
+        db.refresh(order)
+
+        if promo_code_obj is not None and discount_amount > 0:
+            promo_code_obj.used_count = (promo_code_obj.used_count or 0) + 1
+            db.commit()
+
+        notify_order_created(
+            db,
+            order,
+            customer=customer,
+            total=max(
+                0.0,
+                sum(
+                    float(line['quantity']) * float(line['unit_cost'])
+                    + float(line.get('another_price') or 0)
+                    for line in lines
+                )
+                + float(another_price or 0)
+                - float(discount_amount or 0),
+            ),
+        )
+        return order
+    except HTTPException:
+        db.rollback()
+        raise
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail='Cart checkout conflict')
+
+
+def _cart_items_to_lines(cart_items: list[Any]) -> list[dict[str, Any]]:
+    """Aplatit des lignes de panier enregistrees en lignes valorisees."""
+    return [
+        {
+            'product_id': item.product_id,
+            'product_name': item.product.name if item.product else None,
+            'variant_id': item.variant_id,
+            'variant_name': item.variant.name if item.variant else None,
+            'quantity': item.quantity,
+            'unit_cost': float(item.unit_cost or 0),
+            'another_price': float(item.another_price or 0),
+            'other_price_reason': item.other_price_reason,
+        }
+        for item in cart_items
+    ]
+
+
 @router.post('/checkout/{customer_id}', response_model=schemas.Orders)
 def checkout_cart(
     *,
@@ -305,123 +490,28 @@ def checkout_cart(
     if len(cart_items) == 0:
         raise HTTPException(status_code=422, detail='Cart is empty for this customer')
 
-    # Promo code validation against the cart subtotal.
-    promo_code_obj = None
-    promo_code_str = (checkout_in.promo_code or "").strip().upper()
-    discount_amount = 0.0
-    if promo_code_str:
-        subtotal = sum(
-            float(item.quantity or 0) * float(item.unit_cost or 0)
-            for item in cart_items
-        )
-        try:
-            promo_code_obj, discount_amount = crud.promo_codes.validate_for_subtotal(
-                db=db,
-                code=promo_code_str,
-                subtotal=subtotal,
-            )
-        except InvalidPromoCode as exc:
-            raise HTTPException(status_code=422, detail=f'Promo code invalide: {exc.reason}')
-
-    order_status = checkout_in.status or ProductStatusEnum.draft
-    resolved_order_number = (checkout_in.order_number or "").strip() or _generate_order_number()
-    order_payload = schemas.OrdersCreateRequest(
-        order_number=resolved_order_number,
-        user_id=checkout_in.user_id,
-        customer_id=customer.id,
-        customer_name=checkout_in.customer_name or customer.name,
-        customer_phone=checkout_in.customer_phone or customer.phone,
-        delivery_address=checkout_in.delivery_address or customer.delivery_address,
-        another_price=checkout_in.another_price,
-        other_price_reason=checkout_in.other_price_reason,
-        promo_code=promo_code_str if discount_amount > 0 else None,
-        discount=discount_amount,
-        status=order_status,
-        note=checkout_in.note,
-        movements=[
-            OrderMovementPayload(
-                product_id=item.product_id,
-                variant_id=item.variant_id,
-                quantity=item.quantity,
-                unit_cost=item.unit_cost,
-                another_price=item.another_price,
-                other_price_reason=item.other_price_reason,
-            )
-            for item in cart_items
-        ],
-    )
+    lines = _cart_items_to_lines(cart_items)
 
     try:
-        # Reuse orders endpoint logic by calling CRUD + stock application rules here.
-        order = crud.orders.create(
+        order = _price_order(
             db=db,
-            obj_in=schemas.OrdersCreate(**order_payload.model_dump(exclude={'customer', 'movement', 'movements'})),
-            commit=False,
-            refresh=False,
+            customer=customer,
+            lines=lines,
+            user_id=checkout_in.user_id,
+            promo_code=checkout_in.promo_code,
+            order_number=(checkout_in.order_number or "").strip() or None,
+            status=checkout_in.status or ProductStatusEnum.draft,
+            note=checkout_in.note,
+            another_price=checkout_in.another_price,
+            other_price_reason=checkout_in.other_price_reason,
+            current_user=current_user,
         )
-        db.flush()
 
-        if order_status in (ProductStatusEnum.confirmed, ProductStatusEnum.delivered):
-            movement_user_id = order.user_id or current_user.id
-            for movement in order_payload.movements or []:
-                from app.api.api_v1.endpoints.orders import _apply_order_stock_out
-
-                _apply_order_stock_out(
-                    db=db,
-                    order=order,
-                    product_id=movement.product_id,
-                    variant_id=movement.variant_id,
-                    quantity=movement.quantity,
-                    movement_user_id=movement_user_id,
-                    unit_cost=movement.unit_cost,
-                    another_price=movement.another_price,
-                    other_price_reason=movement.other_price_reason,
-                )
-        else:
-            pending_lines = [
-                {
-                    'product_id': item.product_id,
-                    'product_name': item.product.name if item.product else None,
-                    'variant_id': item.variant_id,
-                    'variant_name': item.variant.name if item.variant else None,
-                    'quantity': item.quantity,
-                    'unit_cost': item.unit_cost,
-                    'another_price': item.another_price,
-                    'other_price_reason': item.other_price_reason,
-                }
-                for item in cart_items
-            ]
-            if pending_lines:
-                order.note = _note_with_pending_lines(order.note, pending_lines)
-
-        # The cart is always cleared once the order is placed. Pending lines are
-        # stored on the order for non-validated statuses so confirmation can
-        # still build the stock-out movements.
+        # Le panier est vide apres commande, quel que soit le statut : les lignes
+        # en attente sont conservees dans la note de la commande.
         for item in cart_items:
             db.delete(item)
-
         db.commit()
-        db.refresh(order)
-
-        if promo_code_obj is not None and discount_amount > 0:
-            promo_code_obj.used_count = (promo_code_obj.used_count or 0) + 1
-            db.commit()
-
-        notify_order_created(
-            db,
-            order,
-            customer=customer,
-            total=max(
-                0.0,
-                sum(
-                    float(item.quantity or 0) * float(item.unit_cost or 0)
-                    + float(item.another_price or 0)
-                    for item in cart_items
-                )
-                + float(checkout_in.another_price or 0)
-                - float(discount_amount or 0),
-            ),
-        )
         return order
     except HTTPException:
         db.rollback()
@@ -429,3 +519,103 @@ def checkout_cart(
     except IntegrityError:
         db.rollback()
         raise HTTPException(status_code=409, detail='Cart checkout conflict')
+
+
+@router.post('/checkout-guest', response_model=schemas.Orders)
+def checkout_guest(
+    *,
+    db: Session = Depends(deps.get_db),
+    checkout_in: schemas.GuestCartCheckoutRequest,
+    current_user: models.Users = Depends(deps.get_current_active_user),
+) -> Any:
+    """Commande sans compte.
+
+    Le panier d'un invite n'a jamais ete enregistre : les lignes arrivent avec
+    la commande. Chaque prix est resolu depuis le catalogue (variante en
+    priorite, produit en repli) et le stock est verifie avant acceptation, donc
+    le navigateur ne peut pas imposer son tarif.
+    """
+    if not checkout_in.items:
+        raise HTTPException(status_code=422, detail='Cart is empty')
+
+    lines: list[dict[str, Any]] = []
+    for item in checkout_in.items:
+        if item.quantity <= 0:
+            raise HTTPException(status_code=422, detail='quantity must be greater than 0')
+
+        product = crud.products.get(db=db, id=item.product_id)
+        if not product:
+            raise HTTPException(status_code=404, detail='Product not found')
+
+        variant = None
+        if item.variant_id is not None:
+            variant = crud.product_variants.get(db=db, id=item.variant_id)
+            if not variant:
+                raise HTTPException(status_code=404, detail='Variant not found')
+            if variant.product_id != product.id:
+                raise HTTPException(
+                    status_code=422, detail='Variant does not belong to this product'
+                )
+            if crud.product_variants.has_children(db=db, variant_id=variant.id):
+                raise HTTPException(
+                    status_code=422,
+                    detail=f'Impossible de commander la variante « {variant.name} », choisissez une sous-variante',
+                )
+            available = crud.product_variants.effective_quantity(db, variant_id=variant.id)
+            if item.quantity > available:
+                raise HTTPException(
+                    status_code=409,
+                    detail=f'Stock insuffisant pour la variante « {variant.name} » (disponible: {available})',
+                )
+        else:
+            # Sans variante, le stock vit dans la table `stock` du produit.
+            stock_row = crud.stock.get_by_product_id(db=db, product_id=product.id)
+            available = int(stock_row.quantity or 0) if stock_row else 0
+            if item.quantity > available:
+                raise HTTPException(
+                    status_code=409,
+                    detail=f'Stock insuffisant pour « {product.name} » (disponible: {available})',
+                )
+
+        # Prix catalogue : la remise variante prime, sinon celle du produit.
+        selling = float((variant.selling_price if variant else None) or product.selling_price or 0)
+        discount = float((variant.discount_price if variant else product.discount_price) or 0)
+        unit_cost = discount if 0 < discount < selling else selling
+        if unit_cost <= 0:
+            raise HTTPException(
+                status_code=422,
+                detail=f'Le produit « {product.name} » n\'a pas de prix de vente defini',
+            )
+
+        lines.append({
+            'product_id': product.id,
+            'product_name': product.name,
+            'variant_id': variant.id if variant else None,
+            'variant_name': variant.name if variant else None,
+            'quantity': item.quantity,
+            'unit_cost': unit_cost,
+            'another_price': 0,
+            'other_price_reason': None,
+        })
+
+    # Aucun `customer_id` : la fiche est retrouvee par telephone, ou creee. Le
+    # compte de service porte la commande (l'invite n'a pas de compte).
+    customer = _resolve_customer(
+        db=db,
+        customer_id=None,
+        customer_name=checkout_in.customer_name,
+        customer_phone=checkout_in.customer_phone,
+        delivery_address=checkout_in.delivery_address,
+        require_phone=True,
+    )
+
+    return _price_order(
+        db=db,
+        customer=customer,
+        lines=lines,
+        user_id=current_user.id,
+        promo_code=checkout_in.promo_code,
+        status=checkout_in.status or ProductStatusEnum.draft,
+        note=checkout_in.note,
+        current_user=current_user,
+    )

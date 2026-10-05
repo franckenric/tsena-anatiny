@@ -43,10 +43,16 @@ def register(
     if crud.users.get_by_email(db, email=register_in.email):
         raise HTTPException(status_code=409, detail="Email already registered")
 
-    if register_in.phone and crud.customers.get_by_field(
-        db, field="phone", value=register_in.phone
-    ):
-        raise HTTPException(status_code=409, detail="Phone number already registered")
+    # Un client invite a pu commander avec ce numero : la commande lui
+    # appartient deja, on rattache la fiche existante au nouveau compte au lieu
+    # de refuser l'inscription. Refuser perdrait l'historique de ses commandes.
+    existing_customer = None
+    if register_in.phone:
+        existing_customer = crud.customers.get_by_field(
+            db, field="phone", value=register_in.phone
+        )
+        if existing_customer is not None and existing_customer.users_id:
+            raise HTTPException(status_code=409, detail="Phone number already registered")
 
     client_role = _get_client_role(db)
 
@@ -64,17 +70,30 @@ def register(
         db.rollback()
         raise HTTPException(status_code=409, detail="Email already registered")
 
-    customer_in = schemas.CustomersCreate(
-        name=register_in.name,
-        phone=register_in.phone,
-        delivery_address=register_in.delivery_address,
-        users_id=user.id,
-    )
-    try:
-        customer = crud.customers.create(db=db, obj_in=customer_in)
-    except Exception:
-        db.rollback()
-        raise HTTPException(status_code=409, detail="Email or phone already registered")
+    if existing_customer is not None:
+        # Fiche recuperee : on la rattache au compte et on complete les champs
+        # manquants plutot que d'inserer une seconde fiche pour ce numero.
+        customer = crud.customers.update(
+            db=db,
+            db_obj=existing_customer,
+            obj_in=schemas.CustomersUpdate(
+                name=register_in.name or existing_customer.name,
+                delivery_address=register_in.delivery_address or existing_customer.delivery_address,
+                users_id=user.id,
+            ),
+        )
+    else:
+        customer_in = schemas.CustomersCreate(
+            name=register_in.name,
+            phone=register_in.phone,
+            delivery_address=register_in.delivery_address,
+            users_id=user.id,
+        )
+        try:
+            customer = crud.customers.create(db=db, obj_in=customer_in)
+        except Exception:
+            db.rollback()
+            raise HTTPException(status_code=409, detail="Email or phone already registered")
 
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     token = security.create_access_token(

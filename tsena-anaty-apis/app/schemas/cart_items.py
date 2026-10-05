@@ -72,3 +72,33 @@ class CartCheckoutRequest(BaseModel):
     promo_code: Optional[str] = None
     status: Optional[ProductStatusEnum] = ProductStatusEnum.draft
     note: Optional[str] = None
+
+
+class GuestCheckoutItem(BaseModel):
+    """Ligne de panier d'un client invite.
+
+    Aucun prix n'est transporte : la commande invitee est valorisee par
+    l'API avec le catalogue, sinon le navigateur pourrait imposer son tarif.
+    """
+
+    product_id: int
+    variant_id: Optional[int] = None
+    quantity: int
+
+
+class GuestCartCheckoutRequest(BaseModel):
+    """Commande placee sans compte.
+
+    Le panier d'un invite n'a jamais ete enregistre (aucune ligne `customers`
+    n'existe tant que le numero de telephone n'est pas connu), donc les lignes
+    sont envoyees avec la commande. Le telephone sert d'identifiant client : il
+    est normalise, puis la fiche client correspondante est reutilisee ou creee.
+    """
+
+    customer_name: str
+    customer_phone: str
+    delivery_address: Optional[str] = None
+    items: List[GuestCheckoutItem]
+    promo_code: Optional[str] = None
+    status: Optional[ProductStatusEnum] = ProductStatusEnum.draft
+    note: Optional[str] = None

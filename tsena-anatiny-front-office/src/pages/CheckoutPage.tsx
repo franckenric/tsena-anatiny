@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useHistory } from "react-router-dom";
-import { ArrowLeft, Lock } from "lucide-react";
+import { ArrowLeft, Lock, UserRound } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { useAuthModal } from "../contexts/AuthModalContext";
 import { useCart } from "../contexts/CartContext";
@@ -21,64 +21,50 @@ import {
   PHONE_FORMAT_REGEX
 } from "../lib/utils";
 import { computeDiscountAmount, getAppliedPromo, setAppliedPromo, type AppliedPromo } from "../lib/promo";
+import {
+  getGuestPromo,
+  setGuestPromo
+} from "../lib/guestCart";
 
 export function CheckoutPage() {
   const { customer, isBooting, apiUser } = useAuth();
   const { showLogin } = useAuthModal();
-  const { clear } = useCart();
+  const { items, clear, isGuest } = useCart();
   const { t } = useI18n();
   usePageTitle(t("checkout.title"));
   const history = useHistory();
 
-  const [items, setItems] = useState<Awaited<
-    ReturnType<typeof cartItemsService.getCartItems>
-  >>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [name, setName] = useState(customer?.name ?? "");
   const [address, setAddress] = useState(customer?.delivery_address ?? "");
-  const [phone, setPhone] = useState(customer?.phone ?? "");
+  const [phone, setPhone] = useState(
+    customer?.phone ? formatPhoneMadagascar(customer.phone) : ""
+  );
   const [note, setNote] = useState("");
   const [promo, setPromo] = useState<AppliedPromo | null>(null);
 
+  // Pre-remplissage depuis la fiche client. Dependances completees : la saisie
+  // d'un invite ne doit pas etre effacee par un rendu sans session.
   useEffect(() => {
-    if (isBooting) return;
-    if (!customer) {
-      showLogin();
-      return;
-    }
+    if (!customer) return;
+    setName(customer.name ?? "");
     setAddress(customer.delivery_address ?? "");
     setPhone(customer.phone ? formatPhoneMadagascar(customer.phone) : "");
-    let cancelled = false;
-    cartItemsService
-      .getCartItems(customer.id)
-      .then((data) => {
-        if (!cancelled) setItems(data);
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setError(
-            err instanceof Error ? err.message : t("error.loadCart")
-          );
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isBooting, customer?.id]);
+  }, [customer]);
 
-  const subtotal = items.reduce(
-    (sum, item) => sum + Number(item.quantity || 0) * Number(item.unit_cost || 0),
-    0
+  const subtotal = useMemo(
+    () =>
+      items.reduce(
+        (sum, item) => sum + Number(item.quantity || 0) * Number(item.unit_cost || 0),
+        0
+      ),
+    [items]
   );
 
   // Revalidate the applied promo code against the real cart subtotal.
   useEffect(() => {
-    const stored = getAppliedPromo();
+    const stored = isGuest ? getGuestPromo() : getAppliedPromo();
     if (!stored || items.length === 0) return;
     let cancelled = false;
     promoCodesService
@@ -87,44 +73,65 @@ export function CheckoutPage() {
         if (!cancelled) setPromo(stored);
       })
       .catch(() => {
-        setAppliedPromo(null);
+        if (isGuest) setGuestPromo(null);
+        else setAppliedPromo(null);
         if (!cancelled) setPromo(null);
       });
     return () => {
       cancelled = true;
     };
-  }, [items.length, subtotal]);
+  }, [items.length, subtotal, isGuest]);
 
   const discount = promo ? computeDiscountAmount(promo, subtotal) : 0;
   const total = Math.max(0, subtotal - discount);
 
   const handleConfirm = async () => {
-    if (!customer) return;
     if (items.length === 0) return;
-    if (!apiUser) {
-      setError(t("checkout.sessionInvalid"));
-      return;
-    }
+
     if (isPhonePrefixOnly(phone) || !PHONE_FORMAT_REGEX.test(phone)) {
       setError(t("checkout.invalidPhone"));
+      return;
+    }
+
+    const cleanName = name.trim();
+    if (isGuest && !cleanName) {
+      setError(t("checkout.nameRequiredError"));
       return;
     }
 
     setIsSubmitting(true);
     setError(null);
     try {
-      const order = await cartItemsService.checkout(customer.id, {
-        user_id: apiUser.id,
-        customer_id: customer.id,
-        customer_name: customer.name,
-        customer_phone: normalizePhone(phone),
-        delivery_address: address.trim() || undefined,
-        status: "draft",
-        note: note.trim() || undefined,
-        promo_code: promo?.code
-      });
+      let order;
+      if (customer && apiUser) {
+        order = await cartItemsService.checkout(customer.id, {
+          user_id: apiUser.id,
+          customer_id: customer.id,
+          customer_name: customer.name,
+          customer_phone: normalizePhone(phone),
+          delivery_address: address.trim() || undefined,
+          status: "draft",
+          note: note.trim() || undefined,
+          promo_code: promo?.code
+        });
+      } else {
+        order = await cartItemsService.checkoutGuest({
+          customer_name: cleanName,
+          customer_phone: normalizePhone(phone),
+          delivery_address: address.trim() || undefined,
+          items: items.map((line) => ({
+            product_id: line.product_id,
+            variant_id: line.variant_id,
+            quantity: line.quantity
+          })),
+          status: "draft",
+          note: note.trim() || undefined,
+          promo_code: promo?.code
+        });
+      }
       clear();
-      setAppliedPromo(null);
+      if (isGuest) setGuestPromo(null);
+      else setAppliedPromo(null);
       history.push(`/succes/${order.id}`);
     } catch (err) {
       setError(
@@ -135,15 +142,13 @@ export function CheckoutPage() {
     }
   };
 
-  if (isBooting || isLoading) {
+  if (isBooting) {
     return (
       <Page>
         <PageLoader label={t("checkout.prepare")} />
       </Page>
     );
   }
-
-  if (!customer) return <Page />;
 
   if (items.length === 0) {
     return (
@@ -173,6 +178,23 @@ export function CheckoutPage() {
         {t("checkout.title")}
       </h1>
 
+      {isGuest && (
+        <div className="mt-4 rounded-2xl border border-brand/25 bg-brand/5 px-4 py-3">
+          <p className="flex items-center gap-2 text-sm font-semibold text-ink">
+            <UserRound className="h-4 w-4 text-brand" />
+            {t("checkout.guestBadge")}
+          </p>
+          <p className="mt-1 text-xs text-muted">{t("checkout.guestHint")}</p>
+          <button
+            type="button"
+            onClick={() => showLogin()}
+            className="mt-2 text-xs font-semibold text-brand underline underline-offset-2"
+          >
+            {t("checkout.loginInstead")}
+          </button>
+        </div>
+      )}
+
       {error && (
         <div className="mt-4 rounded-xl border border-danger/30 bg-danger/5 px-3 py-2.5 text-sm text-danger">
           {error}
@@ -186,17 +208,37 @@ export function CheckoutPage() {
               {t("checkout.delivery")}
             </h2>
             <div className="mt-4 space-y-4">
-              <div>
-                <label
-                  htmlFor="customer-name"
-                  className="text-xs font-semibold uppercase tracking-widest text-muted"
-                >
-                  {t("checkout.customer")}
-                </label>
-                <p id="customer-name" className="mt-1 text-sm font-semibold text-ink">
-                  {customer.name}
-                </p>
-              </div>
+              {isGuest ? (
+                <div>
+                  <label
+                    htmlFor="guest-name"
+                    className="text-xs font-semibold uppercase tracking-widest text-muted"
+                  >
+                    {t("checkout.nameRequired")}
+                  </label>
+                  <input
+                    id="guest-name"
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    autoComplete="name"
+                    placeholder={t("checkout.namePlaceholder")}
+                    className="mt-2 h-11 w-full rounded-xl border border-border bg-bg px-3 text-sm text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
+                  />
+                </div>
+              ) : (
+                <div>
+                  <label
+                    htmlFor="customer-name"
+                    className="text-xs font-semibold uppercase tracking-widest text-muted"
+                  >
+                    {t("checkout.customer")}
+                  </label>
+                  <p id="customer-name" className="mt-1 text-sm font-semibold text-ink">
+                    {customer?.name}
+                  </p>
+                </div>
+              )}
               <div>
                 <label
                   htmlFor="phone"
@@ -256,14 +298,17 @@ export function CheckoutPage() {
               {t("checkout.items")}
             </h2>
             <ul className="mt-4 divide-y divide-border">
-              {items.map((item) => (
-                <li key={item.id} className="flex items-center justify-between gap-4 py-3 text-sm">
+              {items.map((item, index) => (
+                <li
+                  key={`${item.product_id}-${item.variant_id ?? 0}-${index}`}
+                  className="flex items-center justify-between gap-4 py-3 text-sm"
+                >
                   <div className="min-w-0">
                     <p className="line-clamp-1 font-semibold text-ink">
-                      {item.product?.name ?? `Produit #${item.product_id}`}
+                      {item.product_name}
                     </p>
                     <p className="text-xs text-muted">
-                      {item.variant?.name ? `${t("common.variant")}: ${item.variant.name} · ` : ""}
+                      {item.variant_name ? `${t("common.variant")}: ${item.variant_name} · ` : ""}
                       {t("common.quantity")}: {item.quantity}
                     </p>
                   </div>

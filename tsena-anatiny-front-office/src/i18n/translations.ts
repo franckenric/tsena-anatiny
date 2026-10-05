@@ -164,6 +164,9 @@ export const dictionaries: Record<Language, Record<string, string>> = {
     "cart.added": "{count} article ajouté au panier",
     "cart.added_plural": "{count} articles ajoutés au panier",
     "cart.close": "Fermer le panier",
+    "cart.guestHint":
+      "Vous commandez sans compte. Un compte vous permettrait de suivre vos commandes.",
+    "cart.loginToSave": "Se connecter pour suivre mes commandes",
 
     "checkout.backToCart": "Retour au panier",
     "checkout.title": "Finaliser la commande",
@@ -185,6 +188,13 @@ export const dictionaries: Record<Language, Record<string, string>> = {
     "checkout.prepare": "Préparation de la commande...",
     "checkout.sessionInvalid": "Session API invalide. Rechargez la page.",
     "checkout.errorOrder": "Erreur lors de la commande",
+    "checkout.guestBadge": "Commande sans compte",
+    "checkout.guestHint":
+      "Aucun compte nécessaire. Donnez votre nom et votre numéro de téléphone, nous vous rappelons pour la livraison.",
+    "checkout.loginInstead": "J'ai déjà un compte",
+    "checkout.nameRequired": "Nom complet",
+    "checkout.namePlaceholder": "Votre nom",
+    "checkout.nameRequiredError": "Veuillez saisir votre nom.",
 
     "order.title": "Récapitulatif",
     "order.delivery": "Livraison",
@@ -198,6 +208,9 @@ export const dictionaries: Record<Language, Record<string, string>> = {
     "order.confirmedHint": "Le paiement s'effectue à la livraison.",
     "order.draftHint": "Un conseiller vérifie votre commande avant validation.",
     "order.track": "Suivre mes commandes",
+    "order.trackWithNumber": "Créer un compte pour suivre mes commandes",
+    "order.guestTrackHint":
+      "Votre commande est enregistrée sous le numéro ci-dessus. Créez un compte avec le même numéro de téléphone pour la retrouver dans votre historique.",
     "order.continue": "Continuer mes achats",
     "order.notFound": "Commande introuvable",
     "order.errorLoad": "Erreur chargement",
@@ -476,6 +489,9 @@ export const dictionaries: Record<Language, Record<string, string>> = {
     "cart.added": "{count} vokatra nampidirina tao amin'ny harona",
     "cart.added_plural": "{count} vokatra nampidirina tao amin'ny harona",
     "cart.close": "Hidiana ny harona",
+    "cart.guestHint":
+      "Manao baiko tsy misy kaonty. Ny kaonty dia ahafahana manaraka ny baikinao.",
+    "cart.loginToSave": "Hiditra hanaraka ny baikiko",
 
     "checkout.backToCart": "Miverina amin'ny harona",
     "checkout.title": "Vitao ny baiko",
@@ -498,6 +514,13 @@ export const dictionaries: Record<Language, Record<string, string>> = {
     "checkout.sessionInvalid":
       "Tsy mety ny session API. Avereno averina ny pejy.",
     "checkout.errorOrder": "Hadisoana nandritra ny baiko",
+    "checkout.guestBadge": "Baiko tsy misy kaonty",
+    "checkout.guestHint":
+      "Tsy mila kaonty ianao. Omeo ny anaranao sy ny findainao, dia hantahirizina anao momba ny fandefasana.",
+    "checkout.loginInstead": "Efa manana kaonty aho",
+    "checkout.nameRequired": "Anarana feno",
+    "checkout.namePlaceholder": "Ny anaranao",
+    "checkout.nameRequiredError": "Ampidiro ny anaranao.",
 
     "order.title": "Famintinana",
     "order.delivery": "Fandefasana",
@@ -512,6 +535,9 @@ export const dictionaries: Record<Language, Record<string, string>> = {
     "order.draftHint":
       "Mpanolotsaina iray no manamarina ny baikonao alohan'ny fanamarinana.",
     "order.track": "Araho ny baikoko",
+    "order.trackWithNumber": "Hamorona kaonty hanaraka ny baikiko",
+    "order.guestTrackHint":
+      "Voatahiry ny baikinao eo ambanin'ny laharana. Hamorona kaonty amin'ny finday mitovy dia ho hita ao amin'ny tantaranao.",
     "order.continue": "Hanohy ny fiantsenanako",
     "order.notFound": "Tsy hita ny baiko",
     "order.errorLoad": "Hadisoana tamin'ny fampidirana",

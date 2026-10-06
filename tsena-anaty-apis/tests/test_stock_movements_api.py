@@ -17,7 +17,7 @@ def test_create_stock_movements_api(client, db):
         'email': 'STswr@7mkax.com',
         'password': 'YkUbB',
         'is_active': True,
-        'role_id': 56,
+        'role_id': 1,
         'phone_numer': 'cx6ZLTG',
     }
     user = crud.users.create(db, obj_in=schemas.UsersCreate(**user_data))
@@ -84,7 +84,7 @@ def test_update_stock_movements_api(client, db):
         'email': '65gsM@d5xjj.com',
         'password': 'V8U9v',
         'is_active': True,
-        'role_id': 55,
+        'role_id': 1,
         'phone_numer': 'O',
     }
     user = crud.users.create(db, obj_in=schemas.UsersCreate(**user_data))
@@ -224,7 +224,7 @@ def test_get_stock_movements_api(client, db):
         'email': 'BhMbH@rxvon.com',
         'password': 'IAOXJ',
         'is_active': True,
-        'role_id': 5,
+        'role_id': 1,
         'phone_numer': '3gg7',
     }
     user = crud.users.create(db, obj_in=schemas.UsersCreate(**user_data))
@@ -321,7 +321,7 @@ def test_get_by_id_stock_movements_api(client, db):
         'email': 't0fzf@07jcv.com',
         'password': 'pwS8H',
         'is_active': True,
-        'role_id': 83,
+        'role_id': 1,
         'phone_numer': 'yWweE6qHj',
     }
     user = crud.users.create(db, obj_in=schemas.UsersCreate(**user_data))
@@ -416,7 +416,7 @@ def test_delete_stock_movements_api(client, db):
         'email': 'xWmRm@gplhz.com',
         'password': '1oU76',
         'is_active': True,
-        'role_id': 77,
+        'role_id': 1,
         'phone_numer': 'a',
     }
     user = crud.users.create(db, obj_in=schemas.UsersCreate(**user_data))

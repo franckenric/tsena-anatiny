@@ -25,11 +25,7 @@ import type {
   OrderStatus,
   CreateOrderPayload,
   UpdateOrderPayload,
-  OrderListResponse,
-  CommercialAssignment,
-  CreateAssignmentPayload,
-  UpdateAssignmentPayload,
-  AssignmentListResponse
+  OrderListResponse
 } from "../types/operations";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api/v1";
@@ -333,43 +329,5 @@ export const ordersService = {
       throw new Error(err.detail || `Erreur ${res.status}`);
     }
     return res.blob();
-  }
-};
-
-// ── Commercial Assignments ───────────────────────────────────────────────────
-export const assignmentsService = {
-  async getAssignments(page = 1, size = 20): Promise<AssignmentListResponse> {
-    const data = await apiFetch<any>(
-      listUrl("/commercial_assignments/", page, size, '["product","user"]')
-    );
-    return normalize<CommercialAssignment>(data);
-  },
-  async createAssignment(
-    payload: CreateAssignmentPayload
-  ): Promise<CommercialAssignment> {
-    return apiFetch<CommercialAssignment>(
-      `${API_BASE_URL}/commercial_assignments/`,
-      {
-        method: "POST",
-        body: JSON.stringify(payload)
-      }
-    );
-  },
-  async updateAssignment(
-    id: number,
-    payload: UpdateAssignmentPayload
-  ): Promise<CommercialAssignment> {
-    return apiFetch<CommercialAssignment>(
-      `${API_BASE_URL}/commercial_assignments/${id}`,
-      {
-        method: "PUT",
-        body: JSON.stringify(payload)
-      }
-    );
-  },
-  async deleteAssignment(id: number): Promise<void> {
-    await apiFetch(`${API_BASE_URL}/commercial_assignments/${id}`, {
-      method: "DELETE"
-    });
   }
 };

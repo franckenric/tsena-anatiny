@@ -39,9 +39,11 @@ async function fetchAccessToken(): Promise<string> {
 
   // L'API attend un email (clients) ou un numero de telephone (back-office)
   // dans le champ `username` : voir `authenticate_by_identifier`.
+  // `||` et non `??` : une variable declaree mais vide dans le .env vaut "",
+  // pas undefined, donc `??` ne basculerait jamais sur le telephone.
   const identifier = (
-    import.meta.env.VITE_API_EMAIL ??
-    import.meta.env.VITE_API_PHONE ??
+    import.meta.env.VITE_API_EMAIL ||
+    import.meta.env.VITE_API_PHONE ||
     ""
   ).trim();
   const password = import.meta.env.VITE_API_PASSWORD;

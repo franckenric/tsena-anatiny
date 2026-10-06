@@ -11,7 +11,6 @@ import type {
   OrderStatus
 } from "../types/operations";
 import type { Customer } from "../types/customer";
-import type { User } from "../types/user";
 import type { Product } from "../types/product";
 import {
   ordersService,
@@ -33,7 +32,6 @@ export function OrderEditPage() {
   const isEdit = Boolean(id && id !== "new");
 
   const [order, setOrder] = useState<Order | null>(null);
-  const [users, setUsers] = useState<User[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -50,27 +48,13 @@ export function OrderEditPage() {
       setIsLoading(true);
       setError(null);
 
-      const [_usersList, customersRes, productsRes] = await Promise.all([
-        ordersService.getOrders(1, 1).then(() => []).catch(() => []), // users loaded separately
+      const [customersRes, productsRes] = await Promise.all([
         customersService.getCustomers(1, 500),
         productsService.getProducts(1, 500)
       ]);
 
       setCustomers(customersRes.items);
       setProducts(productsRes.items);
-
-      // Load users from orders endpoint
-      try {
-        const ordersResp = await ordersService.getOrders(1, 1);
-        // Users are embedded in orders, extract unique
-        const userMap = new Map<number, User>();
-        for (const o of ordersResp.items) {
-          if (o.user && o.user.id) userMap.set(o.user.id, o.user);
-        }
-        setUsers(Array.from(userMap.values()));
-      } catch {
-        // Non-critical
-      }
 
       if (isEdit && id) {
         const orderId = Number(id);
@@ -233,7 +217,6 @@ export function OrderEditPage() {
         <div className="rounded-2xl border border-border/60 bg-panel/65 p-4">
           <OrderForm
             order={order ?? undefined}
-            users={users}
             customers={customers}
             products={products}
             initialCartItems={cartItems}

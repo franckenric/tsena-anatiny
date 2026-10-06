@@ -100,7 +100,7 @@ def create_stock(
     *,
     db: Session = Depends(deps.get_db),
     stock_in: schemas.StockCreate,
-    current_user: models.Users = Depends(deps.get_current_active_user),
+    current_user: models.Users = Depends(deps.get_current_active_superuser),
 ) -> Any:
     """Create stock row."""
     raise HTTPException(
@@ -152,7 +152,7 @@ def register_stock_arrival(
     *,
     db: Session = Depends(deps.get_db),
     arrival_in: schemas.StockArrival,
-    current_user: models.Users = Depends(deps.get_current_active_user),
+    current_user: models.Users = Depends(deps.get_current_active_superuser),
 ) -> Any:
     """Register an arriving lot: increment existing stock or create a new stock row."""
     user_id = _require_user_id(current_user)
@@ -246,7 +246,7 @@ def update_stock(
     db: Session = Depends(deps.get_db),
     stock_id: int,
     stock_in: schemas.StockUpdate,
-    current_user: models.Users = Depends(deps.get_current_active_user),
+    current_user: models.Users = Depends(deps.get_current_active_superuser),
 ) -> Any:
     """Update stock row."""
     user_id = _require_user_id(current_user)
@@ -352,7 +352,7 @@ def delete_stock(
     *,
     db: Session = Depends(deps.get_db),
     stock_id: int,
-    current_user: models.Users = Depends(deps.get_current_active_user),
+    current_user: models.Users = Depends(deps.get_current_active_superuser),
 ) -> Any:
     """Delete stock row."""
     stock_row = crud.stock.get(db=db, id=stock_id)

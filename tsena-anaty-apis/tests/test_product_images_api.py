@@ -12,7 +12,7 @@ def _make_user(db):
             email="img@test.com",
             password="secret123",
             is_active=True,
-            role_id=2,
+            role_id=1,
             phone_numer="0340000099",
         ),
     )

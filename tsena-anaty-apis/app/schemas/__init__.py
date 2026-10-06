@@ -20,12 +20,6 @@ from .customers import (
   ResponseCustomers,
   clean_phone
 )
-from .commercial_assignments import ( 
-  CommercialAssignments,  
-  CommercialAssignmentsCreate,  
-  CommercialAssignmentsUpdate,  
-  ResponseCommercialAssignments
-)
 from .lots import (
   Lot,
   LotCreate,

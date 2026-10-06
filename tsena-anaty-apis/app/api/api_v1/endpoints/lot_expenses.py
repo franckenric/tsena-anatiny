@@ -35,7 +35,7 @@ def read_lot_expenses(
     limit: int = 100,
     where: str = "[]",
     db: Session = Depends(deps.get_db),
-    current_user: models.Users = Depends(deps.get_current_active_user),
+    current_user: models.Users = Depends(deps.get_current_active_superuser),
 ) -> Any:
     wheres = parse_query_array(where, default=[]) or []
 
@@ -54,7 +54,7 @@ def create_lot_expense(
     *,
     db: Session = Depends(deps.get_db),
     lot_expense_in: schemas.LotExpenseCreate,
-    current_user: models.Users = Depends(deps.get_current_active_user),
+    current_user: models.Users = Depends(deps.get_current_active_superuser),
 ) -> Any:
     if lot_expense_in.amount is None or lot_expense_in.amount < 0:
         raise HTTPException(status_code=422, detail="Le montant doit etre >= 0")
@@ -81,7 +81,7 @@ def update_lot_expense(
     lot_expense_id: int,
     lot_expense_in: schemas.LotExpenseUpdate,
     db: Session = Depends(deps.get_db),
-    current_user: models.Users = Depends(deps.get_current_active_user),
+    current_user: models.Users = Depends(deps.get_current_active_superuser),
 ) -> Any:
     expense = crud.lot_expenses.get(db=db, id=lot_expense_id)
     if not expense:
@@ -117,7 +117,7 @@ def delete_lot_expense(
     *,
     lot_expense_id: int,
     db: Session = Depends(deps.get_db),
-    current_user: models.Users = Depends(deps.get_current_active_user),
+    current_user: models.Users = Depends(deps.get_current_active_superuser),
 ) -> Any:
     expense = crud.lot_expenses.get(db=db, id=lot_expense_id)
     if not expense:

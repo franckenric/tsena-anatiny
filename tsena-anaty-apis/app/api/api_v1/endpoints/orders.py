@@ -411,7 +411,7 @@ def create_orders(
     *,
     db: Session = Depends(deps.get_db),
     orders_in: schemas.OrdersCreateRequest,
-    current_user: models.Users = Depends(deps.get_current_active_user),
+    current_user: models.Users = Depends(deps.get_current_active_superuser),
 ) -> Any:
     """Create new orders and consume stock only for validated statuses."""
     movements = orders_in.movements or []
@@ -492,7 +492,7 @@ def update_orders(
     db: Session = Depends(deps.get_db),
     orders_id: int,
     orders_in: schemas.OrdersUpdateRequest,
-    current_user: models.Users = Depends(deps.get_current_active_user),
+    current_user: models.Users = Depends(deps.get_current_active_superuser),
 ) -> Any:
     """Update an order and replace stock-out lines when movements are provided."""
     orders = crud.orders.get(db=db, id=orders_id)
@@ -512,6 +512,20 @@ def update_orders(
         )
         if customer is not None:
             update_payload['customer_id'] = customer.id
+
+        # Un auteur absent (0) ou inconnu ne doit jamais ecraser l'auteur reel :
+        # le back-office peut n'avoir aucune liste d'utilisateurs sous la main
+        # et envoyer `user_id: 0` sur une commande invitee (user_id NULL).
+        if 'user_id' in update_payload:
+            author = (
+                crud.users.get(db=db, id=update_payload['user_id'])
+                if update_payload['user_id']
+                else None
+            )
+            if author is None:
+                update_payload.pop('user_id')
+            else:
+                update_payload['user_id'] = author.id
 
         orders = crud.orders.update(
             db=db,
@@ -740,6 +754,54 @@ def download_order_invoice_png(
 # d'edition d'une commande (back-office) n'affichait jamais ses produits, meme
 # pour une commande confirmee. L'endpoint de liste utilise deja
 # `ResponseOrders` -> List[OrdersWithRelation].
+@router.get('/guest-lookup', response_model=schemas.OrdersWithRelation)
+def read_guest_order_by_number_and_phone(
+    *,
+    order_number: str,
+    phone: str,
+    db: Session = Depends(deps.get_db),
+    _throttle: None = Depends(deps.rate_limit(limit=10, window_s=60)),
+) -> Any:
+    """Commande invitee : retrouver une commande sans compte.
+
+    Endpoint public, plafonne par IP. Le numero de commande seul ne suffit
+    pas : il faut aussi le telephone de la fiche client, compare apres
+    normalisation (`+261XXXXXXXXX`). Seules les commandes sans auteur
+    (`user_id` NULL, c-a-d creees par `checkout-guest`) sont retournees :
+    un client connecte passe par son endpoint authentifie.
+
+    Le look-up 404 dans les deux cas (numero inconnu ou telephone qui ne
+    correspond pas) pour ne pas reveler qu'un numero existe.
+    """
+    try:
+        cleaned_phone = schemas.clean_phone(phone)
+    except ValueError:
+        raise HTTPException(
+            status_code=422, detail='Phone must match format +261 XX XX XXX XX'
+        )
+    if not cleaned_phone:
+        raise HTTPException(status_code=422, detail='customer_phone is required')
+
+    relations = [
+        "customer{id,name,phone,delivery_address}",
+        "stock_movements{id,product_id,variant_id,type,quantity,unit_cost,another_price,other_price_reason}",
+        "stock_movements.product{id,name,sku}",
+        "stock_movements.variant{id,name,sku}",
+    ]
+    orders = crud.orders.get_first_where_array(
+        db=db,
+        relations=relations,
+        where=[{'key': 'order_number', 'value': order_number.strip(), 'operator': '=='}],
+    )
+    if not orders or orders.user_id is not None:
+        raise HTTPException(status_code=404, detail='Orders not found')
+
+    customer_phone = (orders.customer.phone or '').replace(' ', '') if orders.customer else ''
+    if customer_phone != cleaned_phone:
+        raise HTTPException(status_code=404, detail='Orders not found')
+    return orders
+
+
 @router.get('/{orders_id}', response_model=schemas.OrdersWithRelation)
 def read_order_by_id(
     *,
@@ -785,7 +847,7 @@ def delete_orders(
     *,
     db: Session = Depends(deps.get_db),
     orders_id: int,
-    current_user: models.Users = Depends(deps.get_current_active_user),
+    current_user: models.Users = Depends(deps.get_current_active_superuser),
 ) -> Any:
     """Delete an order."""
     orders = crud.orders.get(db=db, id=orders_id)

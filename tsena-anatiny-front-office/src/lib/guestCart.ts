@@ -14,6 +14,7 @@ import type { AppliedPromo } from "./promo";
 
 const STORAGE_KEY = "fo.cart.guest";
 const GUEST_PROMO_KEY = "fo.cart.guest.promo";
+const GUEST_ORDER_KEY = "fo.cart.guest.order";
 
 export interface GuestCartLine {
   /** Identifiant de la ligne en base, absent d'un panier local. */
@@ -186,4 +187,48 @@ export async function mergeGuestCartIntoServer(
     });
   }
   clearGuestCart();
+}
+
+/**
+ * Reference de la derniere commande invitee.
+ *
+ * Un invite n'a ni session ni historique : pour afficher sa confirmation (et
+ * la relire apres un rechargement), la page de succes a besoin du couple
+ * `order_number` + `phone` qui ouvre le lookup public `/orders/guest-lookup`.
+ * Le telephone vient de la saisie du checkout, il est memorise sous sa forme
+ * normalisee.
+ */
+export interface GuestOrderRef {
+  order_id: number;
+  order_number: string;
+  phone: string;
+}
+
+export function getGuestOrderRef(): GuestOrderRef | null {
+  try {
+    const raw = localStorage.getItem(GUEST_ORDER_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (
+      parsed &&
+      typeof parsed.order_id === "number" &&
+      typeof parsed.order_number === "string" &&
+      typeof parsed.phone === "string"
+    ) {
+      return parsed as GuestOrderRef;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export function setGuestOrderRef(ref: GuestOrderRef | null): void {
+  try {
+    if (ref) localStorage.setItem(GUEST_ORDER_KEY, JSON.stringify(ref));
+    else localStorage.removeItem(GUEST_ORDER_KEY);
+  } catch {
+    // Rien a faire : en navigation privee le ref ne survit pas au rechargement,
+    // mais la page de succes affiche tout de meme la commande du checkout.
+  }
 }

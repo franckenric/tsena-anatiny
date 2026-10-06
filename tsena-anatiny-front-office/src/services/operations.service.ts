@@ -12,9 +12,14 @@ import type {
 } from "../types/operations";
 
 export const promoCodesService = {
+  /**
+   * Endpoint public : un invite doit pouvoir tester un code avant de commander.
+   * `skipAuth` evite de demander le jeton de service, absent en mode invite.
+   */
   async validate(code: string, subtotal?: number): Promise<PromoCodeValidation> {
     return apiFetch<PromoCodeValidation>("/promo_codes/validate", {
       method: "POST",
+      skipAuth: true,
       body: JSON.stringify({ code: code.trim(), subtotal })
     });
   }
@@ -97,10 +102,14 @@ export const cartItemsService = {
    * Commande sans compte. Le panier n'a jamais ete enregistre : les lignes
    * partent avec la commande, et l'API en recalcule les prix depuis le
    * catalogue. Aucun `unit_cost` n'est envoye, volontairement.
+   *
+   * Endpoint public (`skipAuth`) : c'est la seule commande qu'un invite peut
+   * passer, donc elle ne doit dependre d'aucun jeton de service.
    */
   async checkoutGuest(payload: GuestCheckoutPayload): Promise<Order> {
     return apiFetch<Order>("/cart_items/checkout-guest", {
       method: "POST",
+      skipAuth: true,
       body: JSON.stringify(payload)
     });
   }
@@ -150,5 +159,26 @@ export const ordersService = {
     );
     const items = Array.isArray(payload?.data) ? payload.data : [];
     return items[0] ?? null;
+  },
+
+  /**
+   * Commandes invitees : retrouver une commande sans compte.
+   *
+   * Endpoint public (pas de jeton de service) : un visiteur qui a passe une
+   * commande sans compte n'a pas de session, donc ne peut pas passer par
+   * `getOrder` (authentifie). Le couple `order_number` + `phone` ouvre le
+   * lookup, et l'API verifie que le telephone correspond a la fiche client.
+   */
+  async lookupGuestOrder(
+    orderNumber: string,
+    phone: string
+  ): Promise<Order | null> {
+    const params = new URLSearchParams({
+      order_number: orderNumber,
+      phone
+    });
+    return apiFetch<Order>(`/orders/guest-lookup?${params.toString()}`, {
+      skipAuth: true
+    }).catch(() => null);
   }
 };

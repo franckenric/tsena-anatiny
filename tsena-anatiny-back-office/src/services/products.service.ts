@@ -33,7 +33,7 @@ export const productsService = {
   async getProducts(
     page = 1,
     pageSize = 20,
-    relation = '["categorie{id,name}","stock{quantity}","variants{id,parent_id,name,sku,quantity,unit_cost,selling_price}","commercial_assignment{user_id}","commercial_assignment.user{full_name,email}","images{id,image,position}"]'
+    relation = '["categorie{id,name}","stock{quantity}","variants{id,parent_id,name,sku,quantity,unit_cost,selling_price}","images{id,image,position}"]'
   ): Promise<ProductListResponse> {
     const skip = (page - 1) * pageSize;
     const token = getToken() || "";

@@ -16,6 +16,30 @@ ADMIN_ROLE_ID = 1
 CLIENT_ROLE_ID = 2
 
 
+def _ensure_role(db: Session, *, role_id: int, name: str) -> Roles:
+    """Cree le role `name` s'il n'existe pas encore.
+
+    La recherche se fait par nom (et non par id) : un role ayant bouge ou un
+    residuel ne doit jamais provoquer de doublon, la cle unique `roles.name`
+    le rejetterait. L'id canonique est conserve quand il est libre, sinon on
+    laisse l'auto-increment choisir.
+    """
+    role = db.query(Roles).filter(Roles.name == name).first()
+    if role:
+        logger.info("Role '%s' déjà existant (id=%s)", name, role.id)
+        return role
+
+    if db.query(Roles).filter(Roles.id == role_id).first() is None:
+        role = Roles(id=role_id, name=name)
+    else:
+        role = Roles(name=name)
+    db.add(role)
+    db.commit()
+    db.refresh(role)
+    logger.info("Role '%s' créé (id=%s)", name, role.id)
+    return role
+
+
 def init_db(db: Session) -> None:
     """Initialize database with tables and seed data."""
     # Tables should be created with Alembic migrations
@@ -23,26 +47,9 @@ def init_db(db: Session) -> None:
     # the tables un-commenting the next line
     # Base.metadata.create_all(bind=engine)
 
-    # --- Roles ---
-    role = db.query(Roles).filter(Roles.id == ADMIN_ROLE_ID).first()
-    if not role:
-        role = Roles(id=ADMIN_ROLE_ID, name="super_admin")
-        db.add(role)
-        db.commit()
-        db.refresh(role)
-        logger.info("Role 'super_admin' créé (id=%s)", role.id)
-    else:
-        logger.info("Role 'super_admin' déjà existant")
-
-    client_role = db.query(Roles).filter(Roles.id == CLIENT_ROLE_ID).first()
-    if not client_role:
-        client_role = Roles(id=CLIENT_ROLE_ID, name="client")
-        db.add(client_role)
-        db.commit()
-        db.refresh(client_role)
-        logger.info("Role 'client' créé (id=%s)", client_role.id)
-    else:
-        logger.info("Role 'client' déjà existant")
+    # --- Roles --- (admin et client uniquement)
+    admin_role = _ensure_role(db, role_id=ADMIN_ROLE_ID, name="super_admin")
+    _ensure_role(db, role_id=CLIENT_ROLE_ID, name="client")
 
     # --- Admin user ---
     user = crud.users.get_by_phone(db, phone=ADMIN_PHONE)
@@ -51,7 +58,7 @@ def init_db(db: Session) -> None:
             email=ADMIN_EMAIL,
             password=ADMIN_PASSWORD,
             is_active=True,
-            role_id=ADMIN_ROLE_ID,
+            role_id=admin_role.id,
             phone_numer=ADMIN_PHONE,
         )
         user = crud.users.create(db, obj_in=user_in)
@@ -60,8 +67,6 @@ def init_db(db: Session) -> None:
         logger.info("Utilisateur admin déjà existant (phone=%s)", ADMIN_PHONE)
 
     # Skip Products
-
-    # Skip CommercialAssignments
 
     # Skip StockMovements
 

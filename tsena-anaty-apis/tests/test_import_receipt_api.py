@@ -54,7 +54,7 @@ def _auth_headers(client, db):
         'email': 'import@test.com',
         'password': 'test123',
         'is_active': True,
-        'role_id': 2,
+        'role_id': 1,
         'phone_numer': '4321',
     }
     user = crud.users.create(db, obj_in=schemas.UsersCreate(**user_data))

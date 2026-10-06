@@ -10,6 +10,27 @@ from app.utils import parse_query_array
 
 router = APIRouter()
 
+# L'application ne connait que deux roles : l'admin et le client. Toute autre
+# affectation est refusee, a la creation comme a la mise a jour.
+ALLOWED_ROLE_NAMES = ("super_admin", "client")
+
+
+def _ensure_allowed_role(db: Session, role_id: int | None) -> None:
+   """Valide qu'un role_id pointe vers un role autorise (`admin` ou `client`)."""
+   role = (
+      db.query(models.Roles).filter(models.Roles.id == role_id).first()
+      if role_id is not None
+      else None
+   )
+   if role is None or role.name not in ALLOWED_ROLE_NAMES:
+      raise HTTPException(
+         status_code=422,
+         detail=(
+            "Role invalide : seuls les roles "
+            f"{', '.join(ALLOWED_ROLE_NAMES)} sont autorises."
+         ),
+      )
+
 
 def _normalize_where_filters(where_items: list[dict]) -> list[dict]:
    normalized: list[dict] = []
@@ -39,7 +60,7 @@ def read_users(
    where_relation: str = "[]",
    base_columns: str = "[]",
    db: Session = Depends(deps.get_db),
-   current_user: models.Users = Depends(deps.get_current_active_user),
+   current_user: models.Users = Depends(deps.get_current_active_superuser),
 ) -> Any:
    """Retrieve users."""
    relations = parse_query_array(relation, default=[]) or []
@@ -70,9 +91,10 @@ def create_users(
    *,
    db: Session = Depends(deps.get_db),
    users_in: schemas.UsersCreate,
-   current_user: models.Users = Depends(deps.get_current_active_user),
+   current_user: models.Users = Depends(deps.get_current_active_superuser),
 ) -> Any:
    """Create new users."""
+   _ensure_allowed_role(db, users_in.role_id)
    users = crud.users.create(db=db, obj_in=users_in)
    return users
 
@@ -83,12 +105,15 @@ def update_users(
    db: Session = Depends(deps.get_db),
    users_id: int,
    users_in: schemas.UsersUpdate,
-   current_user: models.Users = Depends(deps.get_current_active_user),
+   current_user: models.Users = Depends(deps.get_current_active_superuser),
 ) -> Any:
    """Update an users."""
    users = crud.users.get(db=db, id=users_id)
    if not users:
       raise HTTPException(status_code=404, detail="Users not found")
+   # `role_id` absent du payload = role inchang ; explicite = doit etre valide.
+   if "role_id" in users_in.model_fields_set:
+      _ensure_allowed_role(db, users_in.role_id)
    users = crud.users.update(db=db, db_obj=users, obj_in=users_in)
    return users
 
@@ -102,7 +127,7 @@ def read_user_by_id(
    base_columns: str = "[]",
    db: Session = Depends(deps.get_db),
    users_id: int,
-   current_user: models.Users = Depends(deps.get_current_active_user),
+   current_user: models.Users = Depends(deps.get_current_active_superuser),
 ) -> Any:
    """Get users by ID."""
    relations = parse_query_array(relation, default=[]) or []
@@ -132,7 +157,7 @@ def delete_users(
    *,
    db: Session = Depends(deps.get_db),
    users_id: int,
-   current_user: models.Users = Depends(deps.get_current_active_user),
+   current_user: models.Users = Depends(deps.get_current_active_superuser),
 ) -> Any:
    """Delete an users."""
    users = crud.users.get(db=db, id=users_id)

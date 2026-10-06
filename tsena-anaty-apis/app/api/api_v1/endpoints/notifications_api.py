@@ -38,6 +38,11 @@ def _resolve_user_id_for_customer(
 
 
 @router.get("", response_model=schemas.ResponseNotifications)
+# Variante avec slash final : sans elle, `/notifications/` repond 307 vers
+# `/notifications`, le navigateur suit la redirection en changeant d'origine
+# (le proxy Vite renvoie une URL absolue vers l'API) et retire le header
+# `Authorization` -> 401.
+@router.get("/", include_in_schema=False, response_model=schemas.ResponseNotifications)
 def read_notifications(
     *,
     customer_id: Optional[int] = None,
@@ -127,6 +132,7 @@ def remove_notification(
 
 
 @router.delete("")
+@router.delete("/", include_in_schema=False)
 def clear_notifications(
     *,
     customer_id: Optional[int] = None,

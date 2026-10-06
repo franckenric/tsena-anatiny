@@ -12,7 +12,6 @@ import type {
   OrderStatus
 } from "../types/operations";
 import type { Customer } from "../types/customer";
-import type { User } from "../types/user";
 import type { Product } from "../types/product";
 import { cartItemsService } from "../services/operations.service";
 import { customersService } from "../services/customers.service";
@@ -385,7 +384,6 @@ export type CartItem = {
 
 export function OrderForm({
   order,
-  users,
   customers,
   products,
   initialCartItems,
@@ -395,7 +393,6 @@ export function OrderForm({
   isLoading
 }: {
   order?: Order;
-  users: User[];
   customers: Customer[];
   products: Product[];
   initialCartItems?: CartItem[];
@@ -408,7 +405,6 @@ export function OrderForm({
   isLoading: boolean;
 }) {
   const [form, setForm] = useState({
-    user_id: order?.user_id ?? (users[0]?.id || 0),
     customer_id: order?.customer_id ?? 0,
     another_price: Number(order?.another_price || 0),
     other_price_reason: order?.other_price_reason || "",
@@ -581,7 +577,6 @@ export function OrderForm({
 
       if (!order) {
         await onSubmit({
-          user_id: form.user_id,
           customer_id: form.customer_id,
           customer_phone: selectedCustomer?.phone ?? null,
           another_price: Number(form.another_price || 0),
@@ -599,7 +594,6 @@ export function OrderForm({
       }
 
       await onSubmit({
-        user_id: form.user_id,
         customer_id: form.customer_id,
         another_price: Number(form.another_price || 0),
         other_price_reason:
@@ -624,7 +618,7 @@ export function OrderForm({
           </div>
         )}
 
-        {/* Commercial & Statut */}
+        {/* Commande & Statut */}
         <div className="rounded-2xl border border-border/60 bg-bg/30 p-4 space-y-4">
           <div className="flex items-center gap-2.5">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand/10 text-brand">
@@ -634,18 +628,7 @@ export function OrderForm({
               Commande
             </p>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Select
-              label="Commercial"
-              value={String(form.user_id)}
-              onValueChange={(value) => sel("user_id", parseInt(value))}
-              options={users.map((u) => ({
-                label: u.email,
-                value: String(u.id)
-              }))}
-              placeholder="Sélectionner un commercial"
-              disabled={isLoading}
-            />
+          <div className="grid gap-4">
             <Select
               label="Statut"
               value={form.status}

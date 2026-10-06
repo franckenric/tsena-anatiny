@@ -23,7 +23,7 @@ def read_stock_movements(
         where_relation: str = "[]",
         base_columns: str = "[]",
         db: Session = Depends(deps.get_db),
-        current_user: models.Users = Depends(deps.get_current_active_user),
+        current_user: models.Users = Depends(deps.get_current_active_superuser),
 ) -> Any:
     """
     Retrieve stock_movements.
@@ -48,7 +48,7 @@ def create_stock_movements(
         *,
         db: Session = Depends(deps.get_db),
         stock_movements_in: schemas.StockMovementsCreate,
-        current_user: models.Users = Depends(deps.get_current_active_user),
+        current_user: models.Users = Depends(deps.get_current_active_superuser),
 ) -> Any:
     """
     Create new stock_movements and update product stock accordingly.
@@ -159,7 +159,7 @@ def update_stock_movements(
         db: Session = Depends(deps.get_db),
    stock_movements_id: int,
         stock_movements_in: schemas.StockMovementsUpdate,
-        current_user: models.Users = Depends(deps.get_current_active_user),
+        current_user: models.Users = Depends(deps.get_current_active_superuser),
 ) -> Any:
     """
     Update stock movement and keep stock quantities consistent.
@@ -320,7 +320,7 @@ def read_stock_movements(
         base_columns: str = "[]",
         db: Session = Depends(deps.get_db),
       stock_movements_id: int,
-        current_user: models.Users = Depends(deps.get_current_active_user),
+        current_user: models.Users = Depends(deps.get_current_active_superuser),
 ) -> Any:
     """
     Get stock_movements by ID.
@@ -346,7 +346,7 @@ def delete_stock_movements(
         *,
         db: Session = Depends(deps.get_db),
    stock_movements_id: int,
-        current_user: models.Users = Depends(deps.get_current_active_user),
+        current_user: models.Users = Depends(deps.get_current_active_superuser),
 ) -> Any:
     """
     Delete an stock_movements.

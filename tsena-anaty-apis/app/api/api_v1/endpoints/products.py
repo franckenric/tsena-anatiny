@@ -23,7 +23,7 @@ from app.api import deps
 async def extract_receipt(
       *,
       db: Session = Depends(deps.get_db),
-      current_user: models.Users = Depends(deps.get_current_active_user),
+      current_user: models.Users = Depends(deps.get_current_active_superuser),
       file: UploadFile = File(...),
 ) -> Any:
     """Upload a receipt PDF and return extracted product data (name, qty, unit price, fees)."""
@@ -53,7 +53,7 @@ async def extract_receipt(
 async def import_receipt(
       *,
       db: Session = Depends(deps.get_db),
-      current_user: models.Users = Depends(deps.get_current_active_user),
+      current_user: models.Users = Depends(deps.get_current_active_superuser),
       items: str = Form(...),
       category_id: int = Form(...),
       lot_id: int = Form(...),
@@ -307,7 +307,7 @@ async def upload_product_image(
       *,
       request: Request,
       image: UploadFile = File(...),
-      current_user: models.Users = Depends(deps.get_current_active_user),
+      current_user: models.Users = Depends(deps.get_current_active_superuser),
 ) -> Any:
    """Upload a product image and return a public URL."""
    allowed_types = {"image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"}
@@ -362,7 +362,7 @@ async def upload_product_images(
         db: Session = Depends(deps.get_db),
         products_id: int,
         images: List[UploadFile] = File(...),
-        current_user: models.Users = Depends(deps.get_current_active_user),
+        current_user: models.Users = Depends(deps.get_current_active_superuser),
 ) -> Any:
     """Upload multiple images for a product in one request."""
     product = crud.products.get(db=db, id=products_id)
@@ -432,7 +432,7 @@ async def replace_product_image(
         products_id: int,
         image_id: int,
         image: UploadFile = File(...),
-        current_user: models.Users = Depends(deps.get_current_active_user),
+        current_user: models.Users = Depends(deps.get_current_active_superuser),
 ) -> Any:
     """Replace an existing product image file, keeping its position."""
     row = crud.product_images.get(db=db, id=image_id)
@@ -493,7 +493,7 @@ def delete_product_image(
         db: Session = Depends(deps.get_db),
         products_id: int,
         image_id: int,
-        current_user: models.Users = Depends(deps.get_current_active_user),
+        current_user: models.Users = Depends(deps.get_current_active_superuser),
 ) -> Any:
     """Delete an image of a product."""
     image = crud.product_images.get(db=db, id=image_id)
@@ -584,7 +584,7 @@ def create_products(
         *,
         db: Session = Depends(deps.get_db),
         products_in: schemas.ProductsCreate,
-        current_user: models.Users = Depends(deps.get_current_active_user),
+        current_user: models.Users = Depends(deps.get_current_active_superuser),
 ) -> Any:
     """
     Create new products.
@@ -617,7 +617,7 @@ def update_products(
         db: Session = Depends(deps.get_db),
    products_id: int,
         products_in: schemas.ProductsUpdate,
-        current_user: models.Users = Depends(deps.get_current_active_user),
+        current_user: models.Users = Depends(deps.get_current_active_superuser),
 ) -> Any:
     """
     Update an products.
@@ -680,7 +680,7 @@ def delete_products(
         *,
         db: Session = Depends(deps.get_db),
    products_id: int,
-        current_user: models.Users = Depends(deps.get_current_active_user),
+        current_user: models.Users = Depends(deps.get_current_active_superuser),
 ) -> Any:
     """
     Delete an products.
@@ -711,10 +711,6 @@ def delete_products(
 
     db.query(models.ProductImages).filter(
         models.ProductImages.product_id == products_id
-    ).delete(synchronize_session=False)
-
-    db.query(models.CommercialAssignments).filter(
-        models.CommercialAssignments.product_id == products_id
     ).delete(synchronize_session=False)
 
     db.query(models.Stock).filter(

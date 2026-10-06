@@ -91,7 +91,7 @@ def read_variants(
     *,
     db: Session = Depends(deps.get_db),
     product_id: int,
-    current_user: models.Users = Depends(deps.get_current_active_user),
+    current_user: models.Users = Depends(deps.get_current_active_superuser),
 ) -> Any:
     """Arborescence des variantes d'un produit."""
     product = crud.products.get(db=db, id=product_id)
@@ -107,7 +107,7 @@ def create_variant(
     db: Session = Depends(deps.get_db),
     product_id: int,
     variant_in: schemas.ProductVariantCreate,
-    current_user: models.Users = Depends(deps.get_current_active_user),
+    current_user: models.Users = Depends(deps.get_current_active_superuser),
 ) -> Any:
     """Créer une variante (ou sous-variante) d'un produit."""
     user_id = _require_user_id(current_user)
@@ -181,7 +181,7 @@ def update_variant(
     product_id: int,
     variant_id: int,
     variant_in: schemas.ProductVariantUpdate,
-    current_user: models.Users = Depends(deps.get_current_active_user),
+    current_user: models.Users = Depends(deps.get_current_active_superuser),
 ) -> Any:
     """Modifier une variante (nom, sku, quantité, parent)."""
     user_id = _require_user_id(current_user)
@@ -253,7 +253,7 @@ def delete_variant(
     db: Session = Depends(deps.get_db),
     product_id: int,
     variant_id: int,
-    current_user: models.Users = Depends(deps.get_current_active_user),
+    current_user: models.Users = Depends(deps.get_current_active_superuser),
 ) -> Any:
     """Supprimer une variante (sans enfants)."""
     variant = _get_variant(db=db, product_id=product_id, variant_id=variant_id)

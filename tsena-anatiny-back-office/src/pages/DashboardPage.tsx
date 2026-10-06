@@ -10,7 +10,6 @@ import {
   Boxes,
   ChevronLeft,
   ChevronRight,
-  ClipboardList,
   Package,
   RefreshCw,
   RotateCcw,
@@ -48,14 +47,13 @@ const defaultStats: DashboardStats = {
   categories: 0,
   stock: 0,
   orders: 0,
-  movements: 0,
-  assignments: 0
+  movements: 0
 };
 
 const defaultOrderInsights: DashboardOrderInsights = {
   totalOrders: 0,
   totalUnitsSold: 0,
-  byCommercial: []
+  byAuthor: []
 };
 
 const defaultProductInsights: DashboardProductInsights = {
@@ -257,7 +255,6 @@ export function DashboardPage() {
       { label: "Produits", value: stats.products, icon: Package },
       { label: "Commandes", value: stats.orders, icon: ShoppingCart },
       { label: "Mouvements", value: stats.movements, icon: ScanLine },
-      { label: "Affectations", value: stats.assignments, icon: ClipboardList },
       { label: "Utilisateurs", value: stats.users, icon: Users }
     ],
     [stats]
@@ -273,7 +270,7 @@ export function DashboardPage() {
     [chartData]
   );
 
-  const totalFlow = stats.orders + stats.movements + stats.assignments;
+  const totalFlow = stats.orders + stats.movements;
 
   // ── Visites du front-office (jour par jour sur la semaine affichee) ──
   // Date du jour au format "AAAA-MM-JJ", pour comparer aux dates de l'API et
@@ -385,8 +382,8 @@ export function DashboardPage() {
   // inutile.
   const isCurrentVisitsWeek = visitsWeekOffset === 0;
 
-  const maxCommercialUnits = Math.max(
-    ...orderInsights.byCommercial.map((item) => item.unitsSold),
+  const maxAuthorUnits = Math.max(
+    ...orderInsights.byAuthor.map((item) => item.unitsSold),
     1
   );
   const maxCategorySoldUnits = Math.max(
@@ -618,7 +615,6 @@ export function DashboardPage() {
                 <>
                   <Skeleton className="h-12 w-full" />
                   <Skeleton className="h-12 w-full" />
-                  <Skeleton className="h-12 w-full" />
                 </>
               ) : (
                 <>
@@ -633,12 +629,6 @@ export function DashboardPage() {
                     label="Mouvements de stock"
                     value={stats.movements.toLocaleString("fr-FR")}
                     iconClass="bg-warning/20 text-warning"
-                  />
-                  <StatRow
-                    icon={ClipboardList}
-                    label="Affectations commerciales"
-                    value={stats.assignments.toLocaleString("fr-FR")}
-                    iconClass="bg-success/15 text-success"
                   />
                 </>
               )}
@@ -983,7 +973,7 @@ export function DashboardPage() {
           </article>
         </section>
 
-        {/* ── Commerciaux & produits vendus ── */}
+        {/* ── Commandes par auteur & produits vendus ── */}
         <section className="grid grid-cols-1 gap-4 xl:grid-cols-5">
           <article className={`${cardClass} xl:col-span-3`}>
             <div className="flex items-center gap-2">
@@ -992,10 +982,10 @@ export function DashboardPage() {
               </span>
               <div>
                 <h3 className="font-display text-lg font-semibold text-ink">
-                  Commandes par commercial
+                  Commandes par auteur
                 </h3>
                 <p className="text-sm text-muted">
-                  Quantité vendue par commercial
+                  Quantité vendue par auteur (admin ou client)
                 </p>
               </div>
             </div>
@@ -1006,17 +996,17 @@ export function DashboardPage() {
                   <Skeleton key={i} className="h-16 w-full" />
                 ))}
               </div>
-            ) : orderInsights.byCommercial.length === 0 ? (
+            ) : orderInsights.byAuthor.length === 0 ? (
               <p className="mt-6 text-sm text-muted">
-                Aucune commande commerciale disponible.
+                Aucune commande disponible.
               </p>
             ) : (
               <div className="mt-5 space-y-3">
-                {orderInsights.byCommercial.slice(0, 8).map((item, idx) => {
-                  const width = `${Math.max(8, (item.unitsSold / maxCommercialUnits) * 100)}%`;
+                {orderInsights.byAuthor.slice(0, 8).map((item, idx) => {
+                  const width = `${Math.max(8, (item.unitsSold / maxAuthorUnits) * 100)}%`;
                   return (
                     <div
-                      key={`${item.commercialId}-${item.commercialName}`}
+                      key={`${item.authorId}-${item.authorName}`}
                       className="flex items-center gap-3 rounded-xl border border-border/60 bg-bg/55 p-3 transition hover:border-brand/30"
                     >
                       <span
@@ -1027,7 +1017,7 @@ export function DashboardPage() {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-3">
                           <p className="truncate text-sm font-semibold text-ink">
-                            {item.commercialName}
+                            {item.authorName}
                           </p>
                           <p className="shrink-0 text-xs font-semibold text-ink tabular-nums">
                             {item.unitsSold.toLocaleString("fr-FR")} vendus

@@ -33,7 +33,7 @@ def test_get_orders_with_nested_product_variant_relations(client, db):
         'email': 'nested-relations@test.com',
         'password': 'test123',
         'is_active': True,
-        'role_id': 2,
+        'role_id': 1,
         'phone_numer': 'nested-rel',
     }
     user = crud.users.create(db, obj_in=schemas.UsersCreate(**user_data))
@@ -96,7 +96,7 @@ def test_create_orders_api(client, db):
         'email': 'QlHjM@8ft7j.com',
         'password': 'Y7bF0',
         'is_active': True,
-        'role_id': 15,
+        'role_id': 1,
         'phone_numer': 'qu06Y',
     }
     user = crud.users.create(db, obj_in=schemas.UsersCreate(**user_data))
@@ -165,7 +165,7 @@ def test_update_orders_api(client, db):
         'email': '0q1pK@r3f0c.com',
         'password': 'dVatj',
         'is_active': True,
-        'role_id': 77,
+        'role_id': 1,
         'phone_numer': 'Al',
     }
     user = crud.users.create(db, obj_in=schemas.UsersCreate(**user_data))
@@ -243,7 +243,7 @@ def test_get_orders_api(client, db):
         'email': '3FsFL@ubx1c.com',
         'password': '5I97E',
         'is_active': True,
-        'role_id': 56,
+        'role_id': 1,
         'phone_numer': 'hy',
     }
     user = crud.users.create(db, obj_in=schemas.UsersCreate(**user_data))
@@ -338,7 +338,7 @@ def test_get_by_id_orders_api(client, db):
         'email': 'sKGpr@d1uvo.com',
         'password': 'OkWJD',
         'is_active': True,
-        'role_id': 56,
+        'role_id': 1,
         'phone_numer': 'iYo',
     }
     user = crud.users.create(db, obj_in=schemas.UsersCreate(**user_data))
@@ -432,7 +432,7 @@ def test_delete_orders_api(client, db):
         'email': '0Pz7O@5r0l1.com',
         'password': 'DLWBb',
         'is_active': True,
-        'role_id': 20,
+        'role_id': 1,
         'phone_numer': 'hd7nHOOUV',
     }
     user = crud.users.create(db, obj_in=schemas.UsersCreate(**user_data))

@@ -50,7 +50,7 @@ def create_promo_code(
     *,
     db: Session = Depends(deps.get_db),
     promo_code_in: schemas.PromoCodesCreate,
-    current_user: models.Users = Depends(deps.get_current_active_user),
+    current_user: models.Users = Depends(deps.get_current_active_superuser),
 ) -> Any:
     """Create new promo code."""
     existing = crud.promo_codes.get_by_code(db=db, code=promo_code_in.code)
@@ -65,7 +65,7 @@ def update_promo_code(
     db: Session = Depends(deps.get_db),
     promo_code_id: int,
     promo_code_in: schemas.PromoCodesUpdate,
-    current_user: models.Users = Depends(deps.get_current_active_user),
+    current_user: models.Users = Depends(deps.get_current_active_superuser),
 ) -> Any:
     """Update a promo code."""
     promo_code = crud.promo_codes.get(db=db, id=promo_code_id)
@@ -84,7 +84,7 @@ def delete_promo_code(
     *,
     db: Session = Depends(deps.get_db),
     promo_code_id: int,
-    current_user: models.Users = Depends(deps.get_current_active_user),
+    current_user: models.Users = Depends(deps.get_current_active_superuser),
 ) -> Any:
     """Delete a promo code."""
     promo_code = crud.promo_codes.get(db=db, id=promo_code_id)
@@ -99,9 +99,17 @@ def validate_promo_code(
     *,
     db: Session = Depends(deps.get_db),
     request: schemas.PromoCodeValidateRequest,
-    current_user: models.Users = Depends(deps.get_current_active_user),
+    _throttle: None = Depends(deps.rate_limit(limit=20, window_s=60)),
 ) -> Any:
-    """Validate a promo code against an optional order subtotal."""
+    """Validate a promo code against an optional order subtotal. Endpoint public.
+
+    Un invite doit pouvoir tester un code avant de commander. La lecture seule
+    ne modifie rien, mais elle est facile a sonder : d'ou un plafond, plus large
+    que sur le checkout car un panier teste plusieurs codes en boucle.
+
+    Ce resultat n'engage rien : la remise reelle est recalculee par
+    `_build_promo_discount` au moment de la commande.
+    """
     try:
         promo_code, discount_amount = crud.promo_codes.validate_for_subtotal(
             db=db,

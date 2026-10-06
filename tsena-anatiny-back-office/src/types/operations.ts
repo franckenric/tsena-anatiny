@@ -194,7 +194,7 @@ export interface UpdateCartItemPayload {
 }
 
 export interface CheckoutCartPayload {
-  user_id: number;
+  user_id?: number;
   order_number?: string;
   customer_id?: number;
   customer_phone?: string | null;
@@ -248,7 +248,8 @@ export interface Order {
 
 export interface CreateOrderPayload {
   order_number?: string;
-  user_id: number;
+  // Absent = la commande est attribuee a l'utilisateur connecte cote API.
+  user_id?: number;
   customer_id: number;
   customer_phone?: string | null;
   product_id?: number;
@@ -277,33 +278,5 @@ export interface UpdateOrderPayload {
 
 export interface OrderListResponse {
   items: Order[];
-  total: number;
-}
-
-// ── Commercial Assignments ───────────────────────────────────────────────────
-export interface CommercialAssignment {
-  id: number;
-  user_id: number;
-  product_id: number;
-  quantity: number;
-  user?: User | null;
-  product?: Product | null;
-  created_at?: string;
-}
-
-export interface CreateAssignmentPayload {
-  user_id: number;
-  product_id: number;
-  quantity: number;
-}
-
-export interface UpdateAssignmentPayload {
-  user_id?: number;
-  product_id?: number;
-  quantity?: number;
-}
-
-export interface AssignmentListResponse {
-  items: CommercialAssignment[];
   total: number;
 }

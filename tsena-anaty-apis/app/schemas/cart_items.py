@@ -61,7 +61,9 @@ class ResponseCartItems(BaseModel):
 
 
 class CartCheckoutRequest(BaseModel):
-    user_id: int
+    # Optionnel : quand il manque, la commande est attribuee a l'utilisateur
+    # connecte (pas de notion de commercial dans l'application).
+    user_id: Optional[int] = None
     order_number: Optional[str] = None
     customer_id: Optional[int] = None
     customer_name: Optional[str] = None

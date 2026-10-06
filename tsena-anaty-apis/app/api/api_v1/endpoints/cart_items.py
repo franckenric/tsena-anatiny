@@ -330,7 +330,7 @@ def _price_order(
     db: Session,
     customer: models.Customers,
     lines: list[dict[str, Any]],
-    user_id: int,
+    user_id: int | None,
     promo_code: str | None,
     status: ProductStatusEnum,
     note: str | None,
@@ -492,12 +492,18 @@ def checkout_cart(
 
     lines = _cart_items_to_lines(cart_items)
 
+    # Sans `user_id` explicite, la commande revient a l'utilisateur connecte :
+    # l'application ne connait plus que les roles admin et client.
+    order_user_id = checkout_in.user_id
+    if order_user_id is None:
+        order_user_id = current_user.id if current_user else None
+
     try:
         order = _price_order(
             db=db,
             customer=customer,
             lines=lines,
-            user_id=checkout_in.user_id,
+            user_id=order_user_id,
             promo_code=checkout_in.promo_code,
             order_number=(checkout_in.order_number or "").strip() or None,
             status=checkout_in.status or ProductStatusEnum.draft,
@@ -526,14 +532,19 @@ def checkout_guest(
     *,
     db: Session = Depends(deps.get_db),
     checkout_in: schemas.GuestCartCheckoutRequest,
-    current_user: models.Users = Depends(deps.get_current_active_user),
+    _throttle: None = Depends(deps.rate_limit(limit=5, window_s=60)),
 ) -> Any:
-    """Commande sans compte.
+    """Commande sans compte. Endpoint public.
 
     Le panier d'un invite n'a jamais ete enregistre : les lignes arrivent avec
     la commande. Chaque prix est resolu depuis le catalogue (variante en
     priorite, produit en repli) et le stock est verifie avant acceptation, donc
     le navigateur ne peut pas imposer son tarif.
+
+    Public ne veut pas dire sans garde-fou : la commande cree une fiche client
+    et des lignes de stock, d'ou le plafond par IP. C'est aussi pourquoi rien
+    n'est attribue a un utilisateur : la commande n'a pas d'auteur, seulement
+    un client, et `orders.user_id` reste NULL.
     """
     if not checkout_in.items:
         raise HTTPException(status_code=422, detail='Cart is empty')
@@ -598,8 +609,7 @@ def checkout_guest(
             'other_price_reason': None,
         })
 
-    # Aucun `customer_id` : la fiche est retrouvee par telephone, ou creee. Le
-    # compte de service porte la commande (l'invite n'a pas de compte).
+    # Aucun `customer_id` : la fiche est retrouvee par telephone, ou creee.
     customer = _resolve_customer(
         db=db,
         customer_id=None,
@@ -613,9 +623,8 @@ def checkout_guest(
         db=db,
         customer=customer,
         lines=lines,
-        user_id=current_user.id,
+        user_id=None,
         promo_code=checkout_in.promo_code,
         status=checkout_in.status or ProductStatusEnum.draft,
         note=checkout_in.note,
-        current_user=current_user,
     )

@@ -16,7 +16,7 @@ def read_lots(
     offset: int = 0,
     limit: int = 100,
     db: Session = Depends(deps.get_db),
-    current_user: models.Users = Depends(deps.get_current_active_user),
+    current_user: models.Users = Depends(deps.get_current_active_superuser),
 ) -> Any:
     """List all lots, newest first."""
     lots = crud.lots.get_multi_where_array(db=db, skip=offset, limit=limit)
@@ -29,7 +29,7 @@ def create_lot(
     *,
     db: Session = Depends(deps.get_db),
     lot_in: LotCreate,
-    current_user: models.Users = Depends(deps.get_current_active_user),
+    current_user: models.Users = Depends(deps.get_current_active_superuser),
 ) -> Any:
     """Create a new lot (purchase batch)."""
     if lot_in.total_expense < 0:
@@ -43,7 +43,7 @@ def read_lot(
     *,
     lot_id: int,
     db: Session = Depends(deps.get_db),
-    current_user: models.Users = Depends(deps.get_current_active_user),
+    current_user: models.Users = Depends(deps.get_current_active_superuser),
 ) -> Any:
     """Get a lot by id."""
     lot = crud.lots.get(db=db, id=lot_id)
@@ -58,7 +58,7 @@ def update_lot(
     lot_id: int,
     lot_in: LotUpdate,
     db: Session = Depends(deps.get_db),
-    current_user: models.Users = Depends(deps.get_current_active_user),
+    current_user: models.Users = Depends(deps.get_current_active_superuser),
 ) -> Any:
     """Update a lot."""
     lot = crud.lots.get(db=db, id=lot_id)
@@ -74,7 +74,7 @@ def delete_lot(
     *,
     lot_id: int,
     db: Session = Depends(deps.get_db),
-    current_user: models.Users = Depends(deps.get_current_active_user),
+    current_user: models.Users = Depends(deps.get_current_active_superuser),
 ) -> Any:
     """Delete a lot."""
     lot = crud.lots.get(db=db, id=lot_id)

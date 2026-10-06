@@ -2,7 +2,6 @@ from fastapi import APIRouter
 
 from app.api.api_v1.endpoints import categories
 from app.api.api_v1.endpoints import cart_items
-from app.api.api_v1.endpoints import commercial_assignments
 from app.api.api_v1.endpoints import customers
 from app.api.api_v1.endpoints import login
 from app.api.api_v1.endpoints import login_facebook
@@ -25,7 +24,6 @@ from app.api.api_v1.endpoints import visits
 api_router = APIRouter()
 api_router.include_router(categories.router, prefix="/categories", tags=["categories"])
 api_router.include_router(cart_items.router, prefix="/cart_items", tags=["cart_items"])
-api_router.include_router(commercial_assignments.router, prefix="/commercial_assignments", tags=["commercial_assignments"])
 api_router.include_router(customers.router, prefix="/customers", tags=["customers"])
 api_router.include_router(login.router, prefix="/login", tags=["login"])
 api_router.include_router(login_facebook.router, prefix="/login", tags=["login"])

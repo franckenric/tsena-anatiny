@@ -33,7 +33,9 @@ class OrdersBase(BaseModel):
 
 
 class OrdersCreate(OrdersBase):
-    user_id: int
+    # Nullable : une commande invitee n'a pas d'auteur (`orders.user_id` l'est
+    # aussi). Le back-office qui reprend la commande peut le renseigner ensuite.
+    user_id: Optional[int] = None
 
 
 class OrdersUpdate(OrdersBase):

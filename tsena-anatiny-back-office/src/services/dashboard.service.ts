@@ -1,6 +1,5 @@
 import { categoriesService } from "./categories.service";
 import {
-  assignmentsService,
   ordersService,
   stockMovementsService,
   stockService
@@ -17,12 +16,12 @@ export interface DashboardStats {
   stock: number;
   orders: number;
   movements: number;
-  assignments: number;
 }
 
-export interface CommercialOrderInsight {
-  commercialId: number;
-  commercialName: string;
+/** Commandes regroupees par leur auteur (admin ou client). */
+export interface OrderAuthorInsight {
+  authorId: number;
+  authorName: string;
   ordersCount: number;
   unitsSold: number;
 }
@@ -30,7 +29,7 @@ export interface CommercialOrderInsight {
 export interface DashboardOrderInsights {
   totalOrders: number;
   totalUnitsSold: number;
-  byCommercial: CommercialOrderInsight[];
+  byAuthor: OrderAuthorInsight[];
 }
 
 export interface ProductCategoryInsight {
@@ -112,16 +111,17 @@ async function getAllProducts(pageSize = 100): Promise<Product[]> {
   return allItems;
 }
 
-function resolveCommercialName(order: Order): string {
+function resolveAuthorName(order: Order): string {
   if (order.user?.full_name?.trim()) return order.user.full_name;
   if (order.user?.email?.trim()) return order.user.email;
-  if (order.user_id) return `Commercial #${order.user_id}`;
-  return "Non assigné";
+  if (order.user?.phone_numer?.trim()) return order.user.phone_numer;
+  if (order.user_id) return `Utilisateur #${order.user_id}`;
+  return "Non renseigné";
 }
 
 export const dashboardService = {
   async getStats(): Promise<DashboardStats> {
-    const [users, products, categories, stock, orders, movements, assignments] =
+    const [users, products, categories, stock, orders, movements] =
       await Promise.all([
         safeCount(async () => (await usersService.getUsers(1, 1)).total),
         safeCount(async () => (await productsService.getProducts(1, 1)).total),
@@ -132,9 +132,6 @@ export const dashboardService = {
         safeCount(async () => (await ordersService.getOrders(1, 1)).total),
         safeCount(
           async () => (await stockMovementsService.getMovements(1, 1)).total
-        ),
-        safeCount(
-          async () => (await assignmentsService.getAssignments(1, 1)).total
         )
       ]);
 
@@ -144,54 +141,50 @@ export const dashboardService = {
       categories,
       stock,
       orders,
-      movements,
-      assignments
+      movements
     };
   },
 
   async getOrderInsights(): Promise<DashboardOrderInsights> {
     try {
       const orders = await getAllOrders(100);
-      const grouped = new Map<number, CommercialOrderInsight>();
+      const grouped = new Map<number, OrderAuthorInsight>();
 
       for (const order of orders) {
-        const commercialId = order.user_id ?? 0;
+        const authorId = order.user_id ?? 0;
         const units =
           typeof order.quantity === "number" && order.quantity > 0
             ? order.quantity
             : 1;
 
-        const previous = grouped.get(commercialId);
+        const previous = grouped.get(authorId);
         if (previous) {
           previous.ordersCount += 1;
           previous.unitsSold += units;
         } else {
-          grouped.set(commercialId, {
-            commercialId,
-            commercialName: resolveCommercialName(order),
+          grouped.set(authorId, {
+            authorId,
+            authorName: resolveAuthorName(order),
             ordersCount: 1,
             unitsSold: units
           });
         }
       }
 
-      const byCommercial = Array.from(grouped.values()).sort(
+      const byAuthor = Array.from(grouped.values()).sort(
         (a, b) => b.unitsSold - a.unitsSold || b.ordersCount - a.ordersCount
       );
 
       return {
         totalOrders: orders.length,
-        totalUnitsSold: byCommercial.reduce(
-          (sum, item) => sum + item.unitsSold,
-          0
-        ),
-        byCommercial
+        totalUnitsSold: byAuthor.reduce((sum, item) => sum + item.unitsSold, 0),
+        byAuthor
       };
     } catch {
       return {
         totalOrders: 0,
         totalUnitsSold: 0,
-        byCommercial: []
+        byAuthor: []
       };
     }
   },

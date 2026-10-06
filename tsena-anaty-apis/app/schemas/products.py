@@ -53,25 +53,10 @@ class ProductStockLite(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class ProductCommercialUserLite(BaseModel):
-    full_name: Optional[str] = None
-    email: Optional[str] = None
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class ProductCommercialAssignmentLite(BaseModel):
-    user_id: Optional[int] = None
-    user: Optional[ProductCommercialUserLite] = None
-
-    model_config = ConfigDict(from_attributes=True)
-
-
 class ProductsWithRelation(ProductsInDBBase):
     categorie: Optional[Categories] = None
     stock: Optional[List[ProductStockLite]] = None
     variants: Optional[List[ProductVariant]] = None
-    commercial_assignment: Optional[ProductCommercialAssignmentLite] = None
     images: Optional[List[ProductImages]] = None
     unit_cost: Optional[float] = None
 

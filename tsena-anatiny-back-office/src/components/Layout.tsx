@@ -3,7 +3,6 @@ import { Link, useHistory, useLocation } from "react-router-dom";
 import {
   Bell,
   Boxes,
-  ClipboardList,
   ContactRound,
   LayoutDashboard,
   LogOut,
@@ -42,12 +41,7 @@ const navItems = [
   { label: "Catégories", href: "/categories", icon: Shapes },
   { label: "Codes promo", href: "/promo-codes", icon: TicketPercent },
   { label: "Notifications", href: "/notifications", icon: Bell },
-  { label: "Utilisateurs", href: "/users", icon: Users },
-  {
-    label: "Affectations",
-    href: "/commercial-assignments",
-    icon: ClipboardList
-  }
+  { label: "Utilisateurs", href: "/users", icon: Users }
 ];
 
 const PRIMARY_HREFS = [

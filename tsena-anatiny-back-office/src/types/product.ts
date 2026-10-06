@@ -41,13 +41,6 @@ export interface Product {
     selling_price?: number | null;
     discount_price?: number | null;
   }>;
-  commercial_assignment?: {
-    user_id?: number;
-    user?: {
-      full_name?: string;
-      email?: string;
-    };
-  } | null;
   images?: ProductImage[];
   created_at?: string;
   updated_at?: string;

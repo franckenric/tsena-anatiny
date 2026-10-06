@@ -52,7 +52,7 @@ def create_category(
     *,
     db: Session = Depends(deps.get_db),
     category_in: schemas.CategoriesCreate,
-    current_user: models.Users = Depends(deps.get_current_active_user),
+    current_user: models.Users = Depends(deps.get_current_active_superuser),
 ) -> Any:
     """Create new category."""
     category = crud.categories.create(db=db, obj_in=category_in)
@@ -65,7 +65,7 @@ def update_category(
     db: Session = Depends(deps.get_db),
     category_id: int,
     category_in: schemas.CategoriesUpdate,
-    current_user: models.Users = Depends(deps.get_current_active_user),
+    current_user: models.Users = Depends(deps.get_current_active_superuser),
 ) -> Any:
     """Update a category."""
     category = crud.categories.get(db=db, id=category_id)
@@ -80,7 +80,7 @@ def delete_category(
     *,
     db: Session = Depends(deps.get_db),
     category_id: int,
-    current_user: models.Users = Depends(deps.get_current_active_user),
+    current_user: models.Users = Depends(deps.get_current_active_superuser),
 ) -> Any:
     """Delete a category."""
     category = crud.categories.get(db=db, id=category_id)

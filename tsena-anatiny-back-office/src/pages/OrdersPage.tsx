@@ -407,10 +407,13 @@ export function OrdersPage() {
       }
     },
     {
-      header: "Commercial",
+      header: "Créé par",
       accessor: "user_id",
       width: "16%",
-      render: (_, r) => r.user?.email ?? `#${r.user_id}`
+      render: (_, r) =>
+        r.user?.email ||
+        r.user?.phone_numer ||
+        (r.user_id ? `#${r.user_id}` : "—")
     },
     {
       header: "Total",
@@ -566,10 +569,12 @@ export function OrdersPage() {
                     </div>
                     <div>
                       <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
-                        Commercial
+                        Créé par
                       </p>
                       <p className="mt-0.5 truncate text-sm font-semibold text-ink">
-                        {o.user?.email ?? `#${o.user_id}`}
+                        {o.user?.email ||
+                          o.user?.phone_numer ||
+                          (o.user_id ? `#${o.user_id}` : "—")}
                       </p>
                     </div>
                     <div className="text-right">

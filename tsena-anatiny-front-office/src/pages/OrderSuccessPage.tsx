@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { CheckCircle2, Clock3, PackageCheck } from "lucide-react";
 import { ordersService } from "../services/operations.service";
 import { useAuth } from "../contexts/AuthContext";
+import { getGuestOrderRef } from "../lib/guestCart";
 import type { Order, OrderStatus } from "../types/operations";
 import { PageLoader } from "../components/Spinner";
 import { StatusBadge } from "../components/StatusBadge";
@@ -46,24 +47,48 @@ export function OrderSuccessPage() {
       setIsLoading(false);
       return;
     }
-    ordersService
-      .getOrder(id)
-      .then((data) => {
-        if (cancelled) return;
-        setOrder(data);
-      })
-      .catch((err) => {
+
+    const load = async () => {
+      try {
+        let data: Order | null = null;
+        if (isGuest) {
+          // L'invite n'a pas de session : impossible d'appeler `getOrder`
+          // (authentifie). Le ref memorise au checkout ouvre le lookup public.
+          const ref = getGuestOrderRef();
+          if (ref && ref.order_id === id) {
+            data = await ordersService.lookupGuestOrder(
+              ref.order_number,
+              ref.phone
+            );
+            // L'API retourne la commande du numero : elle doit etre la meme.
+            if (data && data.id !== id) data = null;
+          }
+          if (!data) {
+            if (!cancelled) setError(t("order.notFound"));
+            return;
+          }
+        } else {
+          data = await ordersService.getOrder(id);
+          if (!data) {
+            if (!cancelled) setError(t("order.notFound"));
+            return;
+          }
+        }
+        if (!cancelled) setOrder(data);
+      } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : t("error.generic"));
         }
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setIsLoading(false);
-      });
+      }
+    };
+
+    void load();
     return () => {
       cancelled = true;
     };
-  }, [orderId, t]);
+  }, [orderId, t, isGuest]);
 
   if (isLoading) {
     return (

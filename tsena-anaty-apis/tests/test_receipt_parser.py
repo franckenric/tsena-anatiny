@@ -141,7 +141,7 @@ def test_extract_receipt_api(client, db):
         'email': 'receipt@test.com',
         'password': 'test123',
         'is_active': True,
-        'role_id': 2,
+        'role_id': 1,
         'phone_numer': '1234',
     }
     user = crud.users.create(db, obj_in=schemas.UsersCreate(**user_data))
@@ -171,7 +171,7 @@ def test_extract_receipt_api_invalid_file(client, db):
         'email': 'receipt2@test.com',
         'password': 'test123',
         'is_active': True,
-        'role_id': 2,
+        'role_id': 1,
         'phone_numer': '5678',
     }
     user = crud.users.create(db, obj_in=schemas.UsersCreate(**user_data))

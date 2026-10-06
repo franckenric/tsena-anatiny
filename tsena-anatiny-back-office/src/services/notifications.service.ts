@@ -151,7 +151,10 @@ async function restFetch<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export function fetchNotifications(): Promise<RestNotificationsResponse> {
-  return restFetch("/notifications/");
+  // Pas de slash final : la route est enregistree sur `/notifications`
+  // (un slash declencherait un 307 qui, passe par le proxy, perd le header
+  // `Authorization` -> 401).
+  return restFetch("/notifications");
 }
 
 export function fetchPresence(): Promise<PresenceStats> {
@@ -163,5 +166,5 @@ export function markAllNotificationsRead(): Promise<{ success: boolean }> {
 }
 
 export function clearNotifications(): Promise<{ success: boolean }> {
-  return restFetch("/notifications/", { method: "DELETE" });
+  return restFetch("/notifications", { method: "DELETE" });
 }

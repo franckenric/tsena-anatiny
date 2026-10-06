@@ -16,7 +16,6 @@ import { LotDetailsPage } from "./pages/LotDetailsPage";
 import { StockMovementsPage } from "./pages/StockMovementsPage";
 import { OrdersPage } from "./pages/OrdersPage";
 import { OrderEditPage } from "./pages/OrderEditPage";
-import { CommercialAssignmentsPage } from "./pages/CommercialAssignmentsPage";
 import { CustomersPage } from "./pages/CustomersPage";
 import { CustomerFormPage } from "./pages/CustomerFormPage";
 import { NotificationsPage } from "./pages/NotificationsPage";
@@ -51,11 +50,6 @@ function App() {
       <ProtectedRoute exact path="/customers/new" component={CustomerFormPage} />
       <ProtectedRoute exact path="/customers/:id/edit" component={CustomerFormPage} />
       <ProtectedRoute exact path="/notifications" component={NotificationsPage} />
-      <ProtectedRoute
-        exact
-        path="/commercial-assignments"
-        component={CommercialAssignmentsPage}
-      />
       <Route exact path="/">
         <Landing />
       </Route>

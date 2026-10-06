@@ -1,6 +1,5 @@
 from .categories import Categories
 from .cart_items import CartItems
-from .commercial_assignments import CommercialAssignments
 from .customers import Customers
 from .lot_expenses import LotExpenses
 from .lots import Lots

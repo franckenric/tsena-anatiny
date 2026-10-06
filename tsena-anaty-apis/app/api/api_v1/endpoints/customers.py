@@ -53,7 +53,7 @@ def create_customer(
     *,
     db: Session = Depends(deps.get_db),
     customer_in: schemas.CustomersCreate,
-    current_user: models.Users = Depends(deps.get_current_active_user),
+    current_user: models.Users = Depends(deps.get_current_active_superuser),
 ) -> Any:
     try:
         return crud.customers.create(db=db, obj_in=customer_in)
@@ -68,7 +68,7 @@ def update_customer(
     db: Session = Depends(deps.get_db),
     customer_id: int,
     customer_in: schemas.CustomersUpdate,
-    current_user: models.Users = Depends(deps.get_current_active_user),
+    current_user: models.Users = Depends(deps.get_current_active_superuser),
 ) -> Any:
     customer = crud.customers.get(db=db, id=customer_id)
     if not customer:
@@ -85,7 +85,7 @@ def delete_customer(
     *,
     db: Session = Depends(deps.get_db),
     customer_id: int,
-    current_user: models.Users = Depends(deps.get_current_active_user),
+    current_user: models.Users = Depends(deps.get_current_active_superuser),
 ) -> Any:
     customer = crud.customers.get(db=db, id=customer_id)
     if not customer:

@@ -53,7 +53,7 @@ def read_visits_summary(
             "-1 = semaine precedente, 0 = semaine en cours, +1 = semaine suivante."
         ),
     ),
-    current_user: models.Users = Depends(deps.get_current_active_user),
+    current_user: models.Users = Depends(deps.get_current_active_superuser),
 ) -> Any:
     """Compteurs de visites du front-office, jour par jour sur une semaine.
 

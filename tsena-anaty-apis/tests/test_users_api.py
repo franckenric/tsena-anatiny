@@ -17,7 +17,7 @@ def test_create_users_api(client, db):
         'email': 'qPV3c@uutel.com',
         'password': '01biq',
         'is_active': True,
-        'role_id': 88,
+        'role_id': 1,
         'phone_numer': 'Yq6bR',
     }
     user = crud.users.create(db, obj_in=schemas.UsersCreate(**user_data))
@@ -51,7 +51,7 @@ def test_update_users_api(client, db):
         'email': 'Tkv2Q@8e2tg.com',
         'password': 'DaYti',
         'is_active': True,
-        'role_id': 73,
+        'role_id': 1,
         'phone_numer': '94V',
     }
     user = crud.users.create(db, obj_in=schemas.UsersCreate(**user_data))
@@ -152,7 +152,7 @@ def test_get_users_api(client, db):
         'email': 'rHBxS@6kwqb.com',
         'password': '8GbkR',
         'is_active': True,
-        'role_id': 10,
+        'role_id': 1,
         'phone_numer': 'sA',
     }
     user = crud.users.create(db, obj_in=schemas.UsersCreate(**user_data))
@@ -203,7 +203,7 @@ def test_get_by_id_users_api(client, db):
         'email': 'KsZ2H@ti6wm.com',
         'password': '39XWK',
         'is_active': True,
-        'role_id': 65,
+        'role_id': 1,
         'phone_numer': 'T4T4z',
     }
     user = crud.users.create(db, obj_in=schemas.UsersCreate(**user_data))
@@ -254,7 +254,7 @@ def test_delete_users_api(client, db):
         'email': 'QhIWL@vo7cu.com',
         'password': 'NTkUs',
         'is_active': True,
-        'role_id': 14,
+        'role_id': 1,
         'phone_numer': 'WHxaos',
     }
     user = crud.users.create(db, obj_in=schemas.UsersCreate(**user_data))

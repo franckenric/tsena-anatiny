@@ -23,6 +23,7 @@ import {
 import { computeDiscountAmount, getAppliedPromo, setAppliedPromo, type AppliedPromo } from "../lib/promo";
 import {
   getGuestPromo,
+  setGuestOrderRef,
   setGuestPromo
 } from "../lib/guestCart";
 
@@ -127,6 +128,13 @@ export function CheckoutPage() {
           status: "draft",
           note: note.trim() || undefined,
           promo_code: promo?.code
+        });
+        // Sans compte, la page de succes relit la commande via le lookup
+        // public (numero + telephone) : on memorise la reference ici.
+        setGuestOrderRef({
+          order_id: order.id,
+          order_number: order.order_number ?? `#${order.id}`,
+          phone: normalizePhone(phone)
         });
       }
       clear();

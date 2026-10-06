@@ -12,6 +12,9 @@ from app.schemas.users import UsersCreate, UsersUpdate
 from app.core.security import get_password_hash, verify_password
 from fastapi.encoders import jsonable_encoder
 
+SUPER_ADMIN_ROLE_NAME = "super_admin"
+
+
 class CRUDUsers(CRUDBase[Users, UsersCreate, UsersUpdate]):
     def get_by_field(self, db: Session, *, field: str, value: Any) -> Optional[Users]:
         return db.query(Users).filter(getattr(Users, field) == value).first()
@@ -28,8 +31,11 @@ class CRUDUsers(CRUDBase[Users, UsersCreate, UsersUpdate]):
     def get_by_google_id(self, db: Session, *, google_id: str) -> Optional[Users]:
         return db.query(Users).filter(Users.google_id == google_id).first()
 
-    def is_superuser(self, user: Users) -> Users:
-        return user.is_superuser
+    def is_superuser(self, user: Users) -> bool:
+        # Le flag is_superuser n'existe pas sur le modele : le super admin est
+        # identifie par son role (seed `super_admin`, init_db.py).
+        role = user.role
+        return role is not None and role.name == SUPER_ADMIN_ROLE_NAME
 
     def is_active(self, user: Users) -> Users:
         return user.is_active

@@ -44,9 +44,32 @@ def db():
     Base.metadata.create_all(bind=engine)
     db = TestingSessionLocal()
     try:
+        # Les endpoints de gestion back-office exigent le role super_admin.
+        # On seede les deux roles de reference pour que `is_superuser` puisse
+        # resoudre `user.role` en test (idem init_db.py en production).
+        from app.models.roles import Roles
+        if not db.query(Roles).filter(Roles.id == 1).first():
+            db.add(Roles(id=1, name="super_admin"))
+        if not db.query(Roles).filter(Roles.id == 2).first():
+            db.add(Roles(id=2, name="client"))
+        db.commit()
         yield db
     finally:
         db.close()
+
+@pytest.fixture(autouse=True)
+def reset_rate_limiters():
+    """Vide les compteurs de debit entre deux tests.
+
+    Le limiteur est un store en memoire de processus partage par toute la
+    session de test : sans cette remise a zero, le budget d'une IP (toujours
+    `testclient`) serait consomme par les premiers tests et les suivants
+    recevraient un 429.
+    """
+    deps.reset_rate_limits()
+    yield
+    deps.reset_rate_limits()
+
 
 @pytest.fixture
 def client(db):

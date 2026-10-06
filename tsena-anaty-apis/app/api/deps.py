@@ -2,10 +2,13 @@
 # ---write your code here--- #
 # end #
 
-from typing import Generator
+import threading
+import time
+from collections import deque
+from typing import Callable, Generator
 
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt
 from pydantic import ValidationError
@@ -103,6 +106,86 @@ def get_current_active_superuser(
             status_code=400, detail="The user doesn't have enough privileges"
         )
     return current_user
+
+
+class _SlidingWindowLimiter:
+    """Compteur a fenetre glissante, stocke en memoire de processus.
+
+    L'etat vit dans ce seul processus : des que l'API tourne sur plusieurs
+    workers ou conteneurs, chacun accorde son propre budget et le plafond
+    effectif devient `limit x nombre de workers`. A ce moment-la il faut
+    remplacer ce store par un compteur partage (Redis).
+    """
+
+    def __init__(self) -> None:
+        self._hits: dict[str, deque[float]] = {}
+        self._last_sweep = 0.0
+        self._lock = threading.Lock()
+
+    def allow(self, key: str, *, limit: int, window_s: int) -> bool:
+        """Enregistre une frappe et renvoie False si le budget est epuise."""
+        now = time.monotonic()
+        cutoff = now - window_s
+        with self._lock:
+            hits = self._hits.get(key)
+            if hits is None:
+                hits = self._hits[key] = deque()
+            while hits and hits[0] <= cutoff:
+                hits.popleft()
+            if len(hits) >= limit:
+                return False
+            hits.append(now)
+            self._sweep(now, cutoff)
+            return True
+
+    def _sweep(self, now: float, cutoff: float) -> None:
+        """Jette les cles sans frappe recente, pour borner la memoire.
+
+        Balayage opportuniste, au plus une fois par fenetre.
+        """
+        if now - self._last_sweep < 60:
+            return
+        self._last_sweep = now
+        for key in [k for k, v in self._hits.items() if not v or v[-1] <= cutoff]:
+            del self._hits[key]
+
+    def reset(self) -> None:
+        with self._lock:
+            self._hits.clear()
+            self._last_sweep = 0.0
+
+
+_limiter = _SlidingWindowLimiter()
+
+
+def reset_rate_limits() -> None:
+    """Vide les compteurs. Reserve aux tests."""
+    _limiter.reset()
+
+
+def rate_limit(limit: int, window_s: int) -> Callable[[Request], None]:
+    """Fabrique une dependance FastAPI plafonnant les appels par IP.
+
+    Reservee aux endpoints publics qui creent de la donnee : sans plafond,
+    n'importe qui peut inonder la base de commandes ou de codes promo testes.
+
+    La cle est l'adresse IP vue par l'API. Derriere un reverse proxy, il faut
+    lancer uvicorn avec `--proxy-headers --forwarded-allow-ips`, sinon toutes
+    les requetes se retrouvent attribuees a la meme adresse (celle du proxy).
+    """
+
+    async def _dependency(request: Request) -> None:
+        client = request.client
+        if _limiter.allow(
+            client.host if client else "unknown", limit=limit, window_s=window_s
+        ):
+            return
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Trop de requetes. Reessayez dans un instant.",
+        )
+
+    return _dependency
 
 
 # begin #

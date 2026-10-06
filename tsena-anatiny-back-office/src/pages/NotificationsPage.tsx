@@ -36,11 +36,24 @@ const formatDateTime = (iso: string): string => {
 
 export function NotificationsPage() {
   const history = useHistory();
-  const { notifications, unreadCount, isConnected, markAllRead, clear } =
-    useNotifications();
+  const {
+    notifications,
+    unreadCount,
+    isConnected,
+    markAllRead,
+    markRead,
+    clear
+  } = useNotifications();
 
   const openOrder = (orderId: number) => {
     history.push("/orders", { openOrderId: orderId });
+  };
+
+  // Ouvrir une notification la marque comme lue avant de naviguer : c'est
+  // ce geste qui, sinon, laissait le point « non lue » allumé pour toujours.
+  const openNotification = (notificationId: string, orderId: number) => {
+    void markRead(notificationId);
+    openOrder(orderId);
   };
 
   return (
@@ -57,7 +70,7 @@ export function NotificationsPage() {
             <Button
               variant="secondary"
               size="sm"
-              onClick={markAllRead}
+              onClick={() => void markAllRead()}
               disabled={notifications.length === 0}
             >
               <CheckCheck className="mr-1.5 h-4 w-4" />
@@ -67,7 +80,7 @@ export function NotificationsPage() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={clear}
+              onClick={() => void clear()}
               disabled={notifications.length === 0}
             >
               <Trash2 className="mr-1.5 h-4 w-4" />
@@ -98,9 +111,11 @@ export function NotificationsPage() {
                 const account = notification.data;
                 return (
                   <li key={notification.id}>
-                    <div
+                    <button
+                      type="button"
+                      onClick={() => void markRead(notification.id)}
                       className={cn(
-                        "flex w-full items-start gap-3 px-2.5 py-3 sm:gap-4 sm:px-3 sm:py-4 md:px-6",
+                        "flex w-full items-start gap-3 px-2.5 py-3 text-left transition hover:bg-brand/5 sm:gap-4 sm:px-3 sm:py-4 md:px-6",
                         !notification.read && "bg-brand/5"
                       )}
                     >
@@ -129,7 +144,7 @@ export function NotificationsPage() {
                           {formatDateTime(notification.receivedAt)}
                         </span>
                       </span>
-                    </div>
+                    </button>
                   </li>
                 );
               }
@@ -147,7 +162,12 @@ export function NotificationsPage() {
                 <li key={notification.id}>
                   <button
                     type="button"
-                    onClick={() => openOrder(notification.data.order_id)}
+                    onClick={() =>
+                      openNotification(
+                        notification.id,
+                        notification.data.order_id
+                      )
+                    }
                     className={cn(
                       "flex w-full items-start gap-3 px-2.5 py-3 text-left transition hover:bg-brand/5 sm:gap-4 sm:px-3 sm:py-4 md:px-6",
                       !notification.read && "bg-brand/5"

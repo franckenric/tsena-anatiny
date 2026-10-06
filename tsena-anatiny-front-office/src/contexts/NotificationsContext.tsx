@@ -24,6 +24,8 @@ interface NotificationsContextValue {
   /** Le client est connecte au WebSocket de l'API. */
   isLive: boolean;
   refresh: () => Promise<void>;
+  /** Marque une notification comme lue (localement + sur l'API). */
+  markRead: (id: number) => Promise<void>;
   markAllRead: () => Promise<void>;
   clear: () => Promise<void>;
 }
@@ -41,6 +43,14 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
   const [isLive, setIsLive] = useState(false);
   const inflight = useRef(false);
+  /** Un rafraîchissement demandé pendant qu'un autre est en vol. */
+  const pendingRefresh = useRef(false);
+  /**
+   * Compteur d'invalidation : toute reponse REST recue AVANT une action
+   * locale (marquage lu, effacement) est ignoree, sous peine de voir un
+   * ancien compteur de non-lues revenir par-dessus la mise a jour.
+   */
+  const mutationSeq = useRef(0);
 
   const refresh = useCallback(async () => {
     if (!customer) {
@@ -49,15 +59,32 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
       return;
     }
+    // Un evenement WebSocket arrive pendant une requete en vol : on le
+    // met en file plutot que de l'ignorer (sinon la liste restait stale
+    // jusqu'au prochain evenement).
+    pendingRefresh.current = true;
     if (inflight.current) return;
     inflight.current = true;
     try {
-      const payload = await notificationsService.list(customer.id);
-      const items = Array.isArray(payload?.data) ? payload.data : [];
-      setNotifications(items);
-      setUnreadCount(Number(payload?.unread_count) || 0);
-    } catch {
-      // API indisponible: on garde l'état actuel
+      while (pendingRefresh.current) {
+        pendingRefresh.current = false;
+        const seq = mutationSeq.current;
+        try {
+          const payload = await notificationsService.list(customer.id);
+          // Une action locale a eu lieu pendant la requete : reponse obsolete.
+          if (seq !== mutationSeq.current) continue;
+          const items = Array.isArray(payload?.data) ? payload.data : [];
+          setNotifications(items);
+          const serverUnread = Number(payload?.unread_count);
+          setUnreadCount(
+            Number.isFinite(serverUnread)
+              ? serverUnread
+              : items.filter((item) => !item.read).length
+          );
+        } catch {
+          // API indisponible: on garde l'état actuel
+        }
+      }
     } finally {
       inflight.current = false;
       setIsLoading(false);
@@ -124,27 +151,53 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
 
   const markAllRead = useCallback(async () => {
     if (!customer) return;
+    // Mise à jour optimiste immédiate : si l'API echoue on resynchronise
+    // plutot que de laisser un compteur a 0 qui « revient » au rechargement.
+    mutationSeq.current += 1;
+    setUnreadCount(0);
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     try {
       await notificationsService.markAllRead(customer.id);
-      setUnreadCount(0);
-      setNotifications((prev) =>
-        prev.map((n) => ({ ...n, read: true }))
-      );
     } catch {
-      // ignore
+      await refresh();
     }
-  }, [customer]);
+  }, [customer, refresh]);
+
+  const markRead = useCallback(
+    async (id: number) => {
+      if (!customer) return;
+      const target = notifications.find((n) => n.id === id);
+      // Déjà lu : aucune requête inutile.
+      if (target?.read) return;
+
+      mutationSeq.current += 1;
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+      );
+      setUnreadCount((count) => Math.max(0, count - 1));
+
+      try {
+        await notificationsService.markRead(id, customer.id);
+      } catch {
+        // L'API refuse (404, jeton expire...) : on resynchronise pour que
+        // l'etat affiche corresponde au serveur.
+        await refresh();
+      }
+    },
+    [customer, notifications, refresh]
+  );
 
   const clear = useCallback(async () => {
     if (!customer) return;
+    mutationSeq.current += 1;
+    setNotifications([]);
+    setUnreadCount(0);
     try {
       await notificationsService.clear(customer.id);
-      setNotifications([]);
-      setUnreadCount(0);
     } catch {
-      // ignore
+      await refresh();
     }
-  }, [customer]);
+  }, [customer, refresh]);
 
   const value = useMemo<NotificationsContextValue>(
     () => ({
@@ -153,10 +206,11 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       isLoading,
       isLive,
       refresh,
+      markRead,
       markAllRead,
       clear
     }),
-    [notifications, unreadCount, isLoading, isLive, refresh, markAllRead, clear]
+    [notifications, unreadCount, isLoading, isLive, refresh, markRead, markAllRead, clear]
   );
 
   return (

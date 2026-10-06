@@ -165,6 +165,15 @@ export function markAllNotificationsRead(): Promise<{ success: boolean }> {
   return restFetch("/notifications/read-all", { method: "POST" });
 }
 
+/**
+ * Marque UNE notification comme lue (`PATCH /notifications/{id}/read`).
+ * L'API verifie que la notification appartient bien a l'utilisateur connecte
+ * et renvoie un 404 sinon.
+ */
+export function markNotificationRead(id: number): Promise<RestNotification> {
+  return restFetch(`/notifications/${id}/read`, { method: "PATCH" });
+}
+
 export function clearNotifications(): Promise<{ success: boolean }> {
   return restFetch("/notifications", { method: "DELETE" });
 }

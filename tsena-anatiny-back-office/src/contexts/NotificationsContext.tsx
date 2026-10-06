@@ -15,12 +15,13 @@ import {
   fetchNotifications,
   fetchPresence,
   markAllNotificationsRead,
+  markNotificationRead,
   parseNotificationEvent,
   type AccountCreatedData,
-  type NotificationKind,
   type OrderNotificationData,
   type PresenceStats,
-  type RestNotification
+  type RestNotification,
+  type RestNotificationsResponse
 } from "../services/notifications.service";
 import { sendSms } from "../services/sms.service";
 
@@ -47,8 +48,10 @@ type NotificationsContextValue = {
   orderRefreshKey: number;
   /** Live counters of the users connected to the front-office. */
   presence: PresenceStats;
-  markAllRead: () => void;
-  clear: () => void;
+  markAllRead: () => Promise<void>;
+  /** Marque une notification comme lue (localement + sur l'API). */
+  markRead: (id: string) => Promise<void>;
+  clear: () => Promise<void>;
 };
 
 const NotificationsContext = createContext<
@@ -93,18 +96,40 @@ function mapRestNotification(notification: RestNotification): NotificationItem {
   };
 }
 
+/**
+ * Fusionne la derniere reponse REST dans l'etat local.
+ *
+ * La reponse serveur fait foi : une notification deja connue est remplacee
+ * par sa version serveur, et notamment par son etat `read`. Sans cela, un
+ * marquage lu effectue depuis un autre onglet (ou par « Tout lu ») ne
+ * remonterait jamais ici et le badge restait faux jusqu'au rechargement.
+ * Les entrees locales absentes de la reponse (les plus anciennes, au dela
+ * de la fenetre de 50) sont conservees.
+ */
 function mergeItems(
   current: NotificationItem[],
   incoming: NotificationItem[]
 ): NotificationItem[] {
-  const seen = new Set(current.map((item) => item.id));
-  const additions = incoming.filter((item) => !seen.has(item.id));
-  return [...current, ...additions]
+  const byId = new Map(current.map((item) => [item.id, item]));
+  for (const item of incoming) {
+    byId.set(item.id, item);
+  }
+  return [...byId.values()]
     .sort(
       (a, b) =>
         new Date(b.receivedAt).getTime() - new Date(a.receivedAt).getTime()
     )
     .slice(0, MAX_NOTIFICATIONS);
+}
+
+/**
+ * `rest-42` -> 42. Seules les entrees issues de l'API ont un identifiant
+ * serveur : elles seules peuvent etre marquees lu (`PATCH .../read`).
+ */
+function parseRestId(id: string): number | null {
+  if (!id.startsWith("rest-")) return null;
+  const parsed = Number(id.slice("rest-".length));
+  return Number.isInteger(parsed) ? parsed : null;
 }
 
 export function NotificationsProvider({
@@ -114,11 +139,38 @@ export function NotificationsProvider({
 }) {
   const { token } = useAuth();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [isConnected, setIsConnected] = useState(false);
   const [orderRefreshKey, setOrderRefreshKey] = useState(0);
   const [presence, setPresence] = useState<PresenceStats>(EMPTY_PRESENCE);
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimer = useRef<number | null>(null);
+  /**
+   * Compteur d'invalidation : toute reponse REST recue AVANT une action
+   * locale (marquage lu, effacement) est ignoree, sous peine de voir un
+   * ancien compteur non-lu revenir par-dessus la mise a jour optimiste.
+   */
+  const mutationSeq = useRef(0);
+
+  const applyRest = useCallback((payload: RestNotificationsResponse) => {
+    const incoming = (payload.data ?? []).map(mapRestNotification);
+    setNotifications((prev) => mergeItems(prev, incoming));
+    // Le compteur serveur fait foi (il couvre aussi les notifications au
+    // dela des 50 dernieres que la liste ne contient pas).
+    const serverUnread = Number(payload.unread_count);
+    setUnreadCount(
+      Number.isFinite(serverUnread)
+        ? serverUnread
+        : incoming.filter((item) => !item.read).length
+    );
+  }, []);
+
+  const syncFromRest = useCallback(async () => {
+    const seq = mutationSeq.current;
+    const payload = await fetchNotifications();
+    if (seq !== mutationSeq.current) return;
+    applyRest(payload);
+  }, [applyRest]);
 
   useEffect(() => {
     if (!token) {
@@ -128,11 +180,11 @@ export function NotificationsProvider({
     let cancelled = false;
 
     const seedFromRest = () => {
+      const seq = mutationSeq.current;
       fetchNotifications()
         .then((payload) => {
-          if (cancelled) return;
-          const incoming = (payload.data ?? []).map(mapRestNotification);
-          setNotifications((prev) => mergeItems(prev, incoming));
+          if (cancelled || seq !== mutationSeq.current) return;
+          applyRest(payload);
         })
         .catch(() => {
           // API indisponible: on reste sur l'état courant
@@ -177,16 +229,6 @@ export function NotificationsProvider({
 
         if (payload.type === "account.created") {
           const data = payload.data;
-          const item: NotificationItem = {
-            id: `account-${data.account_id}-${Date.now()}`,
-            kind: "account.created",
-            data,
-            read: false,
-            receivedAt: new Date().toISOString()
-          };
-          setNotifications((prev) =>
-            [item, ...prev].slice(0, MAX_NOTIFICATIONS)
-          );
           // Envoi automatique de l'OTP par SMS depuis la SIM du téléphone
           // où le back-office est installé.
           if (data.customer_phone && data.otp) {
@@ -195,25 +237,15 @@ export function NotificationsProvider({
               `Tsena Anatiny : votre code de verification est ${data.otp}`
             );
           }
+          // Le serveur persiste la notification AVANT de diffuser : relire
+          // la liste donne l'element avec son identifiant serveur (necessaire
+          // pour le marquage « lu ») et evite une copie locale qui serait
+          // dupliquee au prochain rafraichissement.
+          seedFromRest();
           return;
         }
 
-        const kind: NotificationKind =
-          payload.type === "order.status_changed"
-            ? "order.status_changed"
-            : "order.created";
-        setNotifications((prev) =>
-          [
-            {
-              id: `${payload.data.order_id}-${payload.type}-${Date.now()}`,
-              kind,
-              data: payload.data,
-              read: false,
-              receivedAt: new Date().toISOString()
-            },
-            ...prev
-          ].slice(0, MAX_NOTIFICATIONS)
-        );
+        seedFromRest();
         setOrderRefreshKey((key) => key + 1);
       };
 
@@ -239,48 +271,92 @@ export function NotificationsProvider({
       socketRef.current = null;
       setIsConnected(false);
     };
-  }, [token]);
+  }, [token, applyRest]);
 
-  const unreadCount = useMemo(
-    () => notifications.reduce((sum, n) => sum + (n.read ? 0 : 1), 0),
-    [notifications]
+  const markAllRead = useCallback(async () => {
+    // Mise à jour optimiste immédiate, invalidée côté serveur juste après :
+    // si l'API echoue, on resynchronise plutot que de laisser un compteur
+    // « 0 » qui reviendrait au prochain rechargement.
+    mutationSeq.current += 1;
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    setUnreadCount(0);
+    try {
+      await markAllNotificationsRead();
+    } catch {
+      await syncFromRest().catch(() => {
+        // API toujours indisponible: on garde l'état local
+      });
+    }
+  }, [syncFromRest]);
+
+  const markRead = useCallback(
+    async (id: string) => {
+      const target = notifications.find((item) => item.id === id);
+      // Déjà lu (ou entrée sans identifiant serveur) : rien à faire.
+      if (!target || target.read) return;
+
+      mutationSeq.current += 1;
+      setNotifications((prev) =>
+        prev.map((item) => (item.id === id ? { ...item, read: true } : item))
+      );
+      setUnreadCount((count) => Math.max(0, count - 1));
+
+      const serverId = parseRestId(id);
+      if (serverId === null) return;
+      try {
+        await markNotificationRead(serverId);
+      } catch {
+        await syncFromRest().catch(() => {
+          // API indisponible: on garde l'état local
+        });
+      }
+    },
+    [notifications, syncFromRest]
   );
 
-  const markAllRead = useCallback(() => {
-    markAllNotificationsRead().catch(() => {
-      // API indisponible: la mise à jour reste locale
-    });
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-  }, []);
-
-  const clear = useCallback(() => {
-    clearNotifications().catch(() => {
-      // API indisponible: la suppression reste locale
-    });
+  const clear = useCallback(async () => {
+    mutationSeq.current += 1;
     setNotifications([]);
-  }, []);
+    setUnreadCount(0);
+    try {
+      await clearNotifications();
+    } catch {
+      await syncFromRest().catch(() => {
+        // API indisponible: la suppression reste locale
+      });
+    }
+  }, [syncFromRest]);
 
   // Sans session, les compteurs ne sont plus rafraîchis: on les remet à zéro
   // plutôt que d'afficher une valeur figée.
   const livePresence = token ? presence : EMPTY_PRESENCE;
+  // Même logique pour la liste et le badge : hors session, ils afficheraient
+  // le dernier état connu sans jamais être resynchronisés.
+  const liveNotifications = useMemo(
+    () => (token ? notifications : []),
+    [token, notifications]
+  );
+  const liveUnreadCount = token ? unreadCount : 0;
 
   const value = useMemo<NotificationsContextValue>(
     () => ({
-      notifications,
-      unreadCount,
+      notifications: liveNotifications,
+      unreadCount: liveUnreadCount,
       isConnected,
       orderRefreshKey,
       presence: livePresence,
       markAllRead,
+      markRead,
       clear
     }),
     [
-      notifications,
-      unreadCount,
+      liveNotifications,
+      liveUnreadCount,
       isConnected,
       orderRefreshKey,
       livePresence,
       markAllRead,
+      markRead,
       clear
     ]
   );

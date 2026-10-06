@@ -60,6 +60,15 @@ export const notificationsService = {
     return apiFetch(`/notifications/read-all${qs}`, { method: "POST" });
   },
 
+  /** Marque UNE notification comme lue (`PATCH /notifications/{id}/read`). */
+  async markRead(
+    id: number,
+    customerId?: number
+  ): Promise<Notification | { success: boolean }> {
+    const qs = customerId ? `?customer_id=${customerId}` : "";
+    return apiFetch(`/notifications/${id}/read${qs}`, { method: "PATCH" });
+  },
+
   async clear(customerId?: number): Promise<{ success: boolean }> {
     const qs = customerId ? `?customer_id=${customerId}` : "";
     return apiFetch(`/notifications${qs}`, { method: "DELETE" });

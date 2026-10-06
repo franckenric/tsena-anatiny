@@ -40,7 +40,7 @@ export function NotificationsPage() {
   usePageTitle(t("notifications.title"));
   const { customer, isBooting } = useAuth();
   const { showLogin, showRegister } = useAuthModal();
-  const { notifications, unreadCount, isLoading, refresh, markAllRead, clear } =
+  const { notifications, unreadCount, isLoading, refresh, markRead, markAllRead, clear } =
     useNotifications();
 
   // Un seul chargement a l'ouverture de la page : le WebSocket du contexte
@@ -203,10 +203,15 @@ export function NotificationsPage() {
                     <li key={notification.id}>
                       <button
                         type="button"
-                        onClick={() =>
-                          notification.order_id &&
-                          history.push(`/succes/${notification.order_id}`)
-                        }
+                        onClick={() => {
+                          // Ouvrir la notification la marque comme lue :
+                          // sans cet appel, le point « non lue » restait
+                          // allumé indefiniment.
+                          void markRead(notification.id);
+                          if (notification.order_id) {
+                            history.push(`/succes/${notification.order_id}`);
+                          }
+                        }}
                         disabled={!notification.order_id}
                         className={cn(
                           "group flex w-full items-start gap-3 px-4 py-3.5 text-left transition sm:gap-4 sm:px-5 sm:py-4",

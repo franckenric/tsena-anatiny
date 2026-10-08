@@ -30,6 +30,16 @@ const config: CapacitorConfig = {
   server: {
     androidScheme: "https",
     ...(devServerUrl ? { url: devServerUrl } : {})
+  },
+  plugins: {
+    BluetoothLe: {
+      displayStrings: {
+        scanning: "Recherche de l'imprimante...",
+        cancel: "Annuler",
+        availableDevices: "Imprimantes disponibles",
+        noDeviceFound: "Aucune imprimante trouvée"
+      }
+    }
   }
 };
 

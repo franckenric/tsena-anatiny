@@ -75,5 +75,9 @@
 	</dict>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>L'application a besoin d'accéder au réseau local pour communiquer avec le serveur Tsena Anatiny.</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>L'application utilise le Bluetooth pour imprimer les tickets sur l'imprimante thermique MXW01.</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>L'application utilise le Bluetooth pour imprimer les tickets sur l'imprimante thermique MXW01.</string>
 </dict>
 </plist>

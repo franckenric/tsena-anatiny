@@ -132,6 +132,10 @@ export default defineConfig(({ mode }) => {
       }
     },
     server: {
+      // Bind to 0.0.0.0 so the dev server is reachable from the phone over
+      // the LAN, same as the back-office. Without this Vite listens on
+      // ::1 only and 192.168.x.x:5173 is refused.
+      host: true,
       proxy: {
         "/api": {
           target: proxyTarget,
@@ -143,6 +147,13 @@ export default defineConfig(({ mode }) => {
           target: proxyTarget,
           changeOrigin: true,
           ws: true
+        },
+        // Product images: the API serves them under /files/..., so the dev
+        // server has to proxy them like /api (the URLs stored in the DB are
+        // relative to the API origin).
+        "/files": {
+          target: proxyTarget,
+          changeOrigin: true
         }
       }
     },

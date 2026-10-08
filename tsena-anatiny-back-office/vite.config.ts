@@ -25,6 +25,12 @@ export default defineConfig(({ mode }) => {
           target: proxyTarget,
           changeOrigin: true,
           ws: true
+        },
+        // Fichiers statiques (images produits) : l'API les sert sous
+        // /files/..., on doit les proxyer comme /api depuis le dev server.
+        "/files": {
+          target: proxyTarget,
+          changeOrigin: true
         }
       }
     }

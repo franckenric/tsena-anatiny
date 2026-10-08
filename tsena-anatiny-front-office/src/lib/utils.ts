@@ -77,17 +77,29 @@ export function resolveImageUrl(
   url: string | null | undefined
 ): string | null {
   if (!url) return null;
-  if (url.startsWith("/")) return url;
-  if (!API_ORIGIN) return url;
-  try {
-    const parsed = new URL(url);
-    if (parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1") {
-      return `${API_ORIGIN}${parsed.pathname}${parsed.search}`;
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+
+  const isAbsolute = /^https?:\/\//i.test(trimmed);
+  // data: / blob: (previsualisations) : on ne touche pas.
+  if (!isAbsolute && !trimmed.startsWith("/")) return trimmed;
+
+  let path = trimmed;
+  if (isAbsolute) {
+    try {
+      const parsed = new URL(trimmed);
+      path = `${parsed.pathname}${parsed.search}`;
+      const isLocal =
+        parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1";
+      // URL absolue d'un autre service (CDN) : on la laisse telle quelle.
+      if (!isLocal && !path.startsWith("/files/")) return trimmed;
+    } catch {
+      // URL invalide: on renvoie telle quelle
+      return trimmed;
     }
-  } catch {
-    // URL invalide: on renvoie telle quelle
   }
-  return url;
+  // Le chemin est stocke nu en base, seule l'env fournit l'origine.
+  return API_ORIGIN ? `${API_ORIGIN}${path}` : path;
 }
 
 const RECENT_KEY = "fo.recent.products";

@@ -5,6 +5,7 @@ import type { Lot, StockArrivalPayload } from "../types/operations";
 import { stockService, lotsService } from "../services/operations.service";
 import { productsService } from "../services/products.service";
 import { Layout, Button, Input, Select, QuantityInput } from "../components/index";
+import { resolveImageUrl } from "../lib/utils";
 import {
   Package,
   Plus,
@@ -322,7 +323,7 @@ function ArrivalForm({
         <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-bg sm:h-14 sm:w-14">
           {product.image ? (
             <img
-              src={product.image}
+              src={resolveImageUrl(product.image)}
               alt={product.name}
               className="h-full w-full object-cover"
               loading="lazy"
@@ -897,7 +898,7 @@ export function ArrivalsPage() {
                       <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-bg">
                         {product.image ? (
                           <img
-                            src={product.image}
+                            src={resolveImageUrl(product.image)}
                             alt={product.name}
                             className="h-full w-full object-cover"
                             loading="lazy"

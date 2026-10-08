@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@byteowls/capacitor-sms": "file:vendor/byteowls-capacitor-sms",
+    "@capacitor-community/bluetooth-le": "^7.3.2",
     "@capacitor/android": "^7.6.8",
     "@capacitor/core": "^7.6.8",
     "@capacitor/filesystem": "^7.1.8",
@@ -25,6 +26,7 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
     "lucide-react": "^1.17.0",
+    "mxw01-thermal-printer": "^0.1.0",
     "react": "^19.2.6",
     "react-day-picker": "^10.0.1",
     "react-dom": "^19.2.6",

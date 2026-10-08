@@ -5,6 +5,51 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+// Base de l'API, uniquement definie par l'env. Les images sont stockees en
+// base sous forme de chemin relatif (/files/products/xxx.jpg) : seul ce
+// fragment est conserve, l'origine est reconstruite ici au rendu.
+const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "/api/v1").trim();
+const API_ORIGIN = (() => {
+  if (!API_BASE.startsWith("http")) return "";
+  try {
+    return new URL(API_BASE).origin;
+  } catch {
+    return "";
+  }
+})();
+
+/**
+ * Construit l'URL d'affichage d'une image produit.
+ * - chemin relatif (/files/...) : preflixe par l'origine de l'env si elle est
+ *   absolue, sinon rendu tel quel (meme origine, via le proxy /files).
+ * - data:/blob: (previsualisations) : non modifies.
+ * - URL absolue d'un autre service : non modifiee.
+ */
+export function resolveImageUrl(url: string | null | undefined): string {
+  if (!url) return "";
+  const trimmed = url.trim();
+  if (!trimmed) return "";
+  const isAbsolute = /^https?:\/\//i.test(trimmed);
+  // data: / blob: (previsualisations locales) : non modifies.
+  if (!isAbsolute && !trimmed.startsWith("/")) return trimmed;
+
+  let path = trimmed;
+  if (isAbsolute) {
+    try {
+      const parsed = new URL(trimmed);
+      path = `${parsed.pathname}${parsed.search}`;
+      const isLocal =
+        parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1";
+      // URL absolue d'un autre service (CDN) : on la laisse telle quelle.
+      if (!isLocal && !path.startsWith("/files/")) return trimmed;
+    } catch {
+      return trimmed;
+    }
+  }
+  // Chemin stocke nu en base, seule l'env fournit l'origine.
+  return API_ORIGIN ? `${API_ORIGIN}${path}` : path;
+}
+
 export type PaginationItem = number | "ellipsis";
 
 export function getPaginationItems(

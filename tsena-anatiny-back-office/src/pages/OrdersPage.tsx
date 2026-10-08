@@ -4,6 +4,8 @@ import { Capacitor } from "@capacitor/core";
 import { Directory, Filesystem } from "@capacitor/filesystem";
 import { Share } from "@capacitor/share";
 import {
+  Bluetooth,
+  BluetoothConnected,
   ClipboardList,
   Download,
   Pencil,
@@ -20,6 +22,16 @@ import type {
 import type { Customer } from "../types/customer";
 import type { Column, StatusTone } from "../components/index";
 import { ordersService } from "../services/operations.service";
+import {
+  connectThermalPrinter,
+  disconnectThermalPrinter,
+  getThermalStatus,
+  invoiceBlobToThermalImageData,
+  printThermalImage,
+  subscribeThermalStatus,
+  thermalErrorMessage,
+  type ThermalStatus
+} from "../services/thermalPrinter.service";
 import { useNotifications } from "../contexts/NotificationsContext";
 import {
   Layout,
@@ -42,6 +54,39 @@ const STATUS_TONES: Record<OrderStatus, StatusTone> = {
   cancelled: "warning"
 };
 
+// Repli quand window.open() est refuse (popup bloquee, surtout sur mobile) :
+// on imprime une iframe cachee dans la page courante, ce qui ne necessite
+// aucune autorisation de popup.
+const printTicketInIframe = (html: string): boolean => {
+  const frame = document.createElement("iframe");
+  frame.style.position = "fixed";
+  frame.style.right = "0";
+  frame.style.bottom = "0";
+  frame.style.width = "0";
+  frame.style.height = "0";
+  frame.style.border = "0";
+  frame.setAttribute("aria-hidden", "true");
+  document.body.appendChild(frame);
+  const doc =
+    frame.contentDocument ||
+    (frame.contentWindow ? frame.contentWindow.document : null);
+  if (!doc) {
+    frame.remove();
+    return false;
+  }
+  doc.open();
+  doc.write(html);
+  doc.close();
+  setTimeout(() => {
+    try {
+      frame.contentWindow?.print();
+    } catch {
+      // print() non supporte : on peut toujours exporter le ticket.
+    }
+  }, 300);
+  return true;
+};
+
 export function OrdersPage() {
   const location = useLocation();
   const history = useHistory();
@@ -51,6 +96,10 @@ export function OrdersPage() {
   const [isFormLoading, setIsFormLoading] = useState(false);
   const [invoiceBusyId, setInvoiceBusyId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [thermalStatus, setThermalStatus] = useState<ThermalStatus>(() =>
+    getThermalStatus()
+  );
+  const [thermalBusyId, setThermalBusyId] = useState<number | null>(null);
   const [notice, setNotice] = useState<{
     type: "info" | "success";
     message: string;
@@ -79,6 +128,12 @@ export function OrdersPage() {
     const timeout = window.setTimeout(() => setNotice(null), 4500);
     return () => window.clearTimeout(timeout);
   }, [notice]);
+
+  // Etat de l'imprimante thermique MXW01 (connexion BLE) : mis a jour par les
+  // evenements du client. Aucun effet cote web sans Web Bluetooth disponible.
+  useEffect(() => {
+    return subscribeThermalStatus(setThermalStatus);
+  }, []);
 
   const load = async (silent = false) => {
     try {
@@ -258,7 +313,12 @@ export function OrdersPage() {
 
     const printWindow = window.open("", "_blank", "width=420,height=760");
     if (!printWindow) {
-      setError("Impossible d'ouvrir la fenêtre d'impression (popup bloquée)");
+      // Popup bloquee (frequent sur mobile) : on imprime via une iframe.
+      if (printTicketInIframe(receiptHtml)) {
+        setError(null);
+      } else {
+        setError("Impossible d'ouvrir la fenêtre d'impression (popup bloquée)");
+      }
       return;
     }
 
@@ -267,10 +327,23 @@ export function OrdersPage() {
     printWindow.document.close();
     printWindow.focus();
 
-    setTimeout(() => {
-      printWindow.print();
-      printWindow.close();
-    }, 250);
+    // Ne jamais refermer la fenetre apres print() : sur mobile print() est
+    // asynchrone et close() annulerait la boite d'impression avant qu'elle
+    // ne s'affiche. On attend aussi que le contenu (dont le QR) soit charge.
+    let printed = false;
+    const triggerPrint = () => {
+      if (printed || printWindow.closed) return;
+      printed = true;
+      try {
+        printWindow.focus();
+        printWindow.print();
+      } catch {
+        // print() non supporte : le ticket reste affiche, l'utilisateur peut
+        // imprimer via le menu du navigateur.
+      }
+    };
+    printWindow.addEventListener("load", () => setTimeout(triggerPrint, 60));
+    setTimeout(triggerPrint, 1500); // secours si l'evenement load ne part pas
   };
 
   const invoiceFileName = (order: Order) => {
@@ -320,9 +393,33 @@ export function OrdersPage() {
           type: "success",
           message: `Facture enregistrée dans Fichiers : ${fileName}`
         });
-      } else {
-        await downloadInvoiceBlob(order);
+        return;
       }
+
+      const blob = await ordersService.getInvoiceBlob(order.id);
+      const fileName = invoiceFileName(order);
+
+      // Sur mobile, un <a download> programme est peu fiable : iOS Safari
+      // ignore l'attribut download (le fichier s'ouvre dans un onglet) et
+      // Chrome Android telecharge silencieusement sans retour visible. La
+      // fenetre de partage du systeme permet d'enregistrer le fichier
+      // (app Fichiers / Photos) sur tous les telephones.
+      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      if (isMobile && typeof navigator.canShare === "function") {
+        const file = new File([blob], fileName, { type: "image/png" });
+        if (navigator.canShare({ files: [file] })) {
+          try {
+            await navigator.share({ files: [file], title: fileName });
+            return;
+          } catch (err) {
+            // Annule par l'utilisateur : on ne fait rien.
+            if (err instanceof DOMException && err.name === "AbortError") return;
+            // Autre erreur : on retombe sur le telechargement classique.
+          }
+        }
+      }
+
+      await downloadInvoiceBlob(order);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur");
     } finally {
@@ -373,6 +470,45 @@ export function OrdersPage() {
       setError(err instanceof Error ? err.message : "Erreur");
     } finally {
       setInvoiceBusyId(null);
+    }
+  };
+
+  // Impression du ticket sur l'imprimante thermique MXW01 (Bluetooth).
+  const handleThermalPrint = async (order: Order) => {
+    setThermalBusyId(order.id);
+    setError(null);
+    try {
+      const blob = await ordersService.getInvoiceBlob(order.id);
+      const imageData = await invoiceBlobToThermalImageData(blob);
+      await printThermalImage(imageData);
+      setNotice({
+        type: "success",
+        message: `Ticket imprimé sur la thermique MXW01 (#${order.order_number ?? order.id})`
+      });
+    } catch (err) {
+      setError(thermalErrorMessage(err));
+    } finally {
+      setThermalBusyId(null);
+    }
+  };
+
+  // Connecter / deconnecter l'imprimante thermique (boite de selection du
+  // systeme a la premiere connexion).
+  const handleToggleThermal = async () => {
+    setError(null);
+    try {
+      if (thermalStatus === "connected") {
+        await disconnectThermalPrinter();
+        setNotice({ type: "info", message: "Imprimante thermique déconnectée." });
+      } else {
+        await connectThermalPrinter();
+        setNotice({
+          type: "success",
+          message: "Imprimante thermique MXW01 connectée."
+        });
+      }
+    } catch (err) {
+      setError(thermalErrorMessage(err));
     }
   };
 
@@ -461,6 +597,33 @@ export function OrdersPage() {
             Gestion des commandes
           </div>
         </div>
+        {thermalStatus !== "unsupported" && (
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 rounded-xl border border-border/50 bg-panel/50 px-3 py-2 text-xs">
+            <span className="inline-flex items-center gap-2 font-medium text-ink">
+              {thermalStatus === "connected" ? (
+                <BluetoothConnected className="h-3.5 w-3.5 text-brand" />
+              ) : (
+                <Bluetooth className="h-3.5 w-3.5 text-muted" />
+              )}
+              Imprimante thermique MXW01{" "}
+              {thermalStatus === "connected" ? "connectée" : "prête"}
+            </span>
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={thermalBusyId !== null}
+              onClick={() => void handleToggleThermal()}
+              title={
+                thermalStatus === "connected"
+                  ? "Déconnecter l'imprimante thermique"
+                  : "Connecter l'imprimante thermique (Bluetooth)"
+              }
+              className="h-7 px-2.5 text-xs"
+            >
+              {thermalStatus === "connected" ? "Déconnecter" : "Connecter"}
+            </Button>
+          </div>
+        )}
         {notice && (
           <div
             className={`rounded-2xl border px-4 py-3 text-sm text-ink ${
@@ -625,6 +788,21 @@ export function OrdersPage() {
                   className="h-8 w-8 p-0"
                 >
                   <Printer className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={
+                    isFormLoading ||
+                    thermalBusyId === o.id ||
+                    thermalStatus === "unsupported"
+                  }
+                  onClick={() => handleThermalPrint(o)}
+                  title="Imprimer sur la thermique MXW01 (Bluetooth)"
+                  aria-label="Imprimer sur la thermique"
+                  className="h-8 w-8 p-0"
+                >
+                  <Bluetooth className="h-3.5 w-3.5" />
                 </Button>
                 <Button
                   size="sm"

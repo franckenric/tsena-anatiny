@@ -34,6 +34,7 @@ import { Input } from "../components/Input";
 import { Layout } from "../components/Layout";
 import { roundToNearestThousand } from "../lib/utils";
 import { computeEffectiveUnitCost } from "../lib/utils";
+import { resolveImageUrl } from "../lib/utils";
 import {
   Pencil,
   Plus,
@@ -1199,7 +1200,7 @@ export function ProductsPage() {
         <div className="flex items-center gap-3">
           {row.image ? (
             <img
-              src={row.image}
+              src={resolveImageUrl(row.image)}
               alt={name}
               className="h-11 w-11 rounded-lg bg-border/30 p-0.5 object-contain"
               loading="lazy"
@@ -1367,7 +1368,7 @@ export function ProductsPage() {
                   <div className="relative -mx-4 -mt-4 mb-3 flex h-44 items-center justify-center overflow-hidden rounded-t-xl bg-gradient-to-br from-brand-soft/60 via-border/25 to-bg p-3">
                     {prod.image ? (
                       <img
-                        src={prod.image}
+                        src={resolveImageUrl(prod.image)}
                         alt={prod.name}
                         className="h-full w-full object-contain drop-shadow-sm"
                         loading="lazy"

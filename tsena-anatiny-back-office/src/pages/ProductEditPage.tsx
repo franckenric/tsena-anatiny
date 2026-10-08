@@ -12,6 +12,7 @@ import { categoriesService } from "../services/categories.service";
 import { lotsService, stockService } from "../services/operations.service";
 import { Layout, Button, Input, Select, QuantityInput } from "../components/index";
 import { VariantsManager } from "../components/index";
+import { resolveImageUrl } from "../lib/utils";
 import {
   Package,
   X,
@@ -735,7 +736,7 @@ export function ProductEditPage() {
                               }`}
                             >
                               <img
-                                src={img.image}
+                                src={resolveImageUrl(img.image)}
                                 alt={`Image produit ${img.position ?? ""}`}
                                 className={`aspect-square w-full object-cover transition ${
                                   galleryBusyId === img.id ? "opacity-50" : ""

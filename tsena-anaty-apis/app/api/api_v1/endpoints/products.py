@@ -3,7 +3,7 @@ from pathlib import Path
 from uuid import uuid4
 import re
 import json
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -305,7 +305,6 @@ async def import_receipt(
 @router.post('/upload-image')
 async def upload_product_image(
       *,
-      request: Request,
       image: UploadFile = File(...),
       current_user: models.Users = Depends(deps.get_current_active_superuser),
 ) -> Any:
@@ -330,12 +329,15 @@ async def upload_product_image(
 
    file_path.write_bytes(content)
 
+   # Chemin relatif a l'origine de l'API. Une URL absolue construite avec
+   # request.base_url reprend l'hote vu par FastAPI (derriere le proxy Vite,
+   # c'est localhost:8081) et devient inutilisable depuis un telephone ou
+   # une autre machine du reseau.
    public_path = f"/files/products/{filename}"
-   public_url = f"{str(request.base_url).rstrip('/')}{public_path}"
 
    return {
       'image_path': public_path,
-      'image_url': public_url,
+      'image_url': public_path,
       'filename': filename
    }
 
@@ -358,7 +360,6 @@ def read_product_images(
 @router.post('/{products_id}/images', response_model=List[schemas.ProductImages])
 async def upload_product_images(
         *,
-        request: Request,
         db: Session = Depends(deps.get_db),
         products_id: int,
         images: List[UploadFile] = File(...),
@@ -394,14 +395,16 @@ async def upload_product_images(
             if len(content) > 5 * 1024 * 1024:
                 raise HTTPException(status_code=400, detail='Image trop volumineuse (max 5MB)')
             (uploads_dir / filename).write_bytes(content)
+            # URL relative a l'origine de l'API : une URL absolue reprend
+            # l'hote vu par FastAPI (localhost:8081 derriere le proxy Vite)
+            # et ne fonctionne pas depuis un autre appareil.
             public_path = f"/files/products/{filename}"
-            public_url = f"{str(request.base_url).rstrip('/')}{public_path}"
 
             row = crud.product_images.create(
                 db=db,
                 obj_in=schemas.ProductImagesCreate(
                     product_id=products_id,
-                    image=public_url,
+                    image=public_path,
                     position=position,
                 ),
                 commit=False,
@@ -427,7 +430,6 @@ async def upload_product_images(
 @router.put('/{products_id}/images/{image_id}', response_model=schemas.ProductImages)
 async def replace_product_image(
         *,
-        request: Request,
         db: Session = Depends(deps.get_db),
         products_id: int,
         image_id: int,
@@ -455,19 +457,19 @@ async def replace_product_image(
         raise HTTPException(status_code=400, detail='Image trop volumineuse (max 5MB)')
 
     old_filename = Path(row.image or '').name
+    # URL relative a l'origine de l'API (voir upload_product_image).
     public_path = f"/files/products/{filename}"
-    public_url = f"{str(request.base_url).rstrip('/')}{public_path}"
 
     (uploads_dir / filename).write_bytes(content)
     updated = crud.product_images.update(
         db=db,
         db_obj=row,
-        obj_in=schemas.ProductImagesUpdate(image=public_url),
+        obj_in=schemas.ProductImagesUpdate(image=public_path),
     )
     try:
         product = crud.products.get(db=db, id=products_id)
         if product and product.image and Path(product.image).name == old_filename:
-            product.image = public_url
+            product.image = public_path
             db.commit()
             db.refresh(product)
         else:

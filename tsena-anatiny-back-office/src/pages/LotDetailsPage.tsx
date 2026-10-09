@@ -25,20 +25,20 @@ import {
   StatusBadge
 } from "../components/index";
 import { Modal } from "../components/Modal";
-import {
-  ArrowLeft,
-  Coins,
-  Package,
-  Pencil,
-  Plus,
-  ScanBarcode,
-  ShoppingBag,
-  Trash2,
-  TrendingUp,
-  Wallet
-} from "lucide-react";
-import { roundToNearestThousand } from "../lib/utils";
-import { cn } from "../lib/utils";
+  import {
+    ArrowLeft,
+    Coins,
+    Package,
+    Pencil,
+    Plus,
+    ScanBarcode,
+    ShoppingBag,
+    Trash2,
+    TrendingUp,
+    Wallet
+  } from "lucide-react";
+  import { roundToNearestThousand, resolveImageUrl } from "../lib/utils";
+  import { cn } from "../lib/utils";
 
 type ProductVariantItem = NonNullable<Product["variants"]>[number];
 
@@ -532,6 +532,7 @@ export function LotDetailsPage() {
         const productName =
           row.product?.name || fallbackProduct?.name || `#${row.product_id}`;
         const productSku = row.product?.sku || fallbackProduct?.sku || "-";
+        const productImage = row.product?.image || fallbackProduct?.image;
         const movementVariant =
           row.variant_id != null ? variantById[row.variant_id] : undefined;
         const variant = movementVariant ?? row.variant;
@@ -541,16 +542,33 @@ export function LotDetailsPage() {
             : undefined;
 
         return (
-          <div>
-            <p className="font-semibold text-ink">{productName}</p>
-            <p className="text-xs text-muted">{productSku}</p>
-            {variant && (
-              <p className="text-xs font-medium text-brand">
-                {variant.name || `Variante #${variant.id}`}
-                {parent?.name ? ` (${parent.name})` : ""}
-                {variant.sku ? ` · ${variant.sku}` : ""}
-              </p>
+          <div className="flex items-center gap-3">
+            {productImage ? (
+              <img
+                src={resolveImageUrl(productImage)}
+                alt={productName}
+                className="h-9 w-9 shrink-0 rounded-lg border border-border/60 bg-bg object-cover"
+                loading="lazy"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = "none";
+                }}
+              />
+            ) : (
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border/60 bg-bg/40 text-[10px] text-muted">
+                —
+              </div>
             )}
+            <div className="min-w-0">
+              <p className="truncate font-semibold text-ink">{productName}</p>
+              <p className="truncate text-xs text-muted">{productSku}</p>
+              {variant && (
+                <p className="truncate text-xs font-medium text-brand">
+                  {variant.name || `Variante #${variant.id}`}
+                  {parent?.name ? ` (${parent.name})` : ""}
+                  {variant.sku ? ` · ${variant.sku}` : ""}
+                </p>
+              )}
+            </div>
           </div>
         );
       }
@@ -824,40 +842,56 @@ export function LotDetailsPage() {
               : `${row.id}-p${row.product_id}`
           }
           gridCardRender={(row) => {
-              const fallbackProduct = productById[row.product_id];
-              const productName =
-                row.product?.name ||
-                fallbackProduct?.name ||
-                `#${row.product_id}`;
-              const movementVariant =
-                row.variant_id != null
-                  ? variantById[row.variant_id]
-                  : undefined;
-              const variant = movementVariant ?? row.variant;
-              const pvEstime =
-                row.quantity && row.quantity > 0
-                  ? roundToNearestThousand(
-                      Number(row.base_unit_cost) * (1 + estimatedMargin / 100)
-                    )
-                  : null;
-              return (
-                <div className="flex flex-col">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-ink">
-                        {productName}
-                      </p>
-                      {variant?.name && (
-                        <p className="mt-0.5 truncate text-xs font-medium text-brand">
-                          {variant.name}
-                          {variant.sku ? ` · ${variant.sku}` : ""}
-                        </p>
+                const fallbackProduct = productById[row.product_id];
+                const productName =
+                  row.product?.name ||
+                  fallbackProduct?.name ||
+                  `#${row.product_id}`;
+                const productImage = row.product?.image || fallbackProduct?.image;
+                const movementVariant =
+                  row.variant_id != null
+                    ? variantById[row.variant_id]
+                    : undefined;
+                const variant = movementVariant ?? row.variant;
+                const pvEstime =
+                  row.quantity && row.quantity > 0
+                    ? roundToNearestThousand(
+                        Number(row.base_unit_cost) * (1 + estimatedMargin / 100)
+                      )
+                    : null;
+                return (
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-start gap-3">
+                      {productImage ? (
+                        <img
+                          src={resolveImageUrl(productImage)}
+                          alt={productName}
+                          className="h-12 w-12 shrink-0 rounded-xl border border-border/60 bg-bg object-cover shadow-sm"
+                          loading="lazy"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = "none";
+                          }}
+                        />
+                      ) : (
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-border/60 bg-bg/40 text-xs text-muted">
+                          —
+                        </div>
                       )}
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-ink">
+                          {productName}
+                        </p>
+                        {variant?.name && (
+                          <p className="mt-0.5 truncate text-xs font-medium text-brand">
+                            {variant.name}
+                            {variant.sku ? ` · ${variant.sku}` : ""}
+                          </p>
+                        )}
+                      </div>
+                      <StatusBadge tone="brand" className="shrink-0">
+                        {row.quantity} pcs
+                      </StatusBadge>
                     </div>
-                    <StatusBadge tone="brand">
-                      {row.quantity} pcs
-                    </StatusBadge>
-                  </div>
                   <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2.5 border-t border-border/50 pt-3">
                     <div>
                       <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">

@@ -37,7 +37,7 @@ COPY ./run_tests.sh /app/run_tests.sh
 RUN chmod +x /app/prestart.sh /app/run_tests.sh
 
 # Expose the application port
-EXPOSE 8081
+EXPOSE 8084
 
 # Start the application
 ENTRYPOINT ["python", "/app/prestart.py"]

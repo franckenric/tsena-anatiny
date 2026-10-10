@@ -29,8 +29,8 @@ python /app/initial_data.py
 # Start with auto-reload only in development
 if [ "$ENVIRONMENT" = "development" ]; then
     echo "🚀 Starting application with reload..."
-    exec uvicorn main:app --host 0.0.0.0 --port 8084 --reload
+    exec uvicorn main:app --host 0.0.0.0 --port "${PORT:-8081}" --reload
 else
     echo "🚀 Starting application..."
-    exec uvicorn main:app --host 0.0.0.0 --port 8084
+    exec uvicorn main:app --host 0.0.0.0 --port "${PORT:-8081}"
 fi

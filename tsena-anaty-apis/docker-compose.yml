@@ -10,6 +10,7 @@ services:
       - .env
     environment:
       - TESTING=${TESTING:-0} # Set to "true" to enable tests
+      - PORT=${CONTAINER_PORT:-8081} # Uvicorn listen port inside the container
     ports:
       - "${HOST_PORT}:${CONTAINER_PORT}"
     volumes:

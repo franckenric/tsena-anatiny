@@ -1,0 +1,10 @@
+node_modules
+dist
+android
+ios
+.git
+.env
+.env.*
+*.err
+*.log
+README.md

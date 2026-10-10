@@ -1,0 +1,75 @@
+# ── Tsena Anatiny — orchestration Docker unique ────────────────────────────────
+# Lance les 3 projets en meme temps :
+#   - api          : FastAPI (tsena-anaty-apis)          → http://localhost:8081
+#   - back-office  : Vite (tsena-anatiny-back-office)    → http://localhost:5175
+#   - front-office : Vite (tsena-anatiny-front-office)   → http://localhost:5173
+#
+# Utilisation :
+#   docker compose up -d --build
+#   docker compose logs -f          (suivre les logs des 3 services)
+#   docker compose down             (arreter sans supprimer les donnees)
+#   docker compose down -v          (arreter et purger les volumes node_modules)
+#
+# Ports configurables via le fichier .env (voir .env.example).
+
+name: tsena-project
+
+services:
+  api:
+    image: ${IMAGE_NAME:-tsena-anaty-api}
+    build:
+      context: ./tsena-anaty-apis
+      dockerfile: Dockerfile
+    env_file:
+      - ./tsena-anaty-apis/.env
+    environment:
+      # Le port Uvicorn ecoute dans le conteneur est aligne sur le port publie
+      # (prestart.py lit la variable PORT).
+      - PORT=${CONTAINER_PORT:-8081}
+    extra_hosts:
+      # Permet a l'API de joindre la base MySQL installee sur l'hote.
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "${HOST_PORT:-8081}:${CONTAINER_PORT:-8081}"
+    volumes:
+      - ./tsena-anaty-apis:/app
+      - ./tsena-anaty-apis/files:/app/files
+    restart: unless-stopped
+
+  back-office:
+    build:
+      context: ./tsena-anatiny-back-office
+      dockerfile: Dockerfile
+    environment:
+      # Le proxy Vite du back-office cible l'API par le nom de service Docker
+      # (les variables d'env du conteneur ecrasent celles du fichier .env).
+      - VITE_API_PROXY_TARGET=http://api:${CONTAINER_PORT:-8081}
+    ports:
+      - "${BACK_OFFICE_PORT:-5175}:5175"
+    volumes:
+      # Bind mount de la source : modification de code visible sans rebuild.
+      - ./tsena-anatiny-back-office:/app
+      # Volume isole pour node_modules : garde le node_modules de l'hote intact.
+      - back_office_node_modules:/app/node_modules
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  front-office:
+    build:
+      context: ./tsena-anatiny-front-office
+      dockerfile: Dockerfile
+    environment:
+      - VITE_API_PROXY_TARGET=http://api:${CONTAINER_PORT:-8081}
+    ports:
+      - "${FRONT_OFFICE_PORT:-5173}:5173"
+    volumes:
+      - ./tsena-anatiny-front-office:/app
+      - front_office_node_modules:/app/node_modules
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  back_office_node_modules:
+  front_office_node_modules:

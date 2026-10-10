@@ -74,7 +74,7 @@ def main() -> None:
         sys.executable, "-m", "uvicorn", 
         "main:app", 
         "--host", "0.0.0.0", 
-        "--port", os.getenv("PORT", "8084")
+        "--port", os.getenv("PORT", "8081")
     ]
     
     if environment == "development":

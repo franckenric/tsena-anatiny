@@ -6,6 +6,12 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV TESTING=0
 
+# Port d'ecoute de l'API.
+# - Surcharge a la construction via --build-arg API_PORT=XXXX
+# - Surcharge au runtime via la variable d'environnement PORT (ex: .env / docker-compose)
+ARG API_PORT=8081
+ENV PORT=${API_PORT}
+
 # Set the working directory
 WORKDIR /app
 
@@ -36,8 +42,8 @@ COPY ./run_tests.sh /app/run_tests.sh
 # Make shell scripts executable (optional wrappers)
 RUN chmod +x /app/prestart.sh /app/run_tests.sh
 
-# Expose the application port
-EXPOSE 8084
+# Expose the application port (driven by the API_PORT build arg)
+EXPOSE ${API_PORT}
 
 # Start the application
 ENTRYPOINT ["python", "/app/prestart.py"]

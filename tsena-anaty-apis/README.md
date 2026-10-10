@@ -228,6 +228,13 @@ docker run -p 8081:8081 --env-file .env tsenaanaty
 
 Ensure your `.env` file is properly configured for the container environment, particularly database connection strings.
 
+The API port is driven by environment variables:
+
+- `CONTAINER_PORT` -> port Uvicorn listens on inside the container (`PORT` is set from it at runtime)
+- `HOST_PORT` -> host port published by Docker Compose (default `8081:8081`)
+- `PORT` -> override used by `prestart.sh` / `prestart.py` / `main.py` when run without Docker
+- `API_PORT` -> Docker build arg mirrored to `PORT` and `EXPOSE` in the image (`--build-arg API_PORT=8081`)
+
 
 ---
 
@@ -242,6 +249,9 @@ Key variables in `.env`:
 | `SECRET_KEY` | Secret key for JWT tokens | `your-secret-key-here` |
 | `API_V1_STR` | API version prefix | `/api/v1` |
 | `ENVIRONMENT` | Deployment environment | `development` / `production` |
+| `PORT` | API listen port (used by prestart/main) | `8081` |
+| `HOST_PORT` | Host port mapped by Docker Compose | `8081` |
+| `CONTAINER_PORT` | Container port published and used by Uvicorn via `PORT` | `8081` |
 
 ---
 

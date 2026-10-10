@@ -1,3 +1,5 @@
+import os
+
 import uvicorn
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
@@ -29,4 +31,4 @@ app.mount("/files", StaticFiles(directory="files"), name="files")
 
 if __name__ == "__main__":
     main()
-    uvicorn.run("main:app", port=8080, log_level="info", reload=False)
+    uvicorn.run("main:app", port=int(os.getenv("PORT", "8081")), log_level="info", reload=False)

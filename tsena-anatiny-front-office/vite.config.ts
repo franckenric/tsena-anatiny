@@ -7,6 +7,7 @@ import { fileURLToPath, URL } from "node:url";
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   const proxyTarget = env.VITE_API_PROXY_TARGET || "http://localhost:8080";
+  const projectName = env.VITE_PROJECT_NAME?.trim() || "Tsena Anatiny";
   const isDev = mode !== "production";
 
   return {
@@ -26,8 +27,8 @@ export default defineConfig(({ mode }) => {
         ],
         manifest: {
           id: "/",
-          name: "Tsena Anatiny — Boutique en ligne",
-          short_name: "Tsena Anatiny",
+          name: `${projectName} — Boutique en ligne`,
+          short_name: projectName,
           description:
             "Commandez vos produits et suivez vos commandes. Boutique en ligne, disponible hors connexion.",
           lang: "fr",

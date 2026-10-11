@@ -59,6 +59,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const rows = await cartItemsService.getCartItemsWithProducts(customer.id);
       setItems(
         rows.map((item) => ({
+          // `id` sert au DELETE / PUT de la ligne : sans lui, la page panier
+          // envoie /cart_items/0 et la suppression ou le changement de quantite
+          // echouent en 404.
+          id: item.id,
           product_id: item.product_id,
           product_name:
             item.product?.name ??

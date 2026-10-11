@@ -12,6 +12,7 @@ import { DESKTOP_NAV_ITEMS, accountSectionItems } from "../lib/nav";
 import { useAuth } from "../contexts/AuthContext";
 import { usePwa } from "../contexts/PwaContext";
 import { cn } from "../lib/utils";
+import { PROJECT_NAME } from "../lib/projectName";
 
 const TRUST = [
   { icon: Banknote, labelKey: "home.trust.cod" },
@@ -72,11 +73,11 @@ export function Footer() {
           <Link to="/" className="inline-flex items-center gap-2.5">
             <img
               src="/logo.png"
-              alt="Tsena Anatiny"
+              alt={PROJECT_NAME}
               className="h-9 w-9 rounded-xl object-contain shadow-md shadow-brand/20"
             />
             <span className="font-display text-lg font-bold text-ink">
-              Tsena&nbsp;Anatiny
+              {PROJECT_NAME}
             </span>
           </Link>
           <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted">
@@ -149,7 +150,7 @@ export function Footer() {
       <div className="border-t border-border/60 bg-bg/40">
         <div className="page-shell flex flex-col items-center justify-between gap-3 py-4 sm:flex-row">
           <p className="text-xs text-muted">
-            &copy; {year} Tsena Anatiny — {t("nav.brandSub")}
+            &copy; {year} {PROJECT_NAME} — {t("nav.brandSub")}
           </p>
 
           <div className="flex items-center gap-3">

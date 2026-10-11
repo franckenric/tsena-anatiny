@@ -85,11 +85,13 @@ export interface OrderMovement {
     id: number;
     name?: string;
     sku?: string;
+    image?: string;
   } | null;
   variant?: {
     id: number;
     name?: string;
     sku?: string | null;
+    image?: string | null;
   } | null;
 }
 

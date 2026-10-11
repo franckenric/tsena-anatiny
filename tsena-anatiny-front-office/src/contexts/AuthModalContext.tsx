@@ -12,6 +12,7 @@ import { useHistory, useLocation } from "react-router-dom";
 import { X } from "lucide-react";
 import { useAuth } from "./AuthContext";
 import { useI18n } from "./I18nContext";
+import { PROJECT_NAME } from "../lib/projectName";
 import { LoginForm } from "../components/auth/LoginForm";
 import { RegisterForm } from "../components/auth/RegisterForm";
 import { cn } from "../lib/utils";
@@ -167,7 +168,7 @@ export function AuthModalProvider({ children }: { children: ReactNode }) {
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-border/70 bg-panel shadow-card">
                   <img
                     src="/logo.png"
-                    alt="Tsena Anatiny"
+                    alt={PROJECT_NAME}
                     className="h-9 w-9 rounded-xl object-contain"
                   />
                 </div>

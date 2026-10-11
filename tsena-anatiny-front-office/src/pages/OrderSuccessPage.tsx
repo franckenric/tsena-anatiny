@@ -8,7 +8,8 @@ import type { Order, OrderStatus } from "../types/operations";
 import { PageLoader } from "../components/Spinner";
 import { StatusBadge } from "../components/StatusBadge";
 import { Page } from "../components/Page";
-import { formatAr, formatDate } from "../lib/utils";
+import { ProductImage } from "../components/ProductImage";
+import { formatAr, formatDate, resolveImageUrl } from "../lib/utils";
 import {
   getOrderLineItems,
   getOrderOtherPriceReason,
@@ -180,14 +181,22 @@ export function OrderSuccessPage() {
               key={item.variant_id ?? item.product_id ?? index}
               className="flex items-center justify-between gap-4 py-3 text-sm"
             >
-              <div className="min-w-0">
-                <p className="line-clamp-1 font-semibold text-ink">
-                  {item.product_name}
-                </p>
-                <p className="text-xs text-muted">
-                  {item.variant_name ? `${t("common.variant")}: ${item.variant_name} · ` : ""}
-                  {t("common.quantity")}: {item.quantity}
-                </p>
+              <div className="flex min-w-0 items-center gap-3">
+                <ProductImage
+                  src={resolveImageUrl(item.image ?? null)}
+                  alt={item.product_name}
+                  size="thumb"
+                  className="border border-border/60"
+                />
+                <div className="min-w-0">
+                  <p className="line-clamp-1 font-semibold text-ink">
+                    {item.product_name}
+                  </p>
+                  <p className="text-xs text-muted">
+                    {item.variant_name ? `${t("common.variant")}: ${item.variant_name} · ` : ""}
+                    {t("common.quantity")}: {item.quantity}
+                  </p>
+                </div>
               </div>
               <span className="shrink-0 font-semibold text-ink">
                 {formatAr(item.quantity * item.unit_cost)}

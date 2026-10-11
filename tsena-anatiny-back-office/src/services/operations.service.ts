@@ -302,7 +302,7 @@ export const ordersService = {
   },
   async getOrder(id: number): Promise<Order> {
     const url = `/orders/${id}`;
-    const relation = 'relation=["customer{name,phone,delivery_address}","user{email}","stock_movements{product_id,variant_id,quantity,unit_cost,another_price,other_price_reason,type}","stock_movements.product{name}","stock_movements.variant{name,sku}"]';
+    const relation = 'relation=["customer{name,phone,delivery_address}","user{email}","stock_movements{product_id,variant_id,quantity,unit_cost,another_price,other_price_reason,type}","stock_movements.product{name,image}","stock_movements.variant{name,sku,image}"]';
     return apiFetch<Order>(`${API_BASE_URL}${url}?${relation}`);
   },
   async createOrder(payload: CreateOrderPayload): Promise<Order> {

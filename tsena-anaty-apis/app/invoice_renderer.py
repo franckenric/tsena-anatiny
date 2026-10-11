@@ -5,22 +5,29 @@ from typing import Any
 
 from PIL import Image, ImageDraw, ImageFont
 
-PROJECT_NAME = "TSENA ANATINY"
+from app.core.config import settings
+
+# Nom du projet pilote par l'environnement (PROJECT_NAME). Affiche en
+# majuscules sur le ticket pour rester lisible a 58 mm. La meme variable
+# pilote le titre Swagger (main.py) et les emails transactionnels (email.py).
+PROJECT_NAME = (settings.PROJECT_NAME or "Tsena Anatiny").upper()
 PAPER_WIDTH_MM = 58
 PX_PER_MM = 12
 SCALE = 3
 
 WIDTH = PAPER_WIDTH_MM * PX_PER_MM
-PADDING = 3 * PX_PER_MM
+# Marges gauche/droite identiques et reduites (2 mm de chaque cote) pour
+# maximiser la largeur utile du ticket.
+PADDING = 2 * PX_PER_MM
 CONTENT_WIDTH = WIDTH - 2 * PADDING
 
 FONT_DIR = "/usr/share/fonts/truetype/dejavu/"
 FONT_REGULAR_PATH = FONT_DIR + "DejaVuSansMono.ttf"
 FONT_BOLD_PATH = FONT_DIR + "DejaVuSansMono-Bold.ttf"
 
-BASE_SIZE = 9 * SCALE
-META_SIZE = 10 * SCALE
-TITLE_SIZE = 14 * SCALE
+BASE_SIZE = 12 * SCALE
+META_SIZE = 11 * SCALE
+TITLE_SIZE = 18 * SCALE
 
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
@@ -195,18 +202,6 @@ class _Canvas:
         self.space(margin)
 
 
-def _qr_image(payload: str, box_size: int):
-    try:
-        import qrcode
-
-        qr = qrcode.QRCode(box_size=box_size, border=1)
-        qr.add_data(payload)
-        qr.make(fit=True)
-        return qr.make_image(fill_color="black", back_color="white").convert("RGB")
-    except Exception:
-        return None
-
-
 def render_order_invoice_png(
     *,
     order_id: int,
@@ -274,21 +269,6 @@ def render_order_invoice_png(
         canvas.draw, _number_to_french_words(grand_total), _font(BASE_SIZE), CONTENT_WIDTH
     ):
         canvas.left([(words_line, BASE_SIZE, False)])
-
-    qr_payload = " | ".join([
-        PROJECT_NAME,
-        f"Commande: {resolved_number}",
-        f"Client: {customer_name or '-'}",
-        f"Tel: {phone}",
-    ])
-    qr = _qr_image(qr_payload, box_size=SCALE)
-    if qr is not None:
-        target = 26 * PX_PER_MM
-        qr = qr.resize((target, target))
-        canvas.dashed_separator()
-        canvas._ensure_height(target + 2 * SCALE)
-        canvas.image.paste(qr, ((WIDTH - target) // 2, canvas.y))
-        canvas.y += target + 2 * SCALE
 
     canvas.dashed_separator()
     canvas.centered(f"Imprimé le {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}", BASE_SIZE)

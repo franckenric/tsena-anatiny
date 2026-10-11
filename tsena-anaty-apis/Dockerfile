@@ -25,7 +25,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY ./requirements.txt /app/requirements.txt
 
 # Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# --retries/--timeout durcis : sur un reseau lent, pip peut tronquer un
+# telechargement, ce qui declenche un faux "packages do not match the hashes".
+RUN pip install --no-cache-dir --retries 10 --timeout 120 -r requirements.txt
 
 # Copy test files and application code
 COPY ./tests /app/tests

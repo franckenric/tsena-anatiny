@@ -6,6 +6,7 @@ export interface OrderLineItem {
   variant_id: number | null;
   product_name: string;
   variant_name?: string;
+  image?: string;
   quantity: number;
   unit_cost: number;
   another_price: number;
@@ -100,6 +101,7 @@ export function getOrderLineItems(order: Order): OrderLineItem[] {
           product_name:
             firstNonEmpty(movement.product?.name) ?? `Produit #${productId}`,
           variant_name: firstNonEmpty(movement.variant?.name),
+          image: movement.variant?.image || movement.product?.image || undefined,
           quantity,
           unit_cost: Number(movement.unit_cost || 0),
           another_price: anotherPrice,
@@ -134,6 +136,7 @@ export function getOrderLineItemsFromCart(
       variant_id: item.variant_id ?? null,
       product_name: productName || variantName || `Produit #${item.product_id}`,
       variant_name: variantName || undefined,
+      image: item.variant?.image || item.product?.image || undefined,
       quantity: Number(item.quantity || 0),
       unit_cost: Number(item.unit_cost || 0),
       another_price: Number(item.another_price || 0),

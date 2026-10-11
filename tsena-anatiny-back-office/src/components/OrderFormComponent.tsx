@@ -16,6 +16,8 @@ import type { Product } from "../types/product";
 import { cartItemsService } from "../services/operations.service";
 import { customersService } from "../services/customers.service";
 import { Button, Input, Select } from "./index";
+import { PROJECT_NAME } from "../lib/projectName";
+import { resolveImageUrl } from "../lib/utils";
 
 export const STATUS_LABELS: Record<OrderStatus, string> = {
   draft: "En cours",
@@ -27,7 +29,6 @@ export const STATUS_LABELS: Record<OrderStatus, string> = {
 export const formatAr = (value: number) =>
   `${Number(value || 0).toLocaleString("fr-FR")} Ar`;
 
-const PROJECT_NAME = "TSENA ANATINY";
 const THERMAL_PAPER_WIDTH_MM = 58;
 
 const numberToFrenchWords = (value: number): string => {
@@ -309,7 +310,7 @@ export const buildOrderReceiptHtml = ({
   </style>
 </head>
 <body>
-  <div class="center title">${escapeHtml(PROJECT_NAME)}</div>
+  <div class="center title">${escapeHtml(PROJECT_NAME.toUpperCase())}</div>
   <div class="center">Ticket commande</div>
   <div class="separator"></div>
 
@@ -376,6 +377,7 @@ export type CartItem = {
   product_name: string;
   variant_name?: string;
   variant_sku?: string;
+  image?: string;
   quantity: number;
   unit_cost: number;
   another_price: number;
@@ -407,7 +409,6 @@ export function OrderForm({
   const [form, setForm] = useState({
     customer_id: order?.customer_id ?? 0,
     another_price: Number(order?.another_price || 0),
-    other_price_reason: order?.other_price_reason || "",
     status: (order?.status ?? "draft") as OrderStatus,
     note: stripPendingLines(order?.note)
   });
@@ -443,8 +444,7 @@ export function OrderForm({
     if (!form.customer_id) issues.push("Client requis");
     if (!order && cartItems.length === 0)
       issues.push("Panier vide: chargez d'abord le panier client");
-    if (Number(form.another_price || 0) > 0 && !form.other_price_reason.trim())
-      issues.push("Raison requise quand Other price est > 0");
+
     if (Number(form.another_price || 0) < 0)
       issues.push("Other price invalide");
     return issues;
@@ -512,6 +512,7 @@ export function OrderForm({
           product_name: product?.name || `Produit #${item.product_id}`,
           variant_name: item.variant?.name || variant?.name || undefined,
           variant_sku: item.variant?.sku || variant?.sku || undefined,
+          image: variant?.image || product?.image || undefined,
           quantity: Number(item.quantity || 0),
           unit_cost: Number(item.unit_cost || 0),
           another_price: Number(item.another_price || 0),
@@ -553,12 +554,6 @@ export function OrderForm({
     if (Number(form.another_price || 0) < 0) {
       errs.another_price = "Other price invalide";
     }
-    if (
-      Number(form.another_price || 0) > 0 &&
-      !form.other_price_reason.trim()
-    ) {
-      errs.other_price_reason = "Raison requise quand other price est > 0";
-    }
     if (Object.keys(errs).length) {
       setErrors(errs);
       return;
@@ -582,7 +577,7 @@ export function OrderForm({
           another_price: Number(form.another_price || 0),
           other_price_reason:
             Number(form.another_price || 0) > 0
-              ? form.other_price_reason.trim() || undefined
+              ? "Frais de livraison"
               : undefined,
           status: "draft",
           note: form.note || undefined,
@@ -598,7 +593,7 @@ export function OrderForm({
         another_price: Number(form.another_price || 0),
         other_price_reason:
           Number(form.another_price || 0) > 0
-            ? form.other_price_reason.trim() || undefined
+            ? "Frais de livraison"
             : undefined,
         status: form.status,
         note: preservePendingLines(form.note || "", order?.note),
@@ -698,7 +693,7 @@ export function OrderForm({
           )}
         </div>
 
-        {/* Other price */}
+        {/* Frais de livraison */}
         <div className="rounded-2xl border border-border/60 bg-bg/30 p-4 space-y-4">
           <div className="flex items-center gap-2.5">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand/10 text-brand">
@@ -710,32 +705,20 @@ export function OrderForm({
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <Input
-              label="Other price (Ar)"
+              label="Frais de livraison (Ar)"
               type="number"
               value={form.another_price}
               onChange={(e) => {
                 const nextValue = parseFloat(e.target.value) || 0;
                 setForm((prev) => ({
                   ...prev,
-                  another_price: nextValue,
-                  other_price_reason:
-                    nextValue > 0 ? prev.other_price_reason : ""
+                  another_price: nextValue
                 }));
               }}
               error={errors.another_price}
               placeholder="0"
               disabled={isLoading}
             />
-            {Number(form.another_price || 0) > 0 && (
-              <Input
-                label="Raison"
-                value={form.other_price_reason}
-                onChange={(e) => sel("other_price_reason", e.target.value)}
-                error={errors.other_price_reason}
-                placeholder="Raison du other price"
-                disabled={isLoading}
-              />
-            )}
           </div>
         </div>
 
@@ -777,8 +760,15 @@ export function OrderForm({
                     key={`${item.product_id}-${index}`}
                     className="rounded-xl border border-border/60 bg-panel/55 px-3 py-2"
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
+                    <div className="flex items-start gap-3">
+                      {item.image ? (
+                        <img
+                          src={resolveImageUrl(item.image)}
+                          alt={item.product_name}
+                          className="h-11 w-11 shrink-0 rounded-lg border border-border/60 object-cover"
+                        />
+                      ) : null}
+                      <div className="flex-1">
                         <p className="text-sm font-semibold text-ink">
                           {item.product_name}
                           {item.variant_name ? ` — ${item.variant_name}` : ""}
@@ -794,13 +784,8 @@ export function OrderForm({
                             ? ` + ${formatAr(item.another_price)}`
                             : ""}
                         </p>
-                        {item.other_price_reason && (
-                          <p className="text-xs text-muted">
-                            Raison: {item.other_price_reason}
-                          </p>
-                        )}
                       </div>
-                      <p className="text-sm font-semibold text-ink whitespace-nowrap">
+                      <p className="ml-auto text-sm font-semibold text-ink whitespace-nowrap">
                         {formatAr(lineTotal)}
                       </p>
                     </div>
@@ -861,7 +846,7 @@ export function OrderForm({
                 another_price: Number(form.another_price || 0),
                 other_price_reason:
                   Number(form.another_price || 0) > 0
-                    ? form.other_price_reason.trim() || undefined
+                    ? "Frais de livraison"
                     : undefined
               })
             }

@@ -114,6 +114,7 @@ export interface StockMovement {
     id: number;
     name?: string;
     sku?: string | null;
+    image?: string | null;
   } | null;
   user?: User | null;
   created_at?: string;

@@ -6,6 +6,7 @@ import { useI18n } from "../contexts/I18nContext";
 import { usePageTitle } from "../contexts/PageTitleContext";
 import { Page } from "../components/Page";
 import { LoginForm } from "../components/auth/LoginForm";
+import { PROJECT_NAME } from "../lib/projectName";
 
 /**
  * La connexion passe par la modale : cette route n'est atteignable qu'en lien
@@ -52,7 +53,7 @@ export function LoginPage() {
         <div className="rounded-3xl border border-border bg-panel p-8 shadow-card">
           <img
             src="/logo.png"
-            alt="Tsena Anatiny"
+            alt={PROJECT_NAME}
             className="mx-auto h-16 w-16 rounded-2xl object-contain shadow-md shadow-brand/20"
           />
           <h1 className="mt-4 text-center text-2xl font-bold text-ink">

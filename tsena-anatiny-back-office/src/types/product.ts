@@ -36,6 +36,7 @@ export interface Product {
     parent_id?: number | null;
     name?: string;
     sku?: string | null;
+    image?: string | null;
     quantity?: number;
     unit_cost?: number | null;
     selling_price?: number | null;

@@ -22,6 +22,7 @@ import {
 import { useAuth } from "../contexts/AuthContext";
 import { NotificationsBell } from "./NotificationsBell";
 import { cn } from "../lib/utils";
+import { PROJECT_NAME } from "../lib/projectName";
 
 interface LayoutProps {
   children: ReactNode;
@@ -137,12 +138,12 @@ export function Layout({ children, title }: LayoutProps) {
     <div className="flex items-center gap-3">
       <img
         src="/logo.png"
-        alt="Tsena Anatiny"
+        alt={PROJECT_NAME}
         className="h-11 w-11 shrink-0 rounded-2xl object-contain shadow-lg shadow-brand/25"
       />
       <div className="text-left">
         <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted">
-          Tsena Anatiny
+          {PROJECT_NAME}
         </p>
         <p className="font-display text-base font-bold leading-tight text-ink">
           Back Office
@@ -229,14 +230,14 @@ export function Layout({ children, title }: LayoutProps) {
           >
             <img
               src="/logo.png"
-              alt="Tsena Anatiny"
+              alt={PROJECT_NAME}
               className="h-7 w-7 shrink-0 rounded-xl object-contain shadow-md shadow-brand/20 sm:h-8 sm:w-8"
             />
             <span className="truncate font-display text-base font-bold text-ink sm:text-lg lg:hidden">
               {title}
             </span>
             <span className="hidden font-display text-lg font-bold text-ink lg:block">
-              Tsena&nbsp;Anatiny
+              {PROJECT_NAME}
             </span>
           </Link>
 
@@ -367,7 +368,7 @@ export function Layout({ children, title }: LayoutProps) {
 
       <footer className="hidden shrink-0 border-t border-border/50 bg-panel/60 backdrop-blur lg:block">
         <div className="page-shell flex flex-col gap-1 py-6 pb-24 text-xs text-muted sm:flex-row sm:items-center sm:justify-between lg:pb-6">
-          <p>© {new Date().getFullYear()} Tsena Anatiny — Back Office</p>
+          <p>© {new Date().getFullYear()} {PROJECT_NAME} — Back Office</p>
           <p>Réservé au personnel autorisé</p>
         </div>
       </footer>

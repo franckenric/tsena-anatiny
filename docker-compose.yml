@@ -26,6 +26,8 @@ services:
       # Le port Uvicorn ecoute dans le conteneur est aligne sur le port publie
       # (prestart.py lit la variable PORT).
       - PORT=${CONTAINER_PORT:-8081}
+      # Nom du projet partage (Swagger, facture, emails). Valeur du .env racine.
+      - PROJECT_NAME=${PROJECT_NAME:-Tsena Anatiny}
     extra_hosts:
       # Permet a l'API de joindre la base MySQL installee sur l'hote.
       - "host.docker.internal:host-gateway"
@@ -44,6 +46,8 @@ services:
       # Le proxy Vite du back-office cible l'API par le nom de service Docker
       # (les variables d'env du conteneur ecrasent celles du fichier .env).
       - VITE_API_PROXY_TARGET=http://api:${CONTAINER_PORT:-8081}
+      # Nom du projet partage, injecte au runtime Vite (passe devant le .env).
+      - VITE_PROJECT_NAME=${PROJECT_NAME:-Tsena Anatiny}
     ports:
       - "${BACK_OFFICE_PORT:-5175}:5175"
     volumes:
@@ -61,6 +65,8 @@ services:
       dockerfile: Dockerfile
     environment:
       - VITE_API_PROXY_TARGET=http://api:${CONTAINER_PORT:-8081}
+      # Nom du projet partage, injecte au runtime Vite (passe devant le .env).
+      - VITE_PROJECT_NAME=${PROJECT_NAME:-Tsena Anatiny}
     ports:
       - "${FRONT_OFFICE_PORT:-5173}:5173"
     volumes:

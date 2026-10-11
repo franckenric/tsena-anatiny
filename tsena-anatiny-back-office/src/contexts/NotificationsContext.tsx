@@ -24,6 +24,7 @@ import {
   type RestNotificationsResponse
 } from "../services/notifications.service";
 import { sendSms } from "../services/sms.service";
+import { PROJECT_NAME } from "../lib/projectName";
 
 export type NotificationItem =
   | {
@@ -234,7 +235,7 @@ export function NotificationsProvider({
           if (data.customer_phone && data.otp) {
             void sendSms(
               data.customer_phone,
-              `Tsena Anatiny : votre code de verification est ${data.otp}`
+              `${PROJECT_NAME} : votre code de verification est ${data.otp}`
             );
           }
           // Le serveur persiste la notification AVANT de diffuser : relire

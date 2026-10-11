@@ -12,13 +12,15 @@ import {
 } from "../services/operations.service";
 import { PageLoader, Spinner } from "../components/Spinner";
 import { Page } from "../components/Page";
+import { ProductImage } from "../components/ProductImage";
 import { PhoneInput } from "../components/PhoneInput";
 import {
   formatAr,
   formatPhoneMadagascar,
   isPhonePrefixOnly,
   normalizePhone,
-  PHONE_FORMAT_REGEX
+  PHONE_FORMAT_REGEX,
+  resolveImageUrl
 } from "../lib/utils";
 import { computeDiscountAmount, getAppliedPromo, setAppliedPromo, type AppliedPromo } from "../lib/promo";
 import {
@@ -311,14 +313,22 @@ export function CheckoutPage() {
                   key={`${item.product_id}-${item.variant_id ?? 0}-${index}`}
                   className="flex items-center justify-between gap-4 py-3 text-sm"
                 >
-                  <div className="min-w-0">
-                    <p className="line-clamp-1 font-semibold text-ink">
-                      {item.product_name}
-                    </p>
-                    <p className="text-xs text-muted">
-                      {item.variant_name ? `${t("common.variant")}: ${item.variant_name} · ` : ""}
-                      {t("common.quantity")}: {item.quantity}
-                    </p>
+                  <div className="flex min-w-0 items-center gap-3">
+                    <ProductImage
+                      src={resolveImageUrl(item.image ?? null)}
+                      alt={item.product_name}
+                      size="thumb"
+                      className="border border-border/60"
+                    />
+                    <div className="min-w-0">
+                      <p className="line-clamp-1 font-semibold text-ink">
+                        {item.product_name}
+                      </p>
+                      <p className="text-xs text-muted">
+                        {item.variant_name ? `${t("common.variant")}: ${item.variant_name} · ` : ""}
+                        {t("common.quantity")}: {item.quantity}
+                      </p>
+                    </div>
                   </div>
                   <span className="shrink-0 font-semibold text-ink">
                     {formatAr(Number(item.quantity) * Number(item.unit_cost || 0))}

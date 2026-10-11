@@ -255,6 +255,7 @@ function mapCartItemsFromApi(
       product_name: product?.name || `Produit #${item.product_id}`,
       variant_name: item.variant?.name || variant?.name || undefined,
       variant_sku: item.variant?.sku || variant?.sku || undefined,
+      image: variant?.image || product?.image || undefined,
       quantity: Number(item.quantity || 0),
       unit_cost: Number(item.unit_cost || 0),
       another_price: Number(item.another_price || 0),
@@ -292,6 +293,8 @@ function mapMovementsToCartItems(order: Order): CartItem[] {
           (movement.product?.name || "").trim() || `Produit #${productId}`,
         variant_name: (movement.variant?.name || "").trim() || undefined,
         variant_sku: movement.variant?.sku || undefined,
+        image:
+          movement.variant?.image || movement.product?.image || undefined,
         quantity: Number(movement.quantity || 0),
         unit_cost: Number(movement.unit_cost || 0),
         another_price: Number(movement.another_price || 0),
@@ -346,6 +349,7 @@ function mapOrderToCartItems(
             ? line.variant_name
             : undefined),
         variant_sku: variant?.sku || undefined,
+        image: variant?.image || product?.image || undefined,
         quantity: Number(line.quantity || 0),
         unit_cost: Number(line.unit_cost || 0),
         another_price: Number(line.another_price || 0),
@@ -362,6 +366,7 @@ function mapOrderToCartItems(
     {
       product_id: order.product_id,
       product_name: order.product?.name || `Produit #${order.product_id}`,
+      image: order.product?.image || undefined,
       quantity: Number(order.quantity || 0),
       unit_cost: Number(order.unit_cost || 0),
       another_price: Number(order.another_price || 0),

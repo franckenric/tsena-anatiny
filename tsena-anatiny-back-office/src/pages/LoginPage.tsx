@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Redirect, useHistory, useLocation } from "react-router-dom";
 import { Eye, EyeOff, LockKeyhole, Phone } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
+import { PROJECT_NAME } from "../lib/projectName";
 
 export function LoginPage() {
   const { login, loginWithFacebook, handleFacebookCallback, token, isLoading } = useAuth();
@@ -64,10 +65,10 @@ export function LoginPage() {
 
           <div className="mx-auto w-full max-w-md">
             <div className="mb-8 flex flex-col items-center gap-3 text-center">
-              <img src="/logo.png" alt="Tsena Anatiny" className="h-16 w-16 rounded-3xl object-contain shadow-lg shadow-brand/35" />
+              <img src="/logo.png" alt={PROJECT_NAME} className="h-16 w-16 rounded-3xl object-contain shadow-lg shadow-brand/35" />
               <div>
                 <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted">
-                  Tsena Anatiny
+                  {PROJECT_NAME}
                 </p>
                 <h1 className="mt-1 font-display text-2xl font-bold leading-tight text-ink">
                   Back Office
@@ -182,7 +183,7 @@ export function LoginPage() {
             </button>
 
             <p className="mt-6 text-center text-xs text-muted">
-              Réservé au personnel autorisé de Tsena Anatiny
+              Réservé au personnel autorisé de {PROJECT_NAME}
             </p>
       </div>
     </div>

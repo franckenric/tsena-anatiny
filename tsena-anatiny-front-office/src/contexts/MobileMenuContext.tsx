@@ -14,6 +14,7 @@ import { useAuthModal } from "./AuthModalContext";
 import { useI18n } from "./I18nContext";
 import { SHOP_ITEMS, accountSectionItems, isNavActive } from "../lib/nav";
 import { cn } from "../lib/utils";
+import { PROJECT_NAME } from "../lib/projectName";
 
 interface MobileMenuContextValue {
   isOpen: boolean;
@@ -116,7 +117,7 @@ export function MobileMenuProvider({ children }: { children: ReactNode }) {
                 </div>
                 <div className="text-left">
                   <p className="text-[10px] uppercase tracking-[0.16em] text-muted">
-                    Tsena Anatiny
+                    {PROJECT_NAME}
                   </p>
                   <p className="font-display text-base font-bold leading-none text-ink">
                     {t("nav.brandSub")}

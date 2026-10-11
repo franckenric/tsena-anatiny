@@ -1,3 +1,5 @@
+import { PROJECT_NAME } from "../lib/projectName";
+
 export type Language = "fr" | "mg";
 
 export const dictionaries: Record<Language, Record<string, string>> = {
@@ -57,7 +59,7 @@ export const dictionaries: Record<Language, Record<string, string>> = {
 
     "pwa.install": "Installer",
     "pwa.installLater": "Plus tard",
-    "pwa.installTitle": "Installer Tsena Anatiny",
+    "pwa.installTitle": `Installer ${PROJECT_NAME}`,
     "pwa.installSub":
       "Ajoutez l'application à votre écran d'accueil pour un accès rapide, même hors connexion.",
     "pwa.installHint": "Installable sur votre appareil, disponible hors connexion.",
@@ -75,7 +77,7 @@ export const dictionaries: Record<Language, Record<string, string>> = {
     "home.greeting.morning": "Bonjour",
     "home.greeting.afternoon": "Bon après-midi",
     "home.greeting.evening": "Bonsoir",
-    "home.welcome": "Bienvenue chez Tsena Anatiny",
+    "home.welcome": `Bienvenue chez ${PROJECT_NAME}`,
     "home.heroTitle1": "Vos produits,",
     "home.heroTitle2": "livrés chez vous.",
     "home.heroSub":
@@ -383,7 +385,7 @@ export const dictionaries: Record<Language, Record<string, string>> = {
 
     "pwa.install": "Apetraho",
     "pwa.installLater": "Latera",
-    "pwa.installTitle": "Apetraho ny Tsena Anatiny",
+    "pwa.installTitle": `Apetraho ny ${PROJECT_NAME}`,
     "pwa.installSub":
       "Ampio ny rindranasa amin'ny ekrananao mba hafaingana ny fidirana, na dia tsy misy tambajotra aza.",
     "pwa.installHint": "Azo apetraka amin'ny findaynao, miaina koa amin'ny tsy misy tambajotra.",
@@ -400,7 +402,7 @@ export const dictionaries: Record<Language, Record<string, string>> = {
     "home.greeting.morning": "Manao ahoana",
     "home.greeting.afternoon": "Salama amin'ny antoandro",
     "home.greeting.evening": "Manao ahoana hariva",
-    "home.welcome": "Tongasoa eto amin'ny Tsena Anatiny",
+    "home.welcome": `Tongasoa eto amin'ny ${PROJECT_NAME}`,
     "home.heroTitle1": "Ny vokatrao,",
     "home.heroTitle2": "entina any aminao.",
     "home.heroSub":

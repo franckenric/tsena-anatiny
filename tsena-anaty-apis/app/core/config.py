@@ -28,7 +28,10 @@ class Settings(BaseSettings):
             return v
         raise ValueError(v)
 
-    PROJECT_NAME: str = os.getenv("PROJECT_NAME", "FastAPI Project")
+    # Nom du projet, pilote par la variable d'environnement PROJECT_NAME.
+    # Utilise par le titre Swagger (docs), la facture (ticket 58mm) et les
+    # emails transactionnels.
+    PROJECT_NAME: str = os.getenv("PROJECT_NAME", "Tsena Anatiny")
 
     SQLITE_DATABASE: str = os.getenv("SQLITE_DATABASE", "app.db")
 

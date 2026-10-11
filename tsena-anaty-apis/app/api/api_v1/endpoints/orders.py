@@ -785,8 +785,8 @@ def read_guest_order_by_number_and_phone(
     relations = [
         "customer{id,name,phone,delivery_address}",
         "stock_movements{id,product_id,variant_id,type,quantity,unit_cost,another_price,other_price_reason}",
-        "stock_movements.product{id,name,sku}",
-        "stock_movements.variant{id,name,sku}",
+        "stock_movements.product{id,name,sku,image}",
+        "stock_movements.variant{id,name,sku,image}",
     ]
     orders = crud.orders.get_first_where_array(
         db=db,

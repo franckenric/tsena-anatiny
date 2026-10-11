@@ -12,6 +12,7 @@ import { useCurrentPageTitle } from "../contexts/PageTitleContext";
 import { NotificationsBell } from "./NotificationsBell";
 import { DESKTOP_NAV_ITEMS, isNavActive } from "../lib/nav";
 import { cn } from "../lib/utils";
+import { PROJECT_NAME } from "../lib/projectName";
 
 export function Header() {
   const { customer, isBooting, logout } = useAuth();
@@ -80,14 +81,14 @@ export function Header() {
         <Link to="/" className="flex min-w-0 items-center gap-2.5">
           <img
             src="/logo.png"
-            alt="Tsena Anatiny"
+            alt={PROJECT_NAME}
             className="h-7 w-7 shrink-0 rounded-xl object-contain shadow-md shadow-brand/20 sm:h-8 sm:w-8"
           />
           <span className="truncate font-display text-base font-bold text-ink sm:text-lg lg:hidden">
             {pageTitle || t("nav.shop")}
           </span>
           <span className="hidden font-display text-lg font-bold text-ink lg:block">
-            Tsena&nbsp;Anatiny
+            {PROJECT_NAME}
           </span>
         </Link>
 

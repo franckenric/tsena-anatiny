@@ -37,8 +37,9 @@ def send_email(*, to: str, subject: str, body: str) -> bool:
         return False
 
     from_address = settings.SMTP_FROM or settings.SMTP_USER
+    brand_name = settings.PROJECT_NAME or "Tsena Anatiny"
     message = EmailMessage()
-    message["From"] = formataddr(("Tsena Anatiny", from_address))
+    message["From"] = formataddr((brand_name, from_address))
     message["To"] = to
     message["Subject"] = subject
     message.set_content(body)
@@ -70,12 +71,13 @@ def send_email(*, to: str, subject: str, body: str) -> bool:
 
 def send_otp_email(*, to: str, code: str) -> bool:
     """Envoie le code de verification par email."""
-    subject = "Tsena Anatiny - code de verification"
+    brand_name = settings.PROJECT_NAME or "Tsena Anatiny"
+    subject = f"{brand_name} - code de verification"
     body = (
         "Bonjour,\n\n"
-        f"Votre code de verification Tsena Anatiny est : {code}\n\n"
+        f"Votre code de verification {brand_name} est : {code}\n\n"
         "Ce code est valable 10 minutes. Si vous n'etes pas a l'origine de "
         "cette demande, ignorez simplement ce message.\n\n"
-        "L'equipe Tsena Anatiny"
+        f"L'equipe {brand_name}"
     )
     return send_email(to=to, subject=subject, body=body)

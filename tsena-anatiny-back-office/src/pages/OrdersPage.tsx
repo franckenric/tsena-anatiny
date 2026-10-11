@@ -21,6 +21,7 @@ import type {
 } from "../types/operations";
 import type { Customer } from "../types/customer";
 import type { Column, StatusTone } from "../components/index";
+import { useDialog } from "../contexts/DialogContext";
 import { ordersService } from "../services/operations.service";
 import {
   connectThermalPrinter,
@@ -90,6 +91,7 @@ const printTicketInIframe = (html: string): boolean => {
 export function OrdersPage() {
   const location = useLocation();
   const history = useHistory();
+  const { confirm } = useDialog();
   const [orders, setOrders] = useState<Order[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -168,7 +170,15 @@ export function OrdersPage() {
   };
 
   const handleDelete = async (o: Order) => {
-    if (!confirm(`Supprimer la commande #${o.order_number ?? o.id} ?`)) return;
+    const confirmed = await confirm(
+      `Supprimer la commande #${o.order_number ?? o.id} ?`,
+      {
+        title: "Supprimer la commande",
+        confirmLabel: "Supprimer",
+        tone: "danger"
+      }
+    );
+    if (!confirmed) return;
     try {
       setIsFormLoading(true);
       await ordersService.deleteOrder(o.id);

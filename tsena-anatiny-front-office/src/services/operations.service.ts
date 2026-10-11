@@ -1,5 +1,9 @@
 import { apiFetch } from "./api";
-import { productsService } from "./products.service";
+import {
+  getProductTotalStock,
+  productsService,
+  variantEffectiveStock
+} from "./products.service";
 import type {
   CartItem,
   PromoCodeValidation,
@@ -47,8 +51,20 @@ export const cartItemsService = {
         item.variant_id != null
           ? (product.variants ?? []).find((v) => v.id === item.variant_id)
           : undefined;
+      // Stock disponible pour borner la quantite des commandes +/- du panier.
+      // Variante: stock effectif (somme des sous-variantes) ; produit seul:
+      // total du produit. `null` = inconnu -> pas de borne cote UI, le serveur
+      // (POST / PUT) reste l'autorite.
+      const availableQuantity = (() => {
+        if (item.variant_id != null) {
+          if (!variant) return null;
+          return variantEffectiveStock(product.variants ?? [], variant);
+        }
+        return getProductTotalStock(product);
+      })();
       return {
         ...item,
+        available_quantity: availableQuantity,
         product: {
           id: product.id,
           name: product.name,

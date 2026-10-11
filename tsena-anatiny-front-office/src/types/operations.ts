@@ -10,6 +10,8 @@ export interface CartItem {
   another_price?: number;
   other_price_reason?: string;
   created_at?: string;
+  /** Stock disponible (variante effective ou stock produit), calcule cote client. */
+  available_quantity?: number | null;
   product?: {
     id: number;
     name?: string;

@@ -11,9 +11,11 @@ import {
 } from "../components/index";
 import { Pencil, Plus, Tags, Trash2 } from "lucide-react";
 import { Layout } from "../components/Layout";
+import { useDialog } from "../contexts/DialogContext";
 
 export function CategoriesPage() {
   const history = useHistory();
+  const { confirm } = useDialog();
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isFormLoading, setIsFormLoading] = useState(false);
@@ -44,7 +46,12 @@ export function CategoriesPage() {
   };
 
   const handleDelete = async (cat: Category) => {
-    if (!confirm(`Supprimer « ${cat.name} » ?`)) return;
+    const confirmed = await confirm(`Supprimer « ${cat.name} » ?`, {
+      title: "Supprimer la catégorie",
+      confirmLabel: "Supprimer",
+      tone: "danger"
+    });
+    if (!confirmed) return;
     try {
       setIsFormLoading(true);
       await categoriesService.deleteCategory(cat.id);

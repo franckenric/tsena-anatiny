@@ -21,6 +21,7 @@ import {
 } from "../components/index";
 import { Modal } from "../components/Modal";
 import { Boxes, Package, Pencil, Plus, Trash2 } from "lucide-react";
+import { useDialog } from "../contexts/DialogContext";
 
 const getLotDateLabel = (lot: Lot) => {
   const rawDate = lot.received_at ?? lot.created_at;
@@ -475,6 +476,7 @@ function StockForm({
 }
 
 export function StockPage() {
+  const { confirm } = useDialog();
   const [stocks, setStocks] = useState<Stock[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [lots, setLots] = useState<Lot[]>([]);
@@ -520,7 +522,12 @@ export function StockPage() {
   };
 
   const handleDelete = async (s: Stock) => {
-    if (!confirm("Supprimer ce stock ?")) return;
+    const confirmed = await confirm("Supprimer ce stock ?", {
+      title: "Supprimer le stock",
+      confirmLabel: "Supprimer",
+      tone: "danger"
+    });
+    if (!confirmed) return;
     try {
       setIsFormLoading(true);
       await stockService.deleteStock(s.id);

@@ -364,7 +364,9 @@ export function DataList<T extends { id?: number | string }>({
                             {col.header}
                           </span>
                           <span className="text-right text-sm text-ink">
-                            {renderCellValue(row, col)}
+                            <div className="min-w-0 overflow-hidden break-words [overflow-wrap:anywhere]">
+                         {renderCellValue(row, col)}
+                       </div>
                           </span>
                         </div>
                       ))}

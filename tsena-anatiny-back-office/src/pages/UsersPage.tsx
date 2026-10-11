@@ -14,8 +14,10 @@ import { UserForm } from "../components/UserForm";
 import { Modal } from "../components/Modal";
 import { Layout } from "../components/Layout";
 import { Pencil, Plus, Trash2, Users } from "lucide-react";
+import { useDialog } from "../contexts/DialogContext";
 
 export function UsersPage() {
+  const { confirm } = useDialog();
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -73,7 +75,15 @@ export function UsersPage() {
   };
 
   const handleDelete = async (user: User) => {
-    if (!confirm(`Êtes-vous sûr de vouloir supprimer ${user.email} ?`)) {
+    const confirmed = await confirm(
+      `Êtes-vous sûr de vouloir supprimer ${user.email} ?`,
+      {
+        title: "Supprimer l'utilisateur",
+        confirmLabel: "Supprimer",
+        tone: "danger"
+      }
+    );
+    if (!confirmed) {
       return;
     }
 

@@ -266,6 +266,35 @@ def create_cart_item(
         raise HTTPException(status_code=409, detail='Cart item creation conflict')
 
 
+def _ensure_available_stock(
+    *, db: Session, item: models.CartItems, quantity: int
+) -> None:
+    """Refuse une quantite superieure au stock disponible de la ligne.
+
+    Miroir de la validation du POST : l'augmentation de quantite via le PUT ne
+    doit pas contourner la limite de stock (variante effective ou produit).
+    """
+    if item.variant_id is not None:
+        variant = crud.product_variants.get(db=db, id=item.variant_id)
+        available = crud.product_variants.effective_quantity(
+            db, variant_id=item.variant_id
+        )
+        label = variant.name if variant else f'#{item.variant_id}'
+        if quantity > available:
+            raise HTTPException(
+                status_code=409,
+                detail=f'Stock insuffisant pour la variante « {label} » (disponible: {available})',
+            )
+        return
+    stock_row = crud.stock.get_by_product_id(db=db, product_id=item.product_id)
+    available = int(stock_row.quantity or 0) if stock_row else 0
+    if quantity > available:
+        raise HTTPException(
+            status_code=409,
+            detail=f'Stock insuffisant (disponible: {available})',
+        )
+
+
 @router.put('/{item_id}', response_model=schemas.CartItems)
 def update_cart_item(
     *,
@@ -282,6 +311,8 @@ def update_cart_item(
         raise HTTPException(status_code=422, detail='quantity must be greater than 0')
 
     try:
+        if item_in.quantity is not None:
+            _ensure_available_stock(db=db, item=item, quantity=item_in.quantity)
         return crud.cart_items.update(db=db, db_obj=item, obj_in=item_in)
     except IntegrityError:
         db.rollback()

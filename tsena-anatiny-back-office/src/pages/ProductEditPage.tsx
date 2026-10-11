@@ -10,9 +10,10 @@ import type { Lot } from "../types/operations";
 import { productsService } from "../services/products.service";
 import { categoriesService } from "../services/categories.service";
 import { lotsService, stockService } from "../services/operations.service";
-import { Layout, Button, Input, Select, QuantityInput } from "../components/index";
+import { Layout, Button, Input, Select, QuantityInput, RichTextEditor } from "../components/index";
 import { VariantsManager } from "../components/index";
 import { resolveImageUrl } from "../lib/utils";
+import { useDialog } from "../contexts/DialogContext";
 import {
   Package,
   X,
@@ -44,6 +45,7 @@ const generateProductReference = (): string => {
 export function ProductEditPage() {
   const { id } = useParams<{ id: string }>();
   const history = useHistory();
+  const { confirm } = useDialog();
   const isEdit = Boolean(id && id !== "new");
   const productId = isEdit ? (Number(id) || 0) : 0;
 
@@ -61,6 +63,7 @@ export function ProductEditPage() {
     description: "",
     unit: "",
     selling_price: 0,
+    cost_price: 0,
     discount_price: 0,
     low_stock_alert: 0,
     status: "active" as "active" | "inactive"
@@ -96,6 +99,10 @@ export function ProductEditPage() {
         const p = productsRes.items.find((item) => item.id === productId);
         if (p) {
           setProduct(p);
+          // Auto-remplit le prix d'achat : on privilegie le `cost_price`
+          // enregistre (produits importes via recu), sinon le cout unitaire
+          // derive des mouvements de stock (`unit_cost`).
+          const autoCostPrice = Number(p.cost_price ?? 0) || Number(p.unit_cost ?? 0) || 0;
           setForm({
             name: p.name ?? "",
             sku: p.sku ?? "",
@@ -103,6 +110,7 @@ export function ProductEditPage() {
             description: p.description ?? "",
             unit: p.unit ?? "",
             selling_price: p.selling_price ?? 0,
+            cost_price: autoCostPrice,
             discount_price: p.discount_price ?? 0,
             low_stock_alert: p.low_stock_alert ?? 0,
             status: p.status ?? "active"
@@ -185,6 +193,7 @@ export function ProductEditPage() {
           description: form.description || undefined,
           unit: form.unit || undefined,
           selling_price: form.selling_price || undefined,
+          cost_price: form.cost_price || undefined,
           discount_price: form.discount_price || undefined,
           low_stock_alert: form.low_stock_alert || undefined,
           status: form.status,
@@ -200,6 +209,7 @@ export function ProductEditPage() {
           description: form.description || undefined,
           unit: form.unit || undefined,
           selling_price: form.selling_price || undefined,
+          cost_price: form.cost_price || undefined,
           discount_price: form.discount_price || undefined,
           low_stock_alert: form.low_stock_alert || undefined,
           status: form.status,
@@ -305,7 +315,12 @@ export function ProductEditPage() {
   };
 
   const handleGalleryDelete = async (image: ProductImage) => {
-    if (!confirm("Supprimer cette image ?")) return;
+    const confirmed = await confirm("Supprimer cette image ?", {
+      title: "Supprimer l'image",
+      confirmLabel: "Supprimer",
+      tone: "danger"
+    });
+    if (!confirmed) return;
     setGalleryBusyId(image.id);
     setGalleryError(null);
     try {
@@ -431,11 +446,11 @@ export function ProductEditPage() {
                     }))}
                     disabled={isSaving}
                   />
-                  <Input
+                  <RichTextEditor
                     label="Description"
                     value={form.description}
-                    onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
-                    placeholder="Description du produit"
+                    onChange={(html) => setForm((p) => ({ ...p, description: html }))}
+                    placeholder="Description du produit (gras, italique, listes...)"
                     disabled={isSaving}
                   />
                 </div>
@@ -448,7 +463,15 @@ export function ProductEditPage() {
                     </div>
                     <p className="text-xs font-bold uppercase tracking-widest text-ink">Prix & Statut</p>
                   </div>
-                  <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Input
+                      label="Prix d'achat (Ar)"
+                      type="number"
+                      value={form.cost_price || ""}
+                      onChange={(e) => setForm((p) => ({ ...p, cost_price: parseFloat(e.target.value) || 0 }))}
+                      placeholder="0"
+                      disabled={isSaving}
+                    />
                     <Input
                       label="Prix de vente (Ar)"
                       type="number"
@@ -696,7 +719,13 @@ export function ProductEditPage() {
 
               {/* Variants manager (edit only) */}
               {isEdit && product && (
-                <VariantsManager productId={productId} disabled={isSaving} />
+                <VariantsManager
+                  productId={productId}
+                  disabled={isSaving}
+                  fallbackUnitCost={
+                    Number(product.cost_price ?? 0) || Number(product.unit_cost ?? 0) || 0
+                  }
+                />
               )}
             </div>
 

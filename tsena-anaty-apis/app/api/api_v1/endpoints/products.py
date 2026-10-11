@@ -200,6 +200,7 @@ async def import_receipt(
                     sku=sku,
                     name=base_name,
                     image='/No_Image_Available.jpg',
+                    cost_price=float(entries[0][2].unit_cost),
                     unit=(entries[0][2].unit or '').strip() or None,
                     status=StatusEnum.active,
                 ),
@@ -677,6 +678,27 @@ def read_products(
     return products
 
 
+def _remove_product_image_files(paths: list[Optional[str]]) -> None:
+    """Supprime les fichiers d'images locaux d'un produit.
+
+    Ne touche qu'aux fichiers du dossier `files/products/` : le placeholder
+    (`/No_Image_Available.jpg`) et les URLs externes/CDN sont ignores. Les
+    chemins en double sont dedupliques et un fichier deja absent n'est pas une
+    erreur (l'image a pu etre remplacee ou supprimee separement).
+    """
+    for path in dict.fromkeys(p for p in paths if p):
+        if path == '/No_Image_Available.jpg':
+            continue
+        if not path.startswith('/files/products/'):
+            continue
+        file_path = Path('files/products') / Path(path).name
+        try:
+            if file_path.exists():
+                file_path.unlink()
+        except OSError:
+            pass
+
+
 @router.delete('/{products_id}', response_model=schemas.Msg)
 def delete_products(
         *,
@@ -693,6 +715,18 @@ def delete_products(
 
     # Remove rows that reference the product first, otherwise the foreign
     # keys (e.g. stock_movements.product_id) block the product deletion.
+
+    # Collect the image paths BEFORE deleting the rows : on supprime aussi les
+    # fichiers sur disque, pas seulement les lignes de la table product_images.
+    image_paths = [
+        img.image
+        for img in crud.product_images.get_multi_by_product(
+            db=db, product_id=products_id
+        )
+    ]
+    if products.image:
+        image_paths.append(products.image)
+
     db.query(models.StockMovements).filter(
         models.StockMovements.product_id == products_id
     ).delete(synchronize_session=False)
@@ -724,4 +758,9 @@ def delete_products(
     ).delete(synchronize_session=False)
 
     db.commit()
+
+    # Fichiers supprimes seulement apres un commit reussi : si la suppression
+    # en base echoue, les images restent intactes.
+    _remove_product_image_files(image_paths)
+
     return schemas.Msg(msg='Products deleted successfully')

@@ -9,6 +9,11 @@ export default defineConfig(({ mode }) => {
   const proxyTarget = env.VITE_API_PROXY_TARGET || "http://localhost:8080";
   const projectName = env.VITE_PROJECT_NAME?.trim() || "Tsena Anatiny";
   const isDev = mode !== "production";
+  // Vrai dans le compose dev → le watcher Vite poll le systeme de fichiers.
+  // Necessaire quand la source est un bind mount Docker (Windows/macOS
+  // Docker Desktop), ou les evenements inotify ne circulent pas. Desactive
+  // hors Docker (VITE_USE_POLLING vide).
+  const usePolling = env.VITE_USE_POLLING === "true";
 
   return {
     plugins: [
@@ -137,6 +142,10 @@ export default defineConfig(({ mode }) => {
       // the LAN, same as the back-office. Without this Vite listens on
       // ::1 only and 192.168.x.x:5173 is refused.
       host: true,
+      // Polling : les changements .ts/.tsx sont detectes sans rebuild.
+      watch: usePolling
+        ? { usePolling: true, interval: 300, ignored: ["**/dist/**", "**/node_modules/**"] }
+        : undefined,
       proxy: {
         "/api": {
           target: proxyTarget,

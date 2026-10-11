@@ -26,6 +26,7 @@ import { useAddToCart, type CartLine } from "../hooks/useAddToCart";
 import { ProductDetailSkeleton } from "../components/Skeletons";
 import { ProductImage, isRealImage } from "../components/ProductImage";
 import { Page } from "../components/Page";
+import { RichText } from "../components/RichText";
 import { QuantityInput } from "../components/QuantityInput";
 import {
   formatAr,
@@ -362,9 +363,7 @@ export function ProductPage() {
                 <p className="mb-1.5 text-[11px] font-bold uppercase tracking-widest text-muted">
                   {t("common.description")}
                 </p>
-                <p className="whitespace-pre-line break-words text-sm leading-relaxed text-ink">
-                  {product.description}
-                </p>
+                <RichText html={product.description} />
               </div>
             )}
 

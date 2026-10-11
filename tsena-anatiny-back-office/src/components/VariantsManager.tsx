@@ -26,6 +26,11 @@ const variantStock = (node: ProductVariantNode): number => {
 interface VariantsManagerProps {
   productId: number;
   disabled?: boolean;
+  /**
+   * Prix d'achat du produit, utilise comme valeur par defaut des variantes
+   * racines (le produit est le "parent" de la variante racine).
+   */
+  fallbackUnitCost?: number;
 }
 
 const pricingInputClass = "w-full rounded-lg border border-border/60 bg-panel px-2.5 py-1.5 text-xs font-medium text-ink focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand/20";
@@ -34,6 +39,7 @@ function VariantRow({
   node,
   depth,
   disabled,
+  inheritedUnitCost,
   onEdit,
   onDelete,
   onSave,
@@ -48,13 +54,15 @@ function VariantRow({
   node: ProductVariantNode;
   depth: number;
   disabled?: boolean;
+  /** Prix d'achat herite du parent (variante parente) ou du produit. */
+  inheritedUnitCost?: number | null;
   onEdit: (variant: ProductVariantNode) => void;
   onDelete: (variant: ProductVariantNode) => void;
   onSave: (variantId: number, patch: UpdateVariantPayload) => Promise<void>;
   addingChildParentId: number | null;
   childForm: { name: string; quantity: string; unit_cost: string; selling_price: string; discount_price: string };
   onSetChildField: (field: string, value: string) => void;
-  onOpenChildForm: (parentId: number, parent: ProductVariantNode) => void;
+  onOpenChildForm: (parentId: number, parent: ProductVariantNode, defaultUnitCost: number | null) => void;
   onCreateChild: (parentId: number) => void;
   onCancelChild: () => void;
   creatingChild: boolean;
@@ -66,11 +74,15 @@ function VariantRow({
   const persistedDiscount = (node as ProductVariantNode & { discount_price?: number | null })
     .discount_price;
 
+  // Prix d'achat effectif : celui de la variante s'il existe, sinon celui
+  // herite du parent (variante parente) ou, a defaut, du produit.
+  const unitCostBaseline = node.unit_cost ?? inheritedUnitCost ?? null;
+
   const [quantityValue, setQuantityValue] = useState(
     node.quantity != null ? String(node.quantity) : "0"
   );
   const [unitCostValue, setUnitCostValue] = useState(
-    node.unit_cost != null ? String(node.unit_cost) : ""
+    unitCostBaseline != null ? String(unitCostBaseline) : ""
   );
   const [sellingPriceValue, setSellingPriceValue] = useState(
     node.selling_price != null ? String(node.selling_price) : ""
@@ -98,13 +110,13 @@ function VariantRow({
 
   const isDirty =
     (!hasChildren && quantityNumber !== (node.quantity ?? 0)) ||
-    unitCostNumber !== (node.unit_cost ?? null) ||
+    unitCostNumber !== unitCostBaseline ||
     sellingPriceNumber !== (node.selling_price ?? null) ||
     discountPriceNumber !== (persistedDiscount ?? null);
 
   const resetDraft = () => {
     setQuantityValue(node.quantity != null ? String(node.quantity) : "0");
-    setUnitCostValue(node.unit_cost != null ? String(node.unit_cost) : "");
+    setUnitCostValue(unitCostBaseline != null ? String(unitCostBaseline) : "");
     setSellingPriceValue(node.selling_price != null ? String(node.selling_price) : "");
     setDiscountPriceValue(persistedDiscount != null ? String(persistedDiscount) : "");
   };
@@ -117,7 +129,8 @@ function VariantRow({
     node.quantity,
     node.unit_cost,
     node.selling_price,
-    persistedDiscount
+    persistedDiscount,
+    inheritedUnitCost
   ]);
 
   const handleSave = async () => {
@@ -226,7 +239,7 @@ function VariantRow({
                   if (isAddingChildHere) {
                     onCancelChild();
                   } else {
-                    onOpenChildForm(node.id, node);
+                    onOpenChildForm(node.id, node, unitCostBaseline);
                   }
                 }}
                 className="rounded-lg p-1.5 text-muted hover:bg-brand/10 hover:text-brand"
@@ -420,6 +433,7 @@ function VariantRow({
               node={child}
               depth={depth + 1}
               disabled={disabled}
+              inheritedUnitCost={unitCostBaseline}
               onEdit={onEdit}
               onDelete={onDelete}
               onSave={onSave}
@@ -440,7 +454,8 @@ function VariantRow({
 
 export function VariantsManager({
   productId,
-  disabled
+  disabled,
+  fallbackUnitCost
 }: VariantsManagerProps) {
   const [variants, setVariants] = useState<ProductVariantNode[]>([]);
   const [loading, setLoading] = useState(true);
@@ -515,13 +530,17 @@ export function VariantsManager({
     setChildForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleOpenChildForm = (parentId: number, parent: ProductVariantNode) => {
+  const handleOpenChildForm = (
+    parentId: number,
+    parent: ProductVariantNode,
+    defaultUnitCost: number | null
+  ) => {
     setAddingChildParentId(parentId);
     const p = parent as ProductVariantNode & { discount_price?: number | null };
     setChildForm({
       name: "",
       quantity: "0",
-      unit_cost: parent.unit_cost != null ? String(parent.unit_cost) : "",
+      unit_cost: defaultUnitCost != null ? String(defaultUnitCost) : "",
       selling_price: parent.selling_price != null ? String(parent.selling_price) : "",
       discount_price: p.discount_price != null ? String(p.discount_price) : ""
     });
@@ -566,7 +585,11 @@ export function VariantsManager({
     setError(null);
     setNotice(null);
     try {
-      await productsService.createVariant(productId, { name, quantity: 0 });
+      await productsService.createVariant(productId, {
+        name,
+        quantity: 0,
+        unit_cost: fallbackUnitCost || undefined
+      });
       setNotice(`Variante « ${name} » créée`);
       setNewRootName("");
       setAddingRoot(false);
@@ -666,6 +689,7 @@ export function VariantsManager({
               node={node}
               depth={0}
               disabled={disabled}
+              inheritedUnitCost={fallbackUnitCost ?? null}
               onEdit={handleEdit}
               onDelete={handleDelete}
               onSave={handleSaveVariant}

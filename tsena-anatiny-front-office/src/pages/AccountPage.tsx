@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
-  Banknote,
   ChevronLeft,
   ChevronRight,
   LogOut,
@@ -194,9 +193,9 @@ export function AccountPage() {
 
   const orderTotal = (order: Order): number => getOrderTotal(order);
 
-  const totalSpent = allOrders
-    .filter((o) => o.status !== "cancelled")
-    .reduce((sum, o) => sum + orderTotal(o), 0);
+  // On montre un indicateur positif (commandes livrees) plutot que le total
+  // depense : un montant eleve peut decourager le client de continuer a acheter.
+  const deliveredCount = allOrders.filter((o) => o.status === "delivered").length;
 
   const inProgressCount = allOrders.filter(
     (o) => o.status === "confirmed" || o.status === "draft"
@@ -223,9 +222,9 @@ export function AccountPage() {
       className: "text-sky-600 bg-sky-100"
     },
     {
-      label: t("account.totalSpent"),
-      value: formatAr(totalSpent),
-      icon: Banknote,
+      label: t("account.delivered"),
+      value: String(deliveredCount),
+      icon: PackageCheck,
       className: "text-success bg-success/10",
       wide: true
     }

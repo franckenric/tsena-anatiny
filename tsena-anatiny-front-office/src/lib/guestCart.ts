@@ -26,6 +26,8 @@ export interface GuestCartLine {
   quantity: number;
   unit_cost: number;
   image: string | null;
+  /** Stock disponible connu, pour borner les +/- du panier (peut etre absent). */
+  max_qty?: number | null;
 }
 
 function read(): GuestCartLine[] {

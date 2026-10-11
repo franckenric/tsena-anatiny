@@ -35,6 +35,8 @@ import { Layout } from "../components/Layout";
 import { roundToNearestThousand } from "../lib/utils";
 import { computeEffectiveUnitCost } from "../lib/utils";
 import { resolveImageUrl } from "../lib/utils";
+import { cn } from "../lib/utils";
+import { useDialog } from "../contexts/DialogContext";
 import {
   Pencil,
   Plus,
@@ -44,7 +46,8 @@ import {
   ShoppingCart,
   Eye,
   FileUp,
-  AlertTriangle
+  AlertTriangle,
+  Wand2
 } from "lucide-react";
 
 const PHONE_FORMAT_REGEX = /^\+261\s\d{2}\s\d{2}\s\d{3}\s\d{2}$/;
@@ -403,7 +406,9 @@ function ProductCartForm({
         {/* Produit sélectionné */}
         <div className="rounded-2xl border border-border/60 bg-bg/30 px-4 py-3 flex items-center justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold text-ink">{product.name}</p>
+            <p className="text-sm font-semibold text-ink">
+                  <span className="break-words [overflow-wrap:anywhere]">{product.name}</span>
+                </p>
             <p className="text-xs text-muted">SKU: {product.sku}</p>
           </div>
           <div className="text-right">
@@ -1001,6 +1006,7 @@ function CustomerCartViewer({
 
 
 export function ProductsPage() {
+  const { confirm } = useDialog();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [lotExpenses, setLotExpenses] = useState<LotExpense[]>([]);
@@ -1015,6 +1021,8 @@ export function ProductsPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [total, setTotal] = useState(0);
+  const [estimatedMargin, setEstimatedMargin] = useState(25);
+  const [isApplyingPrices, setIsApplyingPrices] = useState(false);
 
   useEffect(() => {
     if (!notice) return;
@@ -1084,6 +1092,42 @@ export function ProductsPage() {
     },
     [stockMovements, lotExpenses]
   );
+
+  const getProductCost = useCallback(
+    (product: Product): number => {
+      const effective = getEffectiveUnitCost(product.id, null);
+      if (effective > 0) return effective;
+      return Number(product.cost_price ?? product.unit_cost ?? 0);
+    },
+    [getEffectiveUnitCost]
+  );
+
+  const getVariantCost = useCallback(
+    (product: Product, variant: ProductVariantItem): number => {
+      const effective = getEffectiveUnitCost(product.id, variant.id);
+      if (effective > 0) return effective;
+      return Number(variant.unit_cost ?? 0) || getProductCost(product);
+    },
+    [getEffectiveUnitCost, getProductCost]
+  );
+
+  const estimatedPriceForCost = (cost: number): number =>
+    cost > 0 ? roundToNearestThousand(cost * (1 + estimatedMargin / 100)) : 0;
+
+  const getLeafVariants = (product: Product): ProductVariantItem[] => {
+    const variants = product.variants ?? [];
+    return variants.filter(
+      (v) => !variants.some((other) => other.parent_id === v.id)
+    );
+  };
+
+  // Prix de vente final : le prix promo (prix payé par le client) sinon le prix de vente.
+  const getNetPrice = (product: Product): number => {
+    const selling = Number(product.selling_price ?? 0);
+    const discount = Number(product.discount_price ?? 0);
+    if (discount > 0 && (selling <= 0 || discount < selling)) return discount;
+    return selling;
+  };
   const loadProducts = useCallback(async () => {
     try {
       const res = await productsService.getProducts(page, pageSize);
@@ -1106,7 +1150,12 @@ export function ProductsPage() {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   const handleDelete = async (p: Product) => {
-    if (!confirm(`Supprimer « ${p.name} » ?`)) return;
+    const confirmed = await confirm(`Supprimer « ${p.name} » ?`, {
+      title: "Supprimer le produit",
+      confirmLabel: "Supprimer",
+      tone: "danger"
+    });
+    if (!confirmed) return;
     try {
       setIsFormLoading(true);
       await productsService.deleteProduct(p.id);
@@ -1191,31 +1240,126 @@ export function ProductsPage() {
 
   const getProductStock = (product: Product) => getProductTotalStock(product);
 
+  const totalEstimatedProfit = Math.round(
+    products.reduce((sum, p) => {
+      const cost = getProductCost(p);
+      if (cost <= 0) return sum;
+      return (
+        sum + (estimatedPriceForCost(cost) - cost) * getProductStock(p)
+      );
+    }, 0)
+  );
+
+  const totalNetProfit = Math.round(
+    products.reduce((sum, p) => {
+      const cost = getProductCost(p);
+      const price = getNetPrice(p);
+      if (cost <= 0 || price <= 0) return sum;
+      return sum + (price - cost) * getProductStock(p);
+    }, 0)
+  );
+
+  // Pourcentage du benefice net : benefice net / cout de revient des produits
+  // ayant un prix de vente (meme base que la marge du slider).
+  const totalNetCost = products.reduce((sum, p) => {
+    const cost = getProductCost(p);
+    const price = getNetPrice(p);
+    if (cost <= 0 || price <= 0) return sum;
+    return sum + cost * getProductStock(p);
+  }, 0);
+  const netMarginPercent =
+    totalNetCost > 0 ? Math.round((totalNetProfit / totalNetCost) * 100) : 0;
+
+  const handleApplyEstimatedPrices = async () => {
+    if (products.length === 0) return;
+    const targets = products.filter((p) => {
+      const leaves = getLeafVariants(p);
+      if (leaves.length > 0) {
+        return leaves.some((v) => getVariantCost(p, v) > 0);
+      }
+      return getProductCost(p) > 0;
+    });
+    if (targets.length === 0) {
+      setError(
+        "Aucun produit avec un coût d'achat à mettre à jour sur cette page."
+      );
+      return;
+    }
+    const confirmed = await confirm(
+      `Appliquer le PV estimé (marge ${estimatedMargin}%) comme prix de vente pour ${targets.length} produit(s) ?`,
+      {
+        title: "Appliquer le PV estimé",
+        confirmLabel: "Appliquer",
+        tone: "warning"
+      }
+    );
+    if (!confirmed) return;
+
+    setIsApplyingPrices(true);
+    setError(null);
+    try {
+      for (const p of targets) {
+        const leaves = getLeafVariants(p);
+        const productCost = getProductCost(p);
+        if (leaves.length > 0) {
+          for (const v of leaves) {
+            const cost = getVariantCost(p, v);
+            if (cost <= 0) continue;
+            await productsService.updateVariant(p.id, v.id, {
+              selling_price: estimatedPriceForCost(cost)
+            });
+          }
+          if (productCost > 0) {
+            await productsService.updateProduct(p.id, {
+              selling_price: estimatedPriceForCost(productCost)
+            });
+          }
+        } else if (productCost > 0) {
+          await productsService.updateProduct(p.id, {
+            selling_price: estimatedPriceForCost(productCost)
+          });
+        }
+      }
+      await loadProducts();
+      setNotice(
+        `PV estimé (marge ${estimatedMargin}%) appliqué à ${targets.length} produit(s).`
+      );
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Erreur lors de l'application des prix de vente"
+      );
+    } finally {
+      setIsApplyingPrices(false);
+    }
+  };
+
   const columns: Column<Product>[] = [
     {
       header: "Produit",
       accessor: "name",
       width: "25%",
       render: (name, row) => (
-        <div className="flex items-center gap-3">
+        <div className="flex min-w-0 items-center gap-3">
           {row.image ? (
             <img
               src={resolveImageUrl(row.image)}
               alt={name}
-              className="h-11 w-11 rounded-lg bg-border/30 p-0.5 object-contain"
+              className="h-11 w-11 shrink-0 rounded-lg bg-border/30 p-0.5 object-contain"
               loading="lazy"
               onError={(e) => {
                 (e.target as HTMLImageElement).style.display = "none";
               }}
             />
           ) : (
-            <div className="h-11 w-11 rounded-lg bg-border/30 flex items-center justify-center text-xs text-muted">
+            <div className="h-11 w-11 shrink-0 rounded-lg bg-border/30 flex items-center justify-center text-xs text-muted">
               —
             </div>
           )}
-          <div>
-            <p className="flex items-center gap-1.5 font-semibold text-ink">
-              <span className="truncate">{name}</span>
+          <div className="min-w-0">
+            <p className="flex min-w-0 items-center gap-1.5 font-semibold text-ink">
+              <span className="min-w-0 overflow-hidden break-words [overflow-wrap:anywhere]">{name}</span>
               {isProductDanger(row) && (
                 <span
                   title={getProductDangerReason(row) ?? undefined}
@@ -1261,6 +1405,72 @@ export function ProductsPage() {
           );
         }
         return v ? Number(v).toLocaleString("fr-FR") + " Ar" : "-";
+      }
+    },
+    {
+      header: "Cout revient",
+      accessor: "unit_cost",
+      width: "10%",
+      render: (_, row) => {
+        const cost = getProductCost(row);
+        return cost > 0
+          ? `${Math.round(cost).toLocaleString("fr-FR")} Ar`
+          : "-";
+      }
+    },
+    {
+      header: "PV estime",
+      accessor: "selling_price",
+      width: "10%",
+      render: (_, row) => {
+        const cost = getProductCost(row);
+        if (cost <= 0) return "-";
+        return (
+          <span className="font-semibold text-brand">
+            {estimatedPriceForCost(cost).toLocaleString("fr-FR")} Ar
+          </span>
+        );
+      }
+    },
+    {
+      header: "Benefice est.",
+      accessor: "selling_price",
+      width: "10%",
+      render: (_, row) => {
+        const cost = getProductCost(row);
+        if (cost <= 0) return "-";
+        const profit = Math.round(estimatedPriceForCost(cost) - cost);
+        return (
+          <span
+            className={cn(
+              "font-semibold",
+              profit >= 0 ? "text-success" : "text-warning"
+            )}
+          >
+            {profit.toLocaleString("fr-FR")} Ar
+          </span>
+        );
+      }
+    },
+    {
+      header: "Benefice net",
+      accessor: "selling_price",
+      width: "10%",
+      render: (_v, row) => {
+        const cost = getProductCost(row);
+        const price = getNetPrice(row);
+        if (cost <= 0 || price <= 0) return "-";
+        const profit = Math.round(price - cost);
+        return (
+          <span
+            className={cn(
+              "font-semibold",
+              profit >= 0 ? "text-success" : "text-warning"
+            )}
+          >
+            {profit.toLocaleString("fr-FR")} Ar
+          </span>
+        );
       }
     },
     {
@@ -1351,6 +1561,90 @@ export function ProductsPage() {
               </Button>
             </div>
           }
+          toolbar={
+            <div className="flex w-full flex-col gap-3 sm:w-auto">
+              <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto sm:flex-nowrap">
+                <span className="shrink-0 text-xs font-semibold text-muted">
+                  25%
+                </span>
+                <input
+                  type="range"
+                  min={25}
+                  max={500}
+                  step={25}
+                  value={estimatedMargin}
+                  onChange={(e) => setEstimatedMargin(Number(e.target.value))}
+                  className="min-w-32 flex-1 accent-brand sm:w-40 sm:flex-none"
+                />
+                <span className="shrink-0 text-xs font-semibold text-muted">
+                  500%
+                </span>
+                <span className="w-14 shrink-0 text-right text-sm font-bold text-brand">
+                  {estimatedMargin}%
+                </span>
+                <label
+                  className="flex shrink-0 items-center gap-2"
+                  title="Pourcentage du bénéfice net calculé sur les prix de vente appliqués"
+                >
+                  <span className="text-xs font-semibold uppercase tracking-wide text-muted">
+                    Marge nette
+                  </span>
+                  <input
+                    type="text"
+                    value={totalNetCost > 0 ? `${netMarginPercent}%` : "—"}
+                    disabled
+                    readOnly
+                    tabIndex={-1}
+                    aria-label="Pourcentage du bénéfice net"
+                    className={cn(
+                      "w-16 cursor-default rounded-lg border border-border/60 bg-bg/60 px-2 py-1 text-right text-sm font-bold disabled:opacity-100",
+                      totalNetCost === 0
+                        ? "text-muted"
+                        : netMarginPercent >= 0
+                          ? "text-success"
+                          : "text-warning"
+                    )}
+                  />
+                </label>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={handleApplyEstimatedPrices}
+                  isLoading={isApplyingPrices}
+                  disabled={isApplyingPrices || products.length === 0}
+                >
+                  <Wand2 className="mr-1.5 h-3.5 w-3.5" />
+                  Appliquer le PV estimé
+                </Button>
+              </div>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:justify-end">
+                <span className="text-muted">
+                  Bénéfice estimé (marge {estimatedMargin}%) :
+                </span>
+                <span
+                  className={cn(
+                    "font-bold",
+                    totalEstimatedProfit >= 0 ? "text-success" : "text-warning"
+                  )}
+                >
+                  {totalEstimatedProfit.toLocaleString("fr-FR")} Ar
+                </span>
+                <span className="text-border">·</span>
+                <span className="text-muted">
+                  Bénéfice net (prix appliqués) :
+                </span>
+                <span
+                  className={cn(
+                    "font-bold",
+                    totalNetProfit >= 0 ? "text-success" : "text-warning"
+                  )}
+                >
+                  {totalNetProfit.toLocaleString("fr-FR")} Ar
+                </span>
+              </div>
+            </div>
+          }
           columns={columns}
           data={products}
           isLoading={isLoading}
@@ -1363,6 +1657,11 @@ export function ProductsPage() {
                 prod.categorie ??
                 categories.find((c) => c.id === prod.category_id);
               const isActive = prod.status === "active";
+              const cost = getProductCost(prod);
+              const pvEstime = cost > 0 ? estimatedPriceForCost(cost) : 0;
+              const netPrice = getNetPrice(prod);
+              const netProfit =
+                cost > 0 && netPrice > 0 ? Math.round(netPrice - cost) : null;
               return (
                 <div className="flex flex-col">
                   <div className="relative -mx-4 -mt-4 mb-3 flex h-44 items-center justify-center overflow-hidden rounded-t-xl bg-gradient-to-br from-brand-soft/60 via-border/25 to-bg p-3">
@@ -1398,7 +1697,7 @@ export function ProductsPage() {
                     )}
                   </div>
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-ink">
+                    <p className="break-words text-sm font-semibold text-ink [overflow-wrap:anywhere]">
                       {prod.name}
                     </p>
                     <p className="mt-0.5 truncate text-xs text-muted">
@@ -1439,6 +1738,47 @@ export function ProductsPage() {
                             : "—"}
                         </p>
                       )}
+                    </div>
+                  </div>
+                  <div className="mt-3 grid grid-cols-3 gap-x-3 gap-y-2 border-t border-border/50 pt-3">
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+                        Coût revient
+                      </p>
+                      <p className="mt-0.5 text-sm font-bold text-ink">
+                        {cost > 0
+                          ? Math.round(cost).toLocaleString("fr-FR") + " Ar"
+                          : "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+                        PV estimé
+                      </p>
+                      <p className="mt-0.5 text-sm font-bold text-brand">
+                        {pvEstime > 0
+                          ? pvEstime.toLocaleString("fr-FR") + " Ar"
+                          : "—"}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+                        Bénéfice net
+                      </p>
+                      <p
+                        className={cn(
+                          "mt-0.5 text-sm font-bold",
+                          netProfit == null
+                            ? "text-muted"
+                            : netProfit < 0
+                              ? "text-warning"
+                              : "text-success"
+                        )}
+                      >
+                        {netProfit == null
+                          ? "—"
+                          : netProfit.toLocaleString("fr-FR") + " Ar"}
+                      </p>
                     </div>
                   </div>
                 </div>

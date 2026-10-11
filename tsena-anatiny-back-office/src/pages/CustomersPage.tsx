@@ -24,6 +24,7 @@ import { customersService } from "../services/customers.service";
 import { cartItemsService } from "../services/operations.service";
 import { productsService } from "../services/products.service";
 import { useAuth } from "../contexts/AuthContext";
+import { useDialog } from "../contexts/DialogContext";
 
 function CustomerCartViewer({
   customer,
@@ -242,6 +243,7 @@ export function CustomersPage() {
   const { user } = useAuth();
   const history = useHistory();
   const location = useLocation();
+  const { confirm } = useDialog();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isFormLoading, setIsFormLoading] = useState(false);
@@ -294,7 +296,12 @@ export function CustomersPage() {
   };
 
   const handleDelete = async (customer: Customer) => {
-    if (!confirm(`Supprimer le client ${customer.name} ?`)) return;
+    const confirmed = await confirm(`Supprimer le client ${customer.name} ?`, {
+      title: "Supprimer le client",
+      confirmLabel: "Supprimer",
+      tone: "danger"
+    });
+    if (!confirmed) return;
 
     try {
       setIsFormLoading(true);

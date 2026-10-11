@@ -1,4 +1,5 @@
 export { Input } from "./Input";
+export { RichTextEditor } from "./RichTextEditor";
 export { QuantityInput } from "./QuantityInput";
 export { Button } from "./Button";
 export { Select } from "./Select";

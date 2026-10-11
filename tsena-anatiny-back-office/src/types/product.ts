@@ -23,6 +23,7 @@ export interface Product {
   image?: string;
   unit?: string;
   selling_price?: number;
+  cost_price?: number | null;
   discount_price?: number | null;
   unit_cost?: number | null;
   low_stock_alert?: number;
@@ -56,6 +57,7 @@ export interface CreateProductPayload {
   description?: string;
   unit?: string;
   selling_price?: number;
+  cost_price?: number;
   discount_price?: number | null;
   low_stock_alert?: number;
   status?: ProductStatus;
@@ -70,6 +72,7 @@ export interface UpdateProductPayload {
   description?: string;
   unit?: string;
   selling_price?: number;
+  cost_price?: number;
   discount_price?: number | null;
   low_stock_alert?: number;
   status?: ProductStatus;

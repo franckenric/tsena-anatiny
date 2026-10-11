@@ -11,6 +11,11 @@ import {
 import { useAuth } from "./AuthContext";
 import { cartItemsService } from "../services/operations.service";
 import {
+  getProductTotalStock,
+  productsService,
+  variantEffectiveStock
+} from "../services/products.service";
+import {
   clearGuestCart,
   getGuestCart,
   getGuestCartCount,
@@ -50,9 +55,47 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setCount(next.reduce((sum, line) => sum + line.quantity, 0));
   }, []);
 
+  /**
+   * Rattache le stock disponible a chaque ligne du panier invite : les lignes
+   * stockees localement ne portent pas ce champ, il est re-resolu depuis le
+   * catalogue pour borner les +/- du modal panier.
+   */
+  const enrichWithStock = useCallback(
+    async (lines: GuestCartLine[]): Promise<GuestCartLine[]> => {
+      if (lines.length === 0) return lines;
+      try {
+        const res = await productsService.getProducts(1, 200);
+        const byId = new Map(res.items.map((p) => [p.id, p]));
+        return lines.map((line) => {
+          const product = byId.get(line.product_id);
+          if (!product) return line;
+          let available: number;
+          if (line.variant_id != null) {
+            const variant = (product.variants ?? []).find(
+              (v) => v.id === line.variant_id
+            );
+            if (!variant) return line;
+            available = variantEffectiveStock(product.variants ?? [], variant);
+          } else {
+            available = getProductTotalStock(product);
+          }
+          return { ...line, max_qty: available };
+        });
+      } catch {
+        // Catalogue indisponible : on garde les lignes sans borne, le serveur
+        // (checkout-guest) reste l'autorite sur le stock.
+        return lines;
+      }
+    },
+    []
+  );
+
   const refresh = useCallback(async () => {
     if (!customer) {
-      applyGuestCart();
+      const lines = getGuestCart();
+      const next = await enrichWithStock(lines);
+      setItems(next);
+      setCount(next.reduce((sum, line) => sum + line.quantity, 0));
       return;
     }
     try {
@@ -72,7 +115,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
           variant_name: item.variant?.name ?? null,
           quantity: Number(item.quantity || 0),
           unit_cost: Number(item.unit_cost || 0),
-          image: item.variant?.image ?? item.product?.image ?? null
+          image: item.variant?.image ?? item.product?.image ?? null,
+          max_qty: item.available_quantity ?? null
         }))
       );
       setCount(rows.reduce((sum, item) => sum + Number(item.quantity || 0), 0));
@@ -80,7 +124,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setItems([]);
       setCount(0);
     }
-  }, [customer, applyGuestCart]);
+  }, [customer, applyGuestCart, enrichWithStock]);
 
   const clear = useCallback(() => {
     if (customer) {

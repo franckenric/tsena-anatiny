@@ -188,6 +188,10 @@ export function CartPage() {
             const unitPrice = Number(item.unit_cost || 0);
             const imageUrl = resolveImageUrl(item.image ?? null);
             const busy = isUpdatingKey === key;
+            const maxQty =
+              typeof item.max_qty === "number" && item.max_qty > 0
+                ? item.max_qty
+                : undefined;
             return (
               <div
                 key={key}
@@ -229,6 +233,7 @@ export function CartPage() {
                     )
                   }
                   min={0}
+                  max={maxQty}
                   disabled={busy}
                 />
 

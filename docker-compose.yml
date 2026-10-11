@@ -4,6 +4,12 @@
 #   - back-office  : Vite (tsena-anatiny-back-office)    → http://localhost:5175
 #   - front-office : Vite (tsena-anatiny-front-office)   → http://localhost:5173
 #
+# Mode dev (par defaut) : la source est en bind mount et les processus se
+# relancent a chaud — PAS de rebuild d'image a chaque modif.
+#   - .py  → uvicorn --reload (via ENVIRONMENT=development) redemarre l'API
+#   - .ts/tsx → HMR Vite (watcher en polling, VITE_USE_POLLING=true)
+# Passez ENVIRONMENT=production / VITE_USE_POLLING=false pour desactiver.
+#
 # Utilisation :
 #   docker compose up -d --build
 #   docker compose logs -f          (suivre les logs des 3 services)
@@ -28,6 +34,9 @@ services:
       - PORT=${CONTAINER_PORT:-8081}
       # Nom du projet partage (Swagger, facture, emails). Valeur du .env racine.
       - PROJECT_NAME=${PROJECT_NAME:-Tsena Anatiny}
+      # Mode dev : prestart.py ajoute --reload a uvicorn. Comme la source est
+      # montee (./tsena-anaty-apis:/app), modifier un .py relance le process.
+      - ENVIRONMENT=${ENVIRONMENT:-development}
     extra_hosts:
       # Permet a l'API de joindre la base MySQL installee sur l'hote.
       - "host.docker.internal:host-gateway"
@@ -48,6 +57,9 @@ services:
       - VITE_API_PROXY_TARGET=http://api:${CONTAINER_PORT:-8081}
       # Nom du projet partage, injecte au runtime Vite (passe devant le .env).
       - VITE_PROJECT_NAME=${PROJECT_NAME:-Tsena Anatiny}
+      # Watcher Vite en polling : les modifs .ts/.tsx sont prises en compte sans
+      # rebuild d'image (bind mount Docker Windows/macOS).
+      - VITE_USE_POLLING=${VITE_USE_POLLING:-true}
     ports:
       - "${BACK_OFFICE_PORT:-5175}:5175"
     volumes:
@@ -67,6 +79,9 @@ services:
       - VITE_API_PROXY_TARGET=http://api:${CONTAINER_PORT:-8081}
       # Nom du projet partage, injecte au runtime Vite (passe devant le .env).
       - VITE_PROJECT_NAME=${PROJECT_NAME:-Tsena Anatiny}
+      # Watcher Vite en polling : les modifs .ts/.tsx sont prises en compte sans
+      # rebuild d'image (bind mount Docker Windows/macOS).
+      - VITE_USE_POLLING=${VITE_USE_POLLING:-true}
     ports:
       - "${FRONT_OFFICE_PORT:-5173}:5173"
     volumes:

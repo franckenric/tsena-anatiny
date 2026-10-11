@@ -74,9 +74,19 @@ export function CartDrawerProvider({ children }: { children: ReactNode }) {
   };
 
   const handleUpdateQuantity = async (
-    item: { id?: number; product_id: number; variant_id: number | null },
+    item: {
+      id?: number;
+      product_id: number;
+      variant_id: number | null;
+      max_qty?: number | null;
+    },
     quantity: number
   ) => {
+    // Borne superieure = stock disponible connu. Le serveur (PUT) refuse aussi
+    // toute quantite superieure au stock : le bouton est simplement inactif ici.
+    const maxQty =
+      typeof item.max_qty === "number" && item.max_qty > 0 ? item.max_qty : null;
+    if (maxQty != null) quantity = Math.min(quantity, maxQty);
     if (quantity < 1) return;
     try {
       if (isGuest) {
@@ -170,6 +180,11 @@ export function CartDrawerProvider({ children }: { children: ReactNode }) {
                     const unitPrice = Number(item.unit_cost || 0);
                     const imageUrl = resolveImageUrl(item.image ?? null);
                     const quantity = Number(item.quantity || 1);
+                    const maxQty =
+                      typeof item.max_qty === "number" && item.max_qty > 0
+                        ? item.max_qty
+                        : null;
+                    const atMax = maxQty != null && quantity >= maxQty;
                     return (
                       <li
                         key={`${item.product_id}-${item.variant_id ?? 0}-${index}`}
@@ -224,8 +239,9 @@ export function CartDrawerProvider({ children }: { children: ReactNode }) {
                                 onClick={() =>
                                   handleUpdateQuantity(item, quantity + 1)
                                 }
+                                disabled={atMax}
                                 aria-label={t("cart.increaseQty")}
-                                className="flex h-7 w-7 items-center justify-center rounded-lg text-muted transition hover:bg-brand/10 hover:text-brand"
+                                className="flex h-7 w-7 items-center justify-center rounded-lg text-muted transition hover:bg-brand/10 hover:text-brand disabled:pointer-events-none disabled:opacity-40"
                               >
                                 <Plus className="h-3.5 w-3.5" />
                               </button>
@@ -239,6 +255,11 @@ export function CartDrawerProvider({ children }: { children: ReactNode }) {
                               </p>
                             </div>
                           </div>
+                          {atMax && maxQty != null && (
+                            <p className="mt-1 text-[11px] font-medium text-success">
+                              {t("common.inStock", { count: maxQty })}
+                            </p>
+                          )}
                         </div>
                       </li>
                     );

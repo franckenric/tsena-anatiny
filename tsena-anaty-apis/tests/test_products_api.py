@@ -3,6 +3,7 @@
 # end #
 
 from fastapi import status
+from pathlib import Path
 from app import crud, schemas
 from datetime import datetime, timedelta, date, time
 import random
@@ -393,6 +394,44 @@ def test_delete_product_image(client, db):
 
     resp_l = client.get(f'/api/v1/products/{product["id"]}/images', headers=headers)
     assert resp_l.json()['count'] == 1
+
+
+def test_delete_product_removes_image_files(client, db):
+    """Supprimer un produit efface aussi ses images : lignes en BDD et fichiers."""
+    headers = _auth_headers(client, db, phone='IMG0003')
+
+    category = crud.categories.create(db, obj_in=schemas.CategoriesCreate(name='Images3'))
+    db.commit()
+
+    resp_c = client.post('/api/v1/products/', json={
+        'category_id': category.id,
+        'sku': 'IMG-SKU-3',
+        'name': 'Produit avec fichiers',
+        'image': '/No_Image_Available.jpg',
+    }, headers=headers)
+    assert resp_c.status_code == status.HTTP_200_OK, resp_c.text
+    product = resp_c.json()
+
+    files = [
+        ('images', ('a.png', b'\x89PNG\r\n\x1a\nfake-a', 'image/png')),
+        ('images', ('b.png', b'\x89PNG\r\n\x1a\nfake-b', 'image/png')),
+    ]
+    resp = client.post(f'/api/v1/products/{product["id"]}/images', files=files, headers=headers)
+    assert resp.status_code == status.HTTP_200_OK, resp.text
+    images = resp.json()
+    assert len(images) == 2
+
+    file_paths = [Path('files/products') / Path(img['image']).name for img in images]
+    assert all(p.exists() for p in file_paths)
+
+    resp_d = client.delete(f'/api/v1/products/{product["id"]}', headers=headers)
+    assert resp_d.status_code == status.HTTP_200_OK, resp_d.text
+    assert resp_d.json()['msg'] == 'Products deleted successfully'
+
+    # Plus aucune ligne dans la table product_images...
+    assert crud.product_images.get_multi_by_product(db=db, product_id=product['id']) == []
+    # ... et plus aucun fichier sur disque.
+    assert all(not p.exists() for p in file_paths)
 
 
 def test_upload_product_images_requires_auth(client, db):

@@ -15,6 +15,15 @@ export function categoryEmoji(name?: string): string {
   if (/pain|boulangerie/.test(n)) return "🥖";
   if (/caf[éè]|th[éè]/.test(n)) return "☕";
   if (/bio|miel|sant/.test(n)) return "🌱";
+  // Nouveau catalogue (non alimentaire)
+  if (/chaussure/.test(n)) return n.includes("femme") ? "👠" : "👟";
+  if (/v[êe]tement|t[- ]?shirt|chemise|pantalon/.test(n)) return "👕";
+  if (/voiture|auto/.test(n)) return "🚗";
+  if (/lamp/.test(n)) return "💡";
+  if (/housse|coque|t[ée]l[ée]phone|smartphone/.test(n)) return "📱";
+  if (/c[âa]ble|chargeur|charge/.test(n)) return "🔌";
+  if (/lecteur.?carte/.test(n)) return "💳";
+  if (/porte.?carte|portefeuille|porte.?monnaie/.test(n)) return "👛";
   return "🛒";
 }
 
@@ -34,5 +43,19 @@ export function categoryGradient(name?: string): string {
   if (/pain|boulangerie/.test(n)) return "from-amber-100 to-orange-200";
   if (/caf[éè]|th[éè]/.test(n)) return "from-stone-200 to-amber-200";
   if (/bio|miel|sant/.test(n)) return "from-emerald-100 to-green-200";
+  // Nouveau catalogue (non alimentaire)
+  if (/chaussure/.test(n))
+    return n.includes("femme")
+      ? "from-pink-100 to-rose-200"
+      : "from-indigo-100 to-blue-200";
+  if (/v[êe]tement|t[- ]?shirt|chemise|pantalon/.test(n))
+    return "from-sky-100 to-cyan-200";
+  if (/voiture|auto|lamp/.test(n)) return "from-slate-200 to-zinc-300";
+  if (/housse|coque|t[ée]l[ée]phone|smartphone/.test(n))
+    return "from-teal-100 to-emerald-200";
+  if (/c[âa]ble|chargeur|charge/.test(n)) return "from-violet-100 to-purple-200";
+  if (/lecteur.?carte/.test(n)) return "from-gray-100 to-zinc-200";
+  if (/porte.?carte|portefeuille|porte.?monnaie/.test(n))
+    return "from-orange-100 to-amber-200";
   return "from-brand-soft to-emerald-100";
 }

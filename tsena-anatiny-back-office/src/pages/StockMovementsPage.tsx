@@ -20,9 +20,11 @@ import {
   Plus,
   Trash2
 } from "lucide-react";
+import { useDialog } from "../contexts/DialogContext";
 
 export function StockMovementsPage() {
   const history = useHistory();
+  const { confirm } = useDialog();
   const [movements, setMovements] = useState<StockMovement[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -136,7 +138,12 @@ export function StockMovementsPage() {
   };
 
   const handleDelete = async (m: StockMovement) => {
-    if (!confirm("Supprimer ce mouvement ?")) return;
+    const confirmed = await confirm("Supprimer ce mouvement ?", {
+      title: "Supprimer le mouvement",
+      confirmLabel: "Supprimer",
+      tone: "danger"
+    });
+    if (!confirmed) return;
     try {
       setIsFormLoading(true);
       await stockMovementsService.deleteMovement(m.id);

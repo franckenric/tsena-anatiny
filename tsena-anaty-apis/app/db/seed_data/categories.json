@@ -1,0 +1,18 @@
+[
+  {
+    "name": "Chaussures",
+    "description": "Chaussures et sneakers pour homme et femme"
+  },
+  {
+    "name": "Vêtements",
+    "description": "T-shirts, chemises, pantalons et plus"
+  },
+  {
+    "name": "Téléphone & accessoires",
+    "description": "Housses, coques, câbles et chargeurs"
+  },
+  {
+    "name": "Voiture & accessoires",
+    "description": "Lampes LED, ampoules et accessoires auto"
+  }
+]

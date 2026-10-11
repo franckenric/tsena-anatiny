@@ -14,9 +14,11 @@ import {
 } from "../components/index";
 import { Pencil, Plus, TicketPercent, Trash2 } from "lucide-react";
 import { Layout } from "../components/Layout";
+import { useDialog } from "../contexts/DialogContext";
 
 export function PromoCodesPage() {
   const history = useHistory();
+  const { confirm } = useDialog();
   const [promoCodes, setPromoCodes] = useState<PromoCode[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isFormLoading, setIsFormLoading] = useState(false);
@@ -47,7 +49,12 @@ export function PromoCodesPage() {
   };
 
   const handleDelete = async (promo: PromoCode) => {
-    if (!confirm(`Supprimer le code « ${promo.code} » ?`)) return;
+    const confirmed = await confirm(`Supprimer le code « ${promo.code} » ?`, {
+      title: "Supprimer le code promo",
+      confirmLabel: "Supprimer",
+      tone: "danger"
+    });
+    if (!confirmed) return;
     try {
       setIsFormLoading(true);
       await promoCodesService.deletePromoCode(promo.id);

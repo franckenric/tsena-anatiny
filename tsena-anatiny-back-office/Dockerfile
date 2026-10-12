@@ -1,7 +1,7 @@
 # Image developpement du back-office Tsena Anatiny (serveur Vite)
 # La source est montee en bind mount par docker-compose, cette image fournit
 # les dependances (node_modules) via npm ci.
-FROM node:22-alpine
+FROM node:22-bookworm-slim
 
 WORKDIR /app
 

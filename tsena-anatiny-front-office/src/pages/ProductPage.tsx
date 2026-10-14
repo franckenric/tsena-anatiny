@@ -2,11 +2,19 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useHistory, useLocation, useParams } from "react-router-dom";
 import {
   ArrowLeft,
+  Banknote,
+  ChevronDown,
+  ChevronRight,
+  FileText,
   Loader2,
   PackageCheck,
   PackageX,
+  Search,
+  ShieldCheck,
   ShoppingBag,
-  Tags
+  Sparkles,
+  Tags,
+  Truck
 } from "lucide-react";
 import {
   productsService,
@@ -27,6 +35,7 @@ import { ProductDetailSkeleton } from "../components/Skeletons";
 import { ProductImage, isRealImage } from "../components/ProductImage";
 import { Page } from "../components/Page";
 import { RichText } from "../components/RichText";
+import { richTextDetailClassName } from "../lib/richText";
 import { QuantityInput } from "../components/QuantityInput";
 import {
   formatAr,
@@ -54,6 +63,8 @@ export function ProductPage() {
   const [selectedImage, setSelectedImage] = useState<string | undefined>(
     undefined
   );
+  const [variantQuery, setVariantQuery] = useState("");
+  const [descExpanded, setDescExpanded] = useState(false);
 
   usePageTitle(product?.name ?? t("nav.shop"));
 
@@ -70,6 +81,18 @@ export function ProductPage() {
     }
     return urls;
   }, [product]);
+
+  // Longueur du texte brut (HTML retire) : sert a proposer un repli quand la
+  // description est longue.
+  const descriptionLength = useMemo(
+    () =>
+      (product?.description ?? "")
+        .replace(/<[^>]*>/g, " ")
+        .replace(/\s+/g, " ")
+        .trim().length,
+    [product?.description]
+  );
+  const descriptionClampable = descriptionLength > 420;
 
   useEffect(() => {
     if (!product) return;
@@ -133,6 +156,7 @@ export function ProductPage() {
   }, [id, t]);
 
   useEffect(() => {
+    setVariantQuery("");
     if (product && hasVariants) {
       const leaves = selectableVariants(product);
       setLines(
@@ -260,52 +284,135 @@ export function ProductPage() {
     <Page>
       {backButton}
 
-      <div className="page-shell pb-8 pt-6 sm:pb-14">
-        <div className="grid gap-6 lg:grid-cols-[1fr_420px] lg:gap-10">
-          {/* ── Gallery ── */}
-          <div className="animate-fade-in lg:sticky lg:top-24 lg:self-start">
-            <ProductImage
-              src={selectedImage}
-              alt={product.name}
-              size="lg"
-              loading="eager"
-              className="rounded-3xl"
-            >
-              {hasDiscount && (
-                <span className="absolute right-4 top-4 inline-flex items-center rounded-full bg-accent px-3 py-1.5 text-xs font-extrabold uppercase tracking-wide text-white shadow-lg">
-                  -{discountPercent}%
-                </span>
-              )}
+      <div className="page-shell pb-10 pt-4 sm:pb-16 sm:pt-8">
+        {/* Fil d'Ariane */}
+        <nav
+          aria-label="Fil d'Ariane"
+          className="mb-4 flex items-center gap-1 text-[11px] text-muted/60 sm:mb-6 sm:text-xs"
+        >
+          <Link
+            to="/"
+            className="rounded-full px-1.5 py-0.5 font-medium transition hover:text-brand"
+          >
+            {t("nav.home")}
+          </Link>
+          <ChevronRight className="h-3 w-3 shrink-0 text-border" />
+          {product.categorie?.name && (
+            <>
+              <span className="max-w-[9rem] truncate">{product.categorie.name}</span>
+              <ChevronRight className="h-3 w-3 shrink-0 text-border" />
+            </>
+          )}
+          <span className="max-w-[12rem] truncate font-semibold text-ink/80">
+            {product.name}
+          </span>
+        </nav>
 
-              {galleryImages.length > 1 && selectedImage && (
-                <span className="absolute bottom-4 right-4 rounded-full bg-ink/50 px-3 py-1 text-[11px] font-semibold text-white backdrop-blur-md">
-                  {galleryImages.indexOf(selectedImage) + 1}/{galleryImages.length}
-                </span>
-              )}
-            </ProductImage>
+        <div className="grid gap-7 lg:grid-cols-[minmax(0,1fr)_minmax(360px,420px)] lg:items-stretch lg:gap-10 xl:gap-14">
+          {/* ── Gallery ── */}
+          <div className="animate-fade-in">
+            <div className="group relative isolate mx-auto w-full max-w-[34rem]">
+              <div
+                aria-hidden="true"
+                className="absolute -inset-4 -z-10 rounded-[2.75rem] bg-gradient-to-br from-brand-soft/60 via-transparent to-accent/10 opacity-80 blur-2xl"
+              />
+              <div className="relative overflow-hidden rounded-[2rem] border border-border/60 bg-panel p-2 shadow-card sm:p-3">
+                <ProductImage
+                  src={selectedImage}
+                  alt={product.name}
+                  size="card"
+                  fit="contain"
+                  loading="eager"
+                  className="rounded-[1.5rem]"
+                  imageClassName="p-2 sm:p-5 group-hover:scale-[1.06]"
+                >
+                  {hasDiscount && (
+                    <span className="absolute left-4 top-4 inline-flex items-center gap-1 rounded-full bg-accent px-3 py-1.5 text-xs font-extrabold uppercase tracking-wide text-white shadow-lg">
+                      <Sparkles className="h-3 w-3" />-{discountPercent}%
+                    </span>
+                  )}
+
+                  {galleryImages.length > 1 && selectedImage && (
+                    <span className="absolute right-4 top-4 rounded-full bg-ink/45 px-3 py-1 text-[11px] font-semibold text-white backdrop-blur-md">
+                      {galleryImages.indexOf(selectedImage) + 1}/{galleryImages.length}
+                    </span>
+                  )}
+                </ProductImage>
+              </div>
+            </div>
 
             {galleryImages.length > 1 && (
-              <div className="-mx-4 mt-3 flex gap-2 overflow-x-auto scrollbar-hide px-4 pb-1 sm:mx-0 sm:px-0">
-                {galleryImages.map((url) => (
+              <div className="-mx-4 mt-4 flex gap-3 overflow-x-auto scrollbar-hide px-4 pb-1 sm:mx-auto sm:max-w-[34rem] sm:px-0">
+                {galleryImages.map((url) => {
+                  const isActive = selectedImage === url;
+                  return (
+                    <button
+                      key={url}
+                      type="button"
+                      onClick={() => setSelectedImage(url)}
+                      aria-label={t("product.preview", { name: product.name })}
+                      aria-current={isActive}
+                      className={cn(
+                        "shrink-0 overflow-hidden rounded-2xl border-2 transition-all duration-200",
+                        isActive
+                          ? "border-brand shadow-md shadow-brand/20"
+                          : "border-transparent opacity-55 hover:opacity-100"
+                      )}
+                    >
+                      <img
+                        src={url}
+                        alt=""
+                        loading="lazy"
+                        decoding="async"
+                        className="h-16 w-16 object-cover sm:h-[72px] sm:w-[72px]"
+                      />
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* ── Description (sous les images) ── */}
+            {product.description?.trim() && (
+              <section className="mx-auto mt-6 w-full max-w-[34rem] rounded-2xl border border-border/60 bg-panel p-4 sm:mt-8 sm:p-5">
+                <div className="mb-3 flex items-center gap-2">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-soft text-brand">
+                    <FileText className="h-4 w-4" />
+                  </span>
+                  <h2 className="text-[11px] font-bold uppercase tracking-widest text-ink">
+                    {t("common.description")}
+                  </h2>
+                </div>
+                <div
+                  className={cn(
+                    "relative",
+                    descriptionClampable && !descExpanded && "max-h-48 overflow-hidden"
+                  )}
+                >
+                  <RichText
+                    html={product.description}
+                    className={richTextDetailClassName}
+                  />
+                  {descriptionClampable && !descExpanded && (
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-panel to-transparent" />
+                  )}
+                </div>
+                {descriptionClampable && (
                   <button
-                    key={url}
                     type="button"
-                    onClick={() => setSelectedImage(url)}
-                    className={cn(
-                      "shrink-0 transition-all duration-200",
-                      selectedImage === url
-                        ? "ring-2 ring-brand ring-offset-2 ring-offset-bg"
-                        : "opacity-50 hover:opacity-80"
-                    )}
+                    onClick={() => setDescExpanded((v) => !v)}
+                    className="mt-2.5 inline-flex items-center gap-1 text-xs font-bold text-brand transition hover:gap-1.5"
                   >
-                    <ProductImage
-                      src={url}
-                      alt={t("product.preview", { name: product.name })}
-                      size="thumb"
+                    {descExpanded ? t("product.readLess") : t("product.readMore")}
+                    <ChevronDown
+                      className={cn(
+                        "h-3.5 w-3.5 transition-transform duration-200",
+                        descExpanded && "rotate-180"
+                      )}
                     />
                   </button>
-                ))}
-              </div>
+                )}
+              </section>
             )}
           </div>
 
@@ -346,31 +453,31 @@ export function ProductPage() {
               {product.name}
             </h1>
 
-            {/* SKU */}
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted/50">
-              <span className="min-w-0 break-all">REF: {product.sku}</span>
+            {/* Meta : reference + unite */}
+            <div className="flex flex-wrap items-center gap-2 text-[11px]">
+              <span className="inline-flex items-center gap-1 rounded-lg bg-bg/70 px-2 py-1 font-medium text-muted/60">
+                REF
+                <span className="min-w-0 break-all font-semibold text-ink/70">
+                  {product.sku}
+                </span>
+              </span>
               {product.unit && (
-                <>
-                  <span className="text-border">·</span>
-                  <span>{product.unit}</span>
-                </>
+                <span className="inline-flex items-center gap-1 rounded-lg bg-bg/70 px-2 py-1 font-medium text-muted/60">
+                  {t("common.unit")}
+                  <span className="font-semibold text-ink/70">{product.unit}</span>
+                </span>
               )}
             </div>
 
-            {/* ── Description ── */}
-            {product.description?.trim() && (
-              <div className="rounded-2xl border border-border/60 bg-bg/30 p-4">
-                <p className="mb-1.5 text-[11px] font-bold uppercase tracking-widest text-muted">
-                  {t("common.description")}
-                </p>
-                <RichText html={product.description} />
-              </div>
-            )}
-
             {/* ── Price block ── */}
-            <div className="rounded-2xl border border-border/40 bg-bg/50 p-3.5 sm:p-4">
+            <div
+              className={cn(
+                "rounded-2xl border border-border/40 bg-bg/50 p-3.5 sm:p-4",
+                hasVariants && "flex min-h-0 flex-1 flex-col"
+              )}
+            >
               {hasVariants ? (
-                <div className="space-y-3">
+                <div className="flex min-h-0 flex-1 flex-col gap-3">
                   <div className="flex items-center justify-between">
                     <p className="text-[11px] font-bold uppercase tracking-widest text-muted/50">
                       {t("product.variants")}
@@ -394,8 +501,8 @@ export function ProductPage() {
                     )}
                   </div>
 
-                  {/* ── Root variant chips ── */}
-                  <div className="flex flex-wrap gap-2">
+                  {/* ── Root variant chips (defilement horizontal sur mobile) ── */}
+                  <div className="-mx-1 flex gap-2 overflow-x-auto scrollbar-hide px-1 pb-0.5 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
                     {variantTree.map((group) => {
                       const isActive = selectedRootId === group.root.id;
                       const rootStock = variantEffectiveStock(
@@ -417,7 +524,10 @@ export function ProductPage() {
                         <button
                           key={group.root.id}
                           type="button"
-                          onClick={() => setSelectedRootId(group.root.id)}
+                          onClick={() => {
+                            setSelectedRootId(group.root.id);
+                            setVariantQuery("");
+                          }}
                           disabled={rootSoldOut}
                           className={cn(
                             "relative rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-all duration-200",
@@ -450,9 +560,40 @@ export function ProductPage() {
                     const items = selectedGroup.children.length > 0
                       ? selectedGroup.children
                       : [selectedGroup.root];
+                    const showSearch = items.length > 6;
+                    const query = variantQuery.trim().toLowerCase();
+                    const filtered = query
+                      ? items.filter((v) =>
+                          (v.name || `#${v.id}`).toLowerCase().includes(query)
+                        )
+                      : items;
                     return (
-                      <div className="space-y-1.5">
-                        {items.map((variant) => {
+                      <div className="flex min-h-0 flex-1 flex-col gap-2.5">
+                        {showSearch && (
+                          <div className="relative">
+                            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted/40" />
+                            <input
+                              type="search"
+                              value={variantQuery}
+                              onChange={(e) => setVariantQuery(e.target.value)}
+                              placeholder={t("product.searchVariants")}
+                              className="w-full rounded-xl border border-border/60 bg-panel py-2 pl-9 pr-3 text-sm text-ink outline-none transition placeholder:text-muted/40 focus:border-brand focus:ring-2 focus:ring-brand/15"
+                            />
+                          </div>
+                        )}
+                        <div
+                          className={cn(
+                            "space-y-1.5",
+                            showSearch &&
+                              "min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1 max-h-[19rem] lg:max-h-[26rem]"
+                          )}
+                        >
+                        {filtered.length === 0 && (
+                          <p className="py-6 text-center text-xs text-muted/50">
+                            {t("product.noVariantsFound")}
+                          </p>
+                        )}
+                        {filtered.map((variant) => {
                           const line = lines.find(
                             (l) => l.variant.id === variant.id
                           );
@@ -538,6 +679,7 @@ export function ProductPage() {
                             </div>
                           );
                         })}
+                        </div>
                       </div>
                     );
                   })()}
@@ -612,6 +754,23 @@ export function ProductPage() {
               >
                 {t("product.buyNow")}
               </button>
+            </div>
+
+            {/* ── Reassurance ── */}
+            <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 rounded-2xl bg-bg/50 px-4 py-3">
+              {[
+                { icon: Truck, labelKey: "home.trust.fastDelivery" },
+                { icon: Banknote, labelKey: "home.trust.cod" },
+                { icon: ShieldCheck, labelKey: "home.trust.easyReturns" }
+              ].map(({ icon: Icon, labelKey }) => (
+                <span
+                  key={labelKey}
+                  className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-muted"
+                >
+                  <Icon className="h-3.5 w-3.5 text-brand" />
+                  {t(labelKey)}
+                </span>
+              ))}
             </div>
           </div>
         </div>

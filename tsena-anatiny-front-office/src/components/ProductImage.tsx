@@ -42,6 +42,8 @@ interface ProductImageProps {
   alt: string;
   size: ProductImageSize;
   loading?: "lazy" | "eager";
+  /** Recadrage du visuel : `cover` remplit le cadre, `contain` montre tout. */
+  fit?: "cover" | "contain";
   className?: string;
   imageClassName?: string;
   /** Decorations (badge, overlay) a superposer dans le cadre. */
@@ -61,6 +63,7 @@ export function ProductImage({
   alt,
   size,
   loading = "lazy",
+  fit = "cover",
   className,
   imageClassName,
   children,
@@ -80,7 +83,8 @@ export function ProductImage({
           loading={loading}
           decoding="async"
           className={cn(
-            "h-full w-full object-cover",
+            "h-full w-full",
+            fit === "contain" ? "object-contain" : "object-cover",
             size === "thumb" || size === "xs"
               ? ""
               : "transition-transform duration-500 ease-out",

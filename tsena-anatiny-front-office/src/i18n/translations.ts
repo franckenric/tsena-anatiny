@@ -141,6 +141,10 @@ export const dictionaries: Record<Language, Record<string, string>> = {
     "product.addFor": "Ajouter {name} au panier",
     "product.variantsCount": "{count} variante",
     "product.variantsCount_plural": "{count} variantes",
+    "product.searchVariants": "Rechercher une variante...",
+    "product.noVariantsFound": "Aucune variante trouvée",
+    "product.readMore": "Lire la suite",
+    "product.readLess": "Réduire",
 
     "cart.myCart": "Mon panier",
     "cart.empty": "Votre panier est vide",
@@ -466,6 +470,10 @@ export const dictionaries: Record<Language, Record<string, string>> = {
     "product.addFor": "Ampio {name} ao amin'ny harona",
     "product.variantsCount": "{count} karazana",
     "product.variantsCount_plural": "{count} karazana",
+    "product.searchVariants": "Karohy ny karazana...",
+    "product.noVariantsFound": "Tsy misy karazana hita",
+    "product.readMore": "Vakio bebe kokoa",
+    "product.readLess": "Ahena",
 
     "cart.myCart": "Ny haronako",
     "cart.empty": "Foana ny haronao",

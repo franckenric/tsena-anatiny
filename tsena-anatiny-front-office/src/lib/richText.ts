@@ -45,6 +45,16 @@ export const richTextClassName =
   "[&_blockquote]:my-2 [&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-3 [&_blockquote]:text-muted " +
   "[&_a]:font-medium [&_a]:text-brand [&_a]:underline";
 
+// Complement applique a la description de la page detail : puces colorees,
+// citations mises en valeur, liens accentues. Uniquement des proprietes
+// absentes de `richTextClassName` pour ne pas entrer en conflit Tailwind.
+export const richTextDetailClassName =
+  "[&_ul]:marker:text-brand/50 [&_ol]:marker:text-brand/50 " +
+  "[&_li]:pl-0.5 " +
+  "[&_h1]:text-ink [&_h2]:text-ink [&_h3]:text-ink " +
+  "[&_blockquote]:rounded-r-xl [&_blockquote]:bg-brand-soft/30 [&_blockquote]:not-italic " +
+  "[&_a]:decoration-brand/30 [&_a]:underline-offset-2 [&_a:hover]:text-brand/80";
+
 function looksLikeHtml(value: string): boolean {
   return /<\/?[a-z][\s\S]*>/i.test(value);
 }

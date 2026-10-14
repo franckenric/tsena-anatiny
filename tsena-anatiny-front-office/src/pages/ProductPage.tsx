@@ -284,7 +284,7 @@ export function ProductPage() {
     <Page>
       {backButton}
 
-      <div className="page-shell pb-10 pt-4 sm:pb-16 sm:pt-8">
+      <div className="page-shell pb-20 pt-4 sm:pb-16 sm:pt-8">
         {/* Fil d'Ariane */}
         <nav
           aria-label="Fil d'Ariane"
@@ -310,11 +310,11 @@ export function ProductPage() {
 
         <div className="grid gap-7 lg:grid-cols-[minmax(0,1fr)_minmax(360px,420px)] lg:items-stretch lg:gap-10 xl:gap-14">
           {/* ── Gallery ── */}
-          <div className="animate-fade-in">
+          <div className="animate-fade-in min-w-0 lg:col-start-1 lg:row-start-1">
             <div className="group relative isolate mx-auto w-full max-w-[34rem]">
               <div
                 aria-hidden="true"
-                className="absolute -inset-4 -z-10 rounded-[2.75rem] bg-gradient-to-br from-brand-soft/60 via-transparent to-accent/10 opacity-80 blur-2xl"
+                className="absolute -inset-4 -z-10 hidden rounded-[2.75rem] bg-gradient-to-br from-brand-soft/60 via-transparent to-accent/10 opacity-80 blur-2xl sm:block"
               />
               <div className="relative overflow-hidden rounded-[2rem] border border-border/60 bg-panel p-2 shadow-card sm:p-3">
                 <ProductImage
@@ -372,52 +372,10 @@ export function ProductPage() {
               </div>
             )}
 
-            {/* ── Description (sous les images) ── */}
-            {product.description?.trim() && (
-              <section className="mx-auto mt-6 w-full max-w-[34rem] rounded-2xl border border-border/60 bg-panel p-4 sm:mt-8 sm:p-5">
-                <div className="mb-3 flex items-center gap-2">
-                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-soft text-brand">
-                    <FileText className="h-4 w-4" />
-                  </span>
-                  <h2 className="text-[11px] font-bold uppercase tracking-widest text-ink">
-                    {t("common.description")}
-                  </h2>
-                </div>
-                <div
-                  className={cn(
-                    "relative",
-                    descriptionClampable && !descExpanded && "max-h-48 overflow-hidden"
-                  )}
-                >
-                  <RichText
-                    html={product.description}
-                    className={richTextDetailClassName}
-                  />
-                  {descriptionClampable && !descExpanded && (
-                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-panel to-transparent" />
-                  )}
-                </div>
-                {descriptionClampable && (
-                  <button
-                    type="button"
-                    onClick={() => setDescExpanded((v) => !v)}
-                    className="mt-2.5 inline-flex items-center gap-1 text-xs font-bold text-brand transition hover:gap-1.5"
-                  >
-                    {descExpanded ? t("product.readLess") : t("product.readMore")}
-                    <ChevronDown
-                      className={cn(
-                        "h-3.5 w-3.5 transition-transform duration-200",
-                        descExpanded && "rotate-180"
-                      )}
-                    />
-                  </button>
-                )}
-              </section>
-            )}
           </div>
 
           {/* ── Info ── */}
-          <div className="flex flex-col gap-5">
+          <div className="flex min-w-0 flex-col gap-5 lg:col-start-2 lg:row-start-1 lg:row-end-3">
             {/* Top row: category + stock */}
             <div className="flex flex-wrap items-center gap-2">
               {product.categorie?.name && (
@@ -773,6 +731,49 @@ export function ProductPage() {
               ))}
             </div>
           </div>
+
+          {/* ── Description (sous les images sur desktop, apres les infos sur mobile) ── */}
+          {product.description?.trim() && (
+            <section className="mx-auto w-full min-w-0 max-w-[34rem] rounded-2xl border border-border/60 bg-panel p-4 sm:p-5 lg:col-start-1 lg:row-start-2">
+              <div className="mb-3 flex items-center gap-2">
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-soft text-brand">
+                  <FileText className="h-4 w-4" />
+                </span>
+                <h2 className="text-[11px] font-bold uppercase tracking-widest text-ink">
+                  {t("common.description")}
+                </h2>
+              </div>
+              <div
+                className={cn(
+                  "relative",
+                  descriptionClampable && !descExpanded && "max-h-48 overflow-hidden"
+                )}
+              >
+                <RichText
+                  html={product.description}
+                  className={richTextDetailClassName}
+                />
+                {descriptionClampable && !descExpanded && (
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-panel to-transparent" />
+                )}
+              </div>
+              {descriptionClampable && (
+                <button
+                  type="button"
+                  onClick={() => setDescExpanded((v) => !v)}
+                  className="mt-2.5 inline-flex items-center gap-1 text-xs font-bold text-brand transition hover:gap-1.5"
+                >
+                  {descExpanded ? t("product.readLess") : t("product.readMore")}
+                  <ChevronDown
+                    className={cn(
+                      "h-3.5 w-3.5 transition-transform duration-200",
+                      descExpanded && "rotate-180"
+                    )}
+                  />
+                </button>
+              )}
+            </section>
+          )}
         </div>
       </div>
 

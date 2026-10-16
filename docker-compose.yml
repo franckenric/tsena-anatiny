@@ -37,6 +37,9 @@ services:
       # Mode dev : prestart.py ajoute --reload a uvicorn. Comme la source est
       # montee (./tsena-anaty-apis:/app), modifier un .py relance le process.
       - ENVIRONMENT=${ENVIRONMENT:-development}
+    networks:
+      - default
+      - web_network
     ports:
       - "${HOST_PORT:-8081}:${CONTAINER_PORT:-8081}"
     volumes:
@@ -95,3 +98,8 @@ services:
 volumes:
   back_office_node_modules:
   front_office_node_modules:
+
+networks:
+  web_network:
+    external: true
+    name: web_network

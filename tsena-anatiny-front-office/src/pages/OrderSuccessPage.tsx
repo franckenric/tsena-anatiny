@@ -9,7 +9,7 @@ import { PageLoader } from "../components/Spinner";
 import { StatusBadge } from "../components/StatusBadge";
 import { Page } from "../components/Page";
 import { ProductImage } from "../components/ProductImage";
-import { formatAr, formatDate, resolveImageUrl } from "../lib/utils";
+import { formatAr, formatDate, resolveImageUrl, toThumbUrl } from "../lib/utils";
 import {
   getOrderLineItems,
   getOrderOtherPriceReason,
@@ -183,7 +183,7 @@ export function OrderSuccessPage() {
             >
               <div className="flex min-w-0 items-center gap-3">
                 <ProductImage
-                  src={resolveImageUrl(item.image ?? null)}
+                  src={toThumbUrl(resolveImageUrl(item.image ?? null))}
                   alt={item.product_name}
                   size="thumb"
                   className="border border-border/60"

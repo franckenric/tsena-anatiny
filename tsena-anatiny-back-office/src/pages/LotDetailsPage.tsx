@@ -39,6 +39,7 @@ import { Modal } from "../components/Modal";
     Wand2
   } from "lucide-react";
   import { roundToNearestThousand, resolveImageUrl } from "../lib/utils";
+  import { toThumbUrl } from "../lib/utils";
   import { cn } from "../lib/utils";
   import { useDialog } from "../contexts/DialogContext";
 
@@ -580,7 +581,7 @@ export function LotDetailsPage() {
           <div className="flex items-center gap-3">
             {productImage ? (
               <img
-                src={resolveImageUrl(productImage)}
+                src={toThumbUrl(resolveImageUrl(productImage))}
                 alt={productName}
                 className="h-9 w-9 shrink-0 rounded-lg border border-border/60 bg-bg object-cover"
                 loading="lazy"
@@ -1113,7 +1114,7 @@ export function LotDetailsPage() {
                     <div className="flex items-start gap-3">
                       {productImage ? (
                         <img
-                          src={resolveImageUrl(productImage)}
+                          src={toThumbUrl(resolveImageUrl(productImage))}
                           alt={productName}
                           className="h-12 w-12 shrink-0 rounded-xl border border-border/60 bg-bg object-cover shadow-sm"
                           loading="lazy"

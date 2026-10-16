@@ -27,7 +27,7 @@ services:
       context: ./tsena-anaty-apis
       dockerfile: Dockerfile
     env_file:
-      - ./tsena-anaty-apis/.env
+      - ./.env
     environment:
       # Le port Uvicorn ecoute dans le conteneur est aligne sur le port publie
       # (prestart.py lit la variable PORT).
@@ -37,9 +37,6 @@ services:
       # Mode dev : prestart.py ajoute --reload a uvicorn. Comme la source est
       # montee (./tsena-anaty-apis:/app), modifier un .py relance le process.
       - ENVIRONMENT=${ENVIRONMENT:-development}
-    extra_hosts:
-      # Permet a l'API de joindre la base MySQL installee sur l'hote.
-      - "host.docker.internal:host-gateway"
     ports:
       - "${HOST_PORT:-8081}:${CONTAINER_PORT:-8081}"
     volumes:
@@ -51,6 +48,8 @@ services:
     build:
       context: ./tsena-anatiny-back-office
       dockerfile: Dockerfile
+    env_file:
+      - ./.env
     environment:
       # Le proxy Vite du back-office cible l'API par le nom de service Docker
       # (les variables d'env du conteneur ecrasent celles du fichier .env).
@@ -75,6 +74,8 @@ services:
     build:
       context: ./tsena-anatiny-front-office
       dockerfile: Dockerfile
+    env_file:
+      - ./.env
     environment:
       - VITE_API_PROXY_TARGET=http://api:${CONTAINER_PORT:-8081}
       # Nom du projet partage, injecte au runtime Vite (passe devant le .env).

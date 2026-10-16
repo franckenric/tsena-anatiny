@@ -41,7 +41,8 @@ import {
   cn,
   formatAr,
   getRecentProductIds,
-  resolveImageUrl
+  resolveImageUrl,
+  toThumbUrl
 } from "../lib/utils";
 import { useI18n } from "../contexts/I18nContext";
 import { usePageTitle } from "../contexts/PageTitleContext";
@@ -106,7 +107,7 @@ function GreetingHero({
     setText(search);
   }, [search]);
 
-  const image = featured ? resolveImageUrl(featured.image) : null;
+  const image = featured ? toThumbUrl(resolveImageUrl(featured.image)) : null;
   const price = featured ? getProductDisplayPrice(featured) : 0;
 
   const handleSearch = (e: FormEvent) => {

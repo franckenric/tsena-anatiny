@@ -22,7 +22,7 @@ import { useCart } from "./CartContext";
 import { useI18n } from "../contexts/I18nContext";
 import { cartItemsService } from "../services/operations.service";
 import { ProductImage } from "../components/ProductImage";
-import { formatAr, resolveImageUrl } from "../lib/utils";
+import { formatAr, resolveImageUrl, toThumbUrl } from "../lib/utils";
 import { removeFromGuestCart, updateGuestCartQuantity } from "../lib/guestCart";
 
 interface CartDrawerContextValue {
@@ -178,7 +178,7 @@ export function CartDrawerProvider({ children }: { children: ReactNode }) {
                   {items.map((item, index) => {
                     const name = item.product_name;
                     const unitPrice = Number(item.unit_cost || 0);
-                    const imageUrl = resolveImageUrl(item.image ?? null);
+                    const imageUrl = toThumbUrl(resolveImageUrl(item.image ?? null));
                     const quantity = Number(item.quantity || 1);
                     const maxQty =
                       typeof item.max_qty === "number" && item.max_qty > 0

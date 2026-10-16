@@ -35,6 +35,7 @@ import { Layout } from "../components/Layout";
 import { roundToNearestThousand } from "../lib/utils";
 import { computeEffectiveUnitCost } from "../lib/utils";
 import { resolveImageUrl } from "../lib/utils";
+import { toThumbUrl } from "../lib/utils";
 import { cn } from "../lib/utils";
 import { useDialog } from "../contexts/DialogContext";
 import {
@@ -1344,7 +1345,7 @@ export function ProductsPage() {
         <div className="flex min-w-0 items-center gap-3">
           {row.image ? (
             <img
-              src={resolveImageUrl(row.image)}
+              src={toThumbUrl(resolveImageUrl(row.image))}
               alt={name}
               className="h-11 w-11 shrink-0 rounded-lg bg-border/30 p-0.5 object-contain"
               loading="lazy"
@@ -1667,7 +1668,7 @@ export function ProductsPage() {
                   <div className="relative -mx-4 -mt-4 mb-3 flex h-44 items-center justify-center overflow-hidden rounded-t-xl bg-gradient-to-br from-brand-soft/60 via-border/25 to-bg p-3">
                     {prod.image ? (
                       <img
-                        src={resolveImageUrl(prod.image)}
+                        src={toThumbUrl(resolveImageUrl(prod.image))}
                         alt={prod.name}
                         className="h-full w-full object-contain drop-shadow-sm"
                         loading="lazy"

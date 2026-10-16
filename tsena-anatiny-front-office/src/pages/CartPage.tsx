@@ -14,7 +14,7 @@ import { PageLoader } from "../components/Spinner";
 import { Page } from "../components/Page";
 import { QuantityInput } from "../components/QuantityInput";
 import { ProductImage } from "../components/ProductImage";
-import { formatAr, resolveImageUrl } from "../lib/utils";
+import { formatAr, resolveImageUrl, toThumbUrl } from "../lib/utils";
 import {
   computeDiscountAmount,
   getAppliedPromo,
@@ -186,7 +186,7 @@ export function CartPage() {
           {items.map((item, index) => {
             const key = `${item.product_id}-${item.variant_id ?? 0}-${index}`;
             const unitPrice = Number(item.unit_cost || 0);
-            const imageUrl = resolveImageUrl(item.image ?? null);
+            const imageUrl = toThumbUrl(resolveImageUrl(item.image ?? null));
             const busy = isUpdatingKey === key;
             const maxQty =
               typeof item.max_qty === "number" && item.max_qty > 0

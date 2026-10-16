@@ -2,6 +2,7 @@
 uvicorn==0.29
 fastapi==0.111.0
 fpdf2==2.7.8
+pillow==10.4.0
 python-dotenv==1.0.1
 tenacity==8.3.0
 pydantic[email]==2.7.1

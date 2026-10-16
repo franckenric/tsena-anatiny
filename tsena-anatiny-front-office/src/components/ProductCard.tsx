@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useHistory } from "react-router-dom";
 import { Plus } from "lucide-react";
 import type { Product } from "../types/product";
-import { formatAr, resolveImageUrl } from "../lib/utils";
+import { formatAr, resolveImageUrl, toThumbUrl } from "../lib/utils";
 import { ProductImage } from "./ProductImage";
 import {
   getProductTotalStock,
@@ -51,7 +51,7 @@ export function ProductCard({ product }: { product: Product }) {
     >
       {/* Image */}
       <ProductImage
-        src={resolveImageUrl(product.image)}
+        src={toThumbUrl(resolveImageUrl(product.image))}
         alt={product.name}
         size="card"
         imageClassName="group-hover:scale-110"

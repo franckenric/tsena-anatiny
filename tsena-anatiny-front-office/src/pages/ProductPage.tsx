@@ -41,6 +41,7 @@ import {
   formatAr,
   addRecentProductId,
   resolveImageUrl,
+  toThumbUrl,
   cn
 } from "../lib/utils";
 
@@ -360,7 +361,7 @@ export function ProductPage() {
                       )}
                     >
                       <img
-                        src={url}
+                        src={toThumbUrl(url) ?? url}
                         alt=""
                         loading="lazy"
                         decoding="async"

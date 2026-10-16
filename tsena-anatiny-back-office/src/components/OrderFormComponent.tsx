@@ -17,7 +17,7 @@ import { cartItemsService } from "../services/operations.service";
 import { customersService } from "../services/customers.service";
 import { Button, Input, Select } from "./index";
 import { PROJECT_NAME } from "../lib/projectName";
-import { resolveImageUrl } from "../lib/utils";
+import { resolveImageUrl, toThumbUrl } from "../lib/utils";
 
 export const STATUS_LABELS: Record<OrderStatus, string> = {
   draft: "En cours",
@@ -763,7 +763,7 @@ export function OrderForm({
                     <div className="flex items-start gap-3">
                       {item.image ? (
                         <img
-                          src={resolveImageUrl(item.image)}
+                          src={toThumbUrl(resolveImageUrl(item.image))}
                           alt={item.product_name}
                           className="h-11 w-11 shrink-0 rounded-lg border border-border/60 object-cover"
                         />

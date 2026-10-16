@@ -50,6 +50,52 @@ def run_tests() -> None:
     print("[prestart] Tests passed!")
 
 
+def backfill_thumbnails() -> None:
+    """Genere les vignettes manquantes des images produit deja presentes.
+
+    Idempotent et peu couteux (simple scan du dossier, generation uniquement
+    des fichiers absents). Toute erreur est ignoree pour ne jamais bloquer le
+    demarrage : c'est un filet de securite pour les images importees avant la
+    mise en place des vignettes (`app/image_utils.py`).
+    """
+    try:
+        from app.image_utils import (
+            THUMBNAIL_QUALITY,
+            THUMBNAIL_SIZE,
+            _to_jpeg_bytes,
+        )
+        from PIL import Image
+    except Exception as exc:  # noqa: BLE001
+        print(f"[prestart] Vignettes ignorees (Pillow indisponible) : {exc}")
+        return
+
+    products_dir = Path("files/products")
+    if not products_dir.is_dir():
+        return
+
+    extensions = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp"}
+    created = 0
+    for original in products_dir.iterdir():
+        if not original.is_file() or original.name.startswith("thumb_"):
+            continue
+        if original.suffix.lower() not in extensions:
+            continue
+        thumb = products_dir / f"thumb_{original.stem}.jpg"
+        if thumb.exists():
+            continue
+        try:
+            with Image.open(original) as image:
+                image.load()
+                thumb.write_bytes(
+                    _to_jpeg_bytes(image, THUMBNAIL_SIZE, THUMBNAIL_QUALITY)
+                )
+            created += 1
+        except Exception as exc:  # noqa: BLE001
+            print(f"[prestart] Vignette ignoree pour {original.name} : {exc}")
+    if created:
+        print(f"[prestart] {created} vignette(s) generee(s).")
+
+
 def main() -> None:
     root = Path(__file__).resolve().parent
     os.chdir(root)
@@ -69,6 +115,7 @@ def main() -> None:
     run_command([sys.executable, str(root / "backend_pre_start.py")], "Initializing service")
     run_command(["alembic", "upgrade", "head"], "Running migrations")
     run_command([sys.executable, str(root / "initial_data.py")], "Loading initial data")
+    backfill_thumbnails()
 
     uvicorn_cmd = [
         sys.executable, "-m", "uvicorn", 

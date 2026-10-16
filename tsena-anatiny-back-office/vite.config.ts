@@ -1,9 +1,12 @@
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
+import { fileURLToPath, URL } from "node:url";
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), "");
+  // Les 3 projets partagent un seul .env a la racine du depot.
+  const repoRoot = fileURLToPath(new URL("..", import.meta.url));
+  const env = loadEnv(mode, repoRoot, "");
   const proxyTarget = env.VITE_API_PROXY_TARGET || "http://localhost:8080";
   // Vrai dans le compose dev → le watcher Vite poll le systeme de fichiers.
   // Necessaire quand la source est un bind mount Docker (Windows/macOS
@@ -12,6 +15,8 @@ export default defineConfig(({ mode }) => {
   const usePolling = env.VITE_USE_POLLING === "true";
 
   return {
+    // Charge .env depuis la racine du depot (fichier unique partage).
+    envDir: repoRoot,
     plugins: [react()],
     server: {
       // Bind to 0.0.0.0 so the dev server is reachable from the phone/emulator

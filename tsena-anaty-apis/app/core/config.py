@@ -6,7 +6,23 @@ from dotenv import load_dotenv
 from pydantic import AnyHttpUrl, EmailStr, HttpUrl, field_validator
 from pydantic_settings import BaseSettings
 
-load_dotenv()
+
+def _load_shared_env() -> None:
+    """Charge le .env commun a la racine du depot.
+
+    Un seul fichier .env est partage par l'API et les deux fronts. On remonte
+    depuis ce fichier jusqu'au premier .env trouve : en local il s'agit de
+    <racine>/.env. Dans Docker, la source est montee sous /app et les variables
+    sont deja injectees par docker-compose, donc rien n'est trouve (no-op).
+    """
+    for parent in Path(__file__).resolve().parents:
+        candidate = parent / ".env"
+        if candidate.is_file():
+            load_dotenv(candidate)
+            return
+
+
+_load_shared_env()
 
 
 class Settings(BaseSettings):

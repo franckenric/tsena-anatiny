@@ -5,7 +5,9 @@ import { fileURLToPath, URL } from "node:url";
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), "");
+  // Les 3 projets partagent un seul .env a la racine du depot.
+  const repoRoot = fileURLToPath(new URL("..", import.meta.url));
+  const env = loadEnv(mode, repoRoot, "");
   const proxyTarget = env.VITE_API_PROXY_TARGET || "http://localhost:8080";
   const projectName = env.VITE_PROJECT_NAME?.trim() || "Tsena Anatiny";
   const isDev = mode !== "production";
@@ -16,6 +18,8 @@ export default defineConfig(({ mode }) => {
   const usePolling = env.VITE_USE_POLLING === "true";
 
   return {
+    // Charge .env depuis la racine du depot (fichier unique partage).
+    envDir: repoRoot,
     plugins: [
       react(),
       VitePWA({

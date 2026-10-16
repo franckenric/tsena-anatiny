@@ -12,7 +12,7 @@ import { categoriesService } from "../services/categories.service";
 import { lotsService, stockService } from "../services/operations.service";
 import { Layout, Button, Input, Select, QuantityInput, RichTextEditor } from "../components/index";
 import { VariantsManager } from "../components/index";
-import { resolveImageUrl } from "../lib/utils";
+import { resolveImageUrl, toThumbUrl } from "../lib/utils";
 import { useDialog } from "../contexts/DialogContext";
 import {
   Package,
@@ -765,7 +765,7 @@ export function ProductEditPage() {
                               }`}
                             >
                               <img
-                                src={resolveImageUrl(img.image)}
+                                src={toThumbUrl(resolveImageUrl(img.image))}
                                 alt={`Image produit ${img.position ?? ""}`}
                                 className={`aspect-square w-full object-cover transition ${
                                   galleryBusyId === img.id ? "opacity-50" : ""

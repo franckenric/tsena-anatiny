@@ -102,6 +102,29 @@ export function resolveImageUrl(
   return API_ORIGIN ? `${API_ORIGIN}${path}` : path;
 }
 
+/**
+ * Construit l'URL de la vignette d'une image produit servie par l'API.
+ *
+ * L'API genere a l'upload une vignette JPG legere nommee `thumb_<stem>.jpg`
+ * a cote de l'original `<stem>.jpg`. Ce helper remplace le nom de fichier
+ * sans toucher au reste de l'URL (origine API eventuelle, query string).
+ * Les URLs deja en vignette, les placeholders et les previsualisations
+ * `data:`/`blob:` sont renvoyes tels quels.
+ */
+export function toThumbUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+  if (trimmed.startsWith("data:") || trimmed.startsWith("blob:")) return trimmed;
+
+  const match = trimmed.match(/^(.*\/files\/products\/)([^/?#]+)(.*)$/);
+  if (!match) return trimmed;
+  const [, prefix, filename, suffix] = match;
+  if (filename.startsWith("thumb_")) return trimmed;
+  const base = filename.replace(/\.[^.]+$/, "");
+  return `${prefix}thumb_${base}.jpg${suffix}`;
+}
+
 const RECENT_KEY = "fo.recent.products";
 const RECENT_LIMIT = 12;
 

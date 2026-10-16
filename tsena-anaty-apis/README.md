@@ -65,7 +65,7 @@ pip install -r requirements.txt
 
 SQLite is a file-based database. The database file is automatically created in the project directory.
 
-**In .env:**
+**In the shared `.env` (repository root):**
 ```
 SQLITE_DATABASE='project_name.db'
 ```
@@ -75,7 +75,7 @@ SQLite is ideal for development and testing. For production, consider upgrading 
 
 ### Run Migrations
 
-After configuring the database connection in `.env`, apply pending migrations:
+After configuring the database connection in the shared `.env` (repository root), apply pending migrations:
 
 ```bash
 alembic upgrade head
@@ -142,11 +142,13 @@ TsenaAnaty/
 │   └── dependencies.py      # Shared dependencies (auth, DB session, etc.)
 ├── tests/                    # Test files
 ├── main.py                   # Application entry point
-├── .env                      # Environment variables
 ├── requirements.txt          # Python dependencies
 ├── Dockerfile               # Container configuration ✓
 └── README.md               # This file
 ```
+
+> Environment variables live in a single shared `.env` at the **repository
+> root** (see `../.env.example`), consumed by the API and both front-ends.
 
 ---
 
@@ -221,12 +223,12 @@ docker build -t tsenaanaty .
 Run the container:
 
 ```bash
-docker run -p 8081:8081 --env-file .env tsenaanaty
+docker run -p 8081:8081 --env-file ../.env tsenaanaty
 ```
 
 ### Docker Environment
 
-Ensure your `.env` file is properly configured for the container environment, particularly database connection strings.
+Ensure the shared `.env` at the repository root is properly configured for the container environment, particularly database connection strings.
 
 The API port is driven by environment variables:
 
@@ -240,7 +242,7 @@ The API port is driven by environment variables:
 
 ## Environment Variables
 
-Key variables in `.env`:
+Key variables in the shared `.env` (repository root):
 
 | Variable | Description | Example |
 |----------|-------------|---------|

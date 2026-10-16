@@ -20,7 +20,8 @@ import {
   isPhonePrefixOnly,
   normalizePhone,
   PHONE_FORMAT_REGEX,
-  resolveImageUrl
+  resolveImageUrl,
+  toThumbUrl
 } from "../lib/utils";
 import { computeDiscountAmount, getAppliedPromo, setAppliedPromo, type AppliedPromo } from "../lib/promo";
 import {
@@ -315,7 +316,7 @@ export function CheckoutPage() {
                 >
                   <div className="flex min-w-0 items-center gap-3">
                     <ProductImage
-                      src={resolveImageUrl(item.image ?? null)}
+                      src={toThumbUrl(resolveImageUrl(item.image ?? null))}
                       alt={item.product_name}
                       size="thumb"
                       className="border border-border/60"

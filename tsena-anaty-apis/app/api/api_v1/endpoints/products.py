@@ -13,6 +13,7 @@ from app import crud, models, schemas
 from app.receipt_parser import parse_receipt_pdf, _split_attributes
 from app.enum.type import TypeEnum
 from app.enum.status import StatusEnum
+from app.image_utils import process_product_image, thumbnail_name_for
 from app.utils import parse_query_array
 
 router = APIRouter()
@@ -317,18 +318,14 @@ async def upload_product_image(
    uploads_dir = Path('files/products')
    uploads_dir.mkdir(parents=True, exist_ok=True)
 
-   ext = Path(image.filename or '').suffix.lower() or '.jpg'
-   if ext not in {'.jpg', '.jpeg', '.png', '.webp', '.gif'}:
-      ext = '.jpg'
-
-   filename = f"{uuid4().hex}{ext}"
-   file_path = uploads_dir / filename
-
    content = await image.read()
    if len(content) > 5 * 1024 * 1024:
       raise HTTPException(status_code=400, detail='Image trop volumineuse (max 5MB)')
 
-   file_path.write_bytes(content)
+   try:
+      filename, _thumbnail = process_product_image(content, uploads_dir)
+   except ValueError:
+      raise HTTPException(status_code=400, detail='Image invalide')
 
    # Chemin relatif a l'origine de l'API. Une URL absolue construite avec
    # request.base_url reprend l'hote vu par FastAPI (derriere le proxy Vite,
@@ -388,14 +385,16 @@ async def upload_product_images(
                     status_code=400,
                     detail=f'Format image non supporté: {image.filename}',
                 )
-            ext = Path(image.filename or '').suffix.lower() or '.jpg'
-            if ext not in {'.jpg', '.jpeg', '.png', '.webp', '.gif'}:
-                ext = '.jpg'
-            filename = f"{uuid4().hex}{ext}"
             content = await image.read()
             if len(content) > 5 * 1024 * 1024:
                 raise HTTPException(status_code=400, detail='Image trop volumineuse (max 5MB)')
-            (uploads_dir / filename).write_bytes(content)
+            try:
+                filename, _thumbnail = process_product_image(content, uploads_dir)
+            except ValueError:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f'Image invalide: {image.filename}',
+                )
             # URL relative a l'origine de l'API : une URL absolue reprend
             # l'hote vu par FastAPI (localhost:8081 derriere le proxy Vite)
             # et ne fonctionne pas depuis un autre appareil.
@@ -449,19 +448,19 @@ async def replace_product_image(
     uploads_dir = Path('files/products')
     uploads_dir.mkdir(parents=True, exist_ok=True)
 
-    ext = Path(image.filename or '').suffix.lower() or '.jpg'
-    if ext not in {'.jpg', '.jpeg', '.png', '.webp', '.gif'}:
-        ext = '.jpg'
-    filename = f"{uuid4().hex}{ext}"
     content = await image.read()
     if len(content) > 5 * 1024 * 1024:
         raise HTTPException(status_code=400, detail='Image trop volumineuse (max 5MB)')
+
+    try:
+        filename, _thumbnail = process_product_image(content, uploads_dir)
+    except ValueError:
+        raise HTTPException(status_code=400, detail='Image invalide')
 
     old_filename = Path(row.image or '').name
     # URL relative a l'origine de l'API (voir upload_product_image).
     public_path = f"/files/products/{filename}"
 
-    (uploads_dir / filename).write_bytes(content)
     updated = crud.product_images.update(
         db=db,
         db_obj=row,
@@ -484,6 +483,9 @@ async def replace_product_image(
         old_path = uploads_dir / old_filename
         if old_path.exists():
             old_path.unlink()
+        old_thumb = uploads_dir / thumbnail_name_for(old_filename)
+        if old_thumb.exists():
+            old_thumb.unlink()
     except OSError:
         pass
 
@@ -514,6 +516,9 @@ def delete_product_image(
         file_path = Path('files/products') / Path(image.image or '').name
         if file_path.exists():
             file_path.unlink()
+        thumb_path = Path('files/products') / thumbnail_name_for(file_path.name)
+        if thumb_path.exists():
+            thumb_path.unlink()
     except OSError:
         pass
 
@@ -695,6 +700,9 @@ def _remove_product_image_files(paths: list[Optional[str]]) -> None:
         try:
             if file_path.exists():
                 file_path.unlink()
+            thumb_path = Path('files/products') / thumbnail_name_for(file_path.name)
+            if thumb_path.exists():
+                thumb_path.unlink()
         except OSError:
             pass
 

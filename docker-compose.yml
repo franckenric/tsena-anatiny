@@ -100,6 +100,12 @@ volumes:
   front_office_node_modules:
 
 networks:
+  # Reseau externe partage avec nginx (hors compose) qui joint ce projet pour
+  # router le domaine vers l'API. Comme il est `external`, compose ne le cree
+  # pas : il doit exister avant `up`, sinon on obtient
+  #   "network web_network declared as external, but could not be found".
+  # A creer une seule fois par machine :
+  #   docker network create web_network
   web_network:
     external: true
     name: web_network

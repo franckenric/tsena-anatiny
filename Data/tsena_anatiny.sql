@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Hôte : localhost:3306
--- Généré le : dim. 11 oct. 2026 à 11:21
+-- Généré le : ven. 16 oct. 2026 à 18:10
 -- Version du serveur : 8.0.46-0ubuntu0.24.04.4
 -- Version de PHP : 8.3.6
 
@@ -113,7 +113,8 @@ CREATE TABLE `customers` (
 --
 
 INSERT INTO `customers` (`id`, `name`, `phone`, `delivery_address`, `created_at`, `updated_at`, `deleted_at`, `users_id`) VALUES
-(1, 'Franck HENRI', '+261348876304', 'henrif544@gmail.com', '2026-10-11 13:04:32', '2026-10-11 13:04:32', NULL, 2);
+(1, 'Franck HENRI', '+261348876304', 'henrif544@gmail.com', '2026-10-11 13:04:32', '2026-10-11 13:04:32', NULL, 2),
+(2, 'Harson', '+261340478111', 'tanjombato', '2026-10-11 20:12:29', '2026-10-11 20:12:29', NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -195,7 +196,10 @@ CREATE TABLE `notifications` (
 --
 
 INSERT INTO `notifications` (`id`, `user_id`, `type`, `order_id`, `order_number`, `title`, `message`, `customer_name`, `customer_phone`, `total`, `previous_status`, `status`, `read`, `created_at`, `updated_at`, `deleted_at`) VALUES
-(1, 1, 'account.created', NULL, NULL, 'Nouveau compte client', 'Compte créé pour Franck HENRI (henrif544@gmail.com). Envoi de l\'OTP par email en cours.', 'Franck HENRI', '+261348876304', 0, NULL, NULL, 0, '2026-10-11 13:04:32', '2026-10-11 13:04:32', NULL);
+(1, 1, 'account.created', NULL, NULL, 'Nouveau compte client', 'Compte créé pour Franck HENRI (henrif544@gmail.com). Envoi de l\'OTP par email en cours.', 'Franck HENRI', '+261348876304', 0, NULL, NULL, 0, '2026-10-11 13:04:32', '2026-10-11 13:04:32', NULL),
+(2, 1, 'order.created', 1, '20261011172035-708E20', 'Nouvelle commande', 'Commande 20261011172035-708E20 de Harson', 'Harson', '+261340478111', 108000, NULL, 'draft', 0, '2026-10-11 20:20:35', '2026-10-11 20:20:35', NULL),
+(3, 1, 'order.status_changed', 1, '20261011172035-708E20', 'Statut modifié', 'Commande 20261011172035-708E20 : En cours → Confirmée', 'Harson', '+261340478111', 0, 'draft', 'confirmed', 0, '2026-10-11 20:20:48', '2026-10-11 20:20:48', NULL),
+(4, 1, 'order.status_changed', 1, '20261011172035-708E20', 'Statut modifié', 'Commande 20261011172035-708E20 : Confirmée → Livrée', 'Harson', '+261340478111', 0, 'confirmed', 'delivered', 0, '2026-10-11 20:20:58', '2026-10-11 20:20:58', NULL);
 
 -- --------------------------------------------------------
 
@@ -219,6 +223,13 @@ CREATE TABLE `orders` (
   `promo_code` varchar(64) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `discount` float NOT NULL DEFAULT '0'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Déchargement des données de la table `orders`
+--
+
+INSERT INTO `orders` (`id`, `order_number`, `user_id`, `status`, `note`, `created_at`, `updated_at`, `deleted_at`, `customer_id`, `another_price`, `other_price_reason`, `promo_code_id`, `promo_code`, `discount`) VALUES
+(1, '20261011172035-708E20', 1, 'delivered', '__pending_lines__[{\"product_id\": 4, \"product_name\": \"Urban Trek Tech – Baskets Montantes Tactiques\", \"variant_id\": 15, \"variant_name\": \"Pointure 41\", \"quantity\": 1, \"unit_cost\": 45000.0, \"another_price\": 0, \"other_price_reason\": null}, {\"product_id\": 1, \"product_name\": \"Baskets Montantes pour Homme et Femme style Planche\", \"variant_id\": 1, \"variant_name\": \"Pointure 40\", \"quantity\": 1, \"unit_cost\": 35000.0, \"another_price\": 0, \"other_price_reason\": null}, {\"product_id\": 2, \"product_name\": \"AeroTrend – Baskets Sport & Urbain\", \"variant_id\": 6, \"variant_name\": \"Pointure 40\", \"quantity\": 1, \"unit_cost\": 28000.0, \"another_price\": 0, \"other_price_reason\": null}]', '2026-10-11 20:20:35', '2026-10-11 20:20:58', NULL, 2, 0, NULL, NULL, NULL, 0);
 
 -- --------------------------------------------------------
 
@@ -282,7 +293,12 @@ INSERT INTO `products` (`id`, `category_id`, `sku`, `name`, `description`, `imag
 (8, 3, 'RC-720C891B94E7', 'Candy Case Soft – Coque en Silicone Mat aux Couleurs Pastel', 'Apportez une touche de couleur et de douceur à votre smartphone avec cette collection de coques en TPU souple au fini mat doux. Conçues pour allier protection efficace et esthétique pastel moderne au quotidien.&nbsp;<div><ul><li><b>Large palette de couleurs : </b>Disponible en une multitude de teintes vives et pastel (« Candy Colors ») pour personnaliser votre téléphone selon vos envies.&nbsp;</li><li><b>Fini mat &amp; Toucher doux </b>: Texture dépolie « Soft Touch » agréable en main, résistant aux traces de doigts et facile à nettoyer.&nbsp;</li><li><b>Protection &amp; Matériau TPU : </b>Matière en TPU souple pour absorber efficacement les chocs, chutes légères et rayures.&nbsp;</li><li><b>Ajustement parfait :</b> Découpes précises pour les objectifs photo, les boutons et les connecteurs.</li></ul></div>', '/files/products/b8b461b1376a48f48f770aa911163380.jpg', NULL, NULL, 'active', '2026-10-11 13:25:05', '2026-10-11 14:20:04', NULL, NULL, NULL, 3634),
 (9, 3, 'RC-75790324269D', 'SlimGuard Matte – Coque Antichoc Translucide', '<p>Protégez votre smartphone avec élégance grâce à cette coque rigide au dos translucide et dépoli. Son design moderne met en valeur la couleur d\'origine de votre téléphone tout en lui apportant une touche de couleur et de protection renforcée.&nbsp;</p><p><ul><li><b>Dos dépoli translucide :</b> Finition mate élégante qui laisse entrevoir le design du téléphone tout en évitant les traces de doigts.&nbsp;</li><li><b>Boutons contrastés :</b> Boutons latéraux de couleurs vives (rouge, orange, jaune) pour un look tendance et un appui réactif.&nbsp;</li><li><b>Protection renforcée du bloc caméra :</b> Encadrement surélevé et ajusté autour des objectifs photo pour éviter les rayures lors de la pose à plat.&nbsp;</li><li><b>Prise en main confortable :</b> Contours en silicone souple offrant un excellent maintien antidérapant et une bonne absorption des chocs.</li></ul></p>', '/files/products/2ed85923186c4b98a3f7f4161ba2ea8e.jpg', NULL, NULL, 'active', '2026-10-11 13:44:46', '2026-10-11 13:47:38', NULL, NULL, NULL, 2392),
 (10, 3, 'RC-2C7E74920C1B', 'Urban Cross Art – Coque Tendance Style Streetwear', '<p>Donnez un look moderne et branché à votre téléphone grâce à cette coque rigide au dos dépoli, ornée de motifs graphiques contemporains. Elle offre un équilibre parfait entre style streetwear tendance et protection efficace au quotidien.&nbsp;</p><p><ul><li><b>Design streetwear &amp;amp; graphique :</b> Imprimés croisés géométriques modernes, typographie « GERTRUDE™ » et détails subtils.&nbsp;</li><li><b>Fini translucide dépoli :</b> Texture mate agréable au toucher qui protège contre les traces de doigts et laisse deviner le design de l\'appareil.&nbsp;</li><li><b>Protection caméra intégrée :</b> Contour renforcé autour des objectifs photo avec l\'inscription « SO COOL » pour une sécurité optimale contre les rayures.&nbsp;</li><li><b>Prise en main ergonomique :</b> Contours ajustés offrant une excellente protection antichoc et une manipulation confortable.</li></ul></p>', '/files/products/67a5777862114a5495f97b0edd839a7f.jpg', NULL, NULL, 'active', '2026-10-11 13:54:34', '2026-10-11 14:17:46', NULL, NULL, NULL, 3450),
-(11, 3, 'RC-41194084072E', 'Love Gradient – Coque Dégradée avec Cœur & Dragonne Anneau', 'Sublimez votre téléphone avec cette coque élégante au magnifique dégradé de couleurs, ornée d\'un détail en forme de cœur et accompagnée de son pendentif assorti. Elle offre un look chic tout en garantissant une excellente prise en main au quotidien.&nbsp;<div><ul><li><b style=\"color: rgb(22, 27, 45); font-size: 0.875rem;\">Design dégradé &amp; romantique : </b><span style=\"color: rgb(22, 27, 45); font-size: 0.875rem;\">Effet de couleur fondue élégant sublimé par un motif double cœur et l\'inscription « LOVE YOU ».&nbsp;</span></li><li><b>Pendentif / Dragonne assorti :</b> Inclut une dragonne avec anneau de maintien et un médaillon au motif coordonné pour sécuriser la prise en main et éviter les chutes.&nbsp;</li><li><b>Protection caméra intégrée :</b> Contour de caméra renforcé gravé du message « GOOD LUCK » pour protéger vos objectifs des rayures.&nbsp;</li><li><b>Fini mat &amp; Antidérapant :</b> Surface douce et agréable au toucher qui protège votre smartphone contre les chocs et les rayures légères.</li></ul></div>', '/files/products/783cf5ceef75416e97e8db9aa99f6555.jpg', NULL, NULL, 'active', '2026-10-11 14:01:24', '2026-10-11 14:04:46', NULL, NULL, NULL, 5888);
+(11, 3, 'RC-41194084072E', 'Love Gradient – Coque Dégradée avec Cœur & Dragonne Anneau', 'Sublimez votre téléphone avec cette coque élégante au magnifique dégradé de couleurs, ornée d\'un détail en forme de cœur et accompagnée de son pendentif assorti. Elle offre un look chic tout en garantissant une excellente prise en main au quotidien.&nbsp;<div><ul><li><b style=\"color: rgb(22, 27, 45); font-size: 0.875rem;\">Design dégradé &amp; romantique : </b><span style=\"color: rgb(22, 27, 45); font-size: 0.875rem;\">Effet de couleur fondue élégant sublimé par un motif double cœur et l\'inscription « LOVE YOU ».&nbsp;</span></li><li><b>Pendentif / Dragonne assorti :</b> Inclut une dragonne avec anneau de maintien et un médaillon au motif coordonné pour sécuriser la prise en main et éviter les chutes.&nbsp;</li><li><b>Protection caméra intégrée :</b> Contour de caméra renforcé gravé du message « GOOD LUCK » pour protéger vos objectifs des rayures.&nbsp;</li><li><b>Fini mat &amp; Antidérapant :</b> Surface douce et agréable au toucher qui protège votre smartphone contre les chocs et les rayures légères.</li></ul></div>', '/files/products/783cf5ceef75416e97e8db9aa99f6555.jpg', NULL, NULL, 'active', '2026-10-11 14:01:24', '2026-10-11 14:04:46', NULL, NULL, NULL, 5888),
+(12, 3, 'RC-0DDFE3126B77', 'PowerSync 60W – Câble USB-C vers USB-C Charge Rapide', '<span style=\"color: rgb(22, 27, 45); font-size: 0.875rem;\">Rechargez et synchronisez vos appareils en toute efficacité avec ce câble USB-C vers USB-C haute performance de 60W. Conçu pour offrir une charge rapide et un transfert de données fluide, c\'est l\'accessoire indispensable pour vos smartphones, tablettes et ordinateurs portables compatibles.&nbsp;</span><div><ul><li><span style=\"color: rgb(22, 27, 45); font-size: 0.875rem;\"><b>Charge rapide 60W :</b> Supporte une puissance jusqu\'à 60W pour recharger rapidement tous vos équipements compatibles USB-C.&nbsp;</span></li><li><span style=\"color: rgb(22, 27, 45); font-size: 0.875rem;\"><b>Double embout USB-C : </b>Connectique Type-C vers Type-C universelle et réversible pour une utilisation facile au quotidien.&nbsp;</span></li><li><span style=\"color: rgb(22, 27, 45); font-size: 0.875rem;\"><b>Transfert de données rapide :</b> Permet la synchronisation efficace de vos fichiers, photos et documents entre vos appareils.&nbsp;</span></li><li><span style=\"color: rgb(22, 27, 45); font-size: 0.875rem;\"><b>Conception durable &amp; flexible :</b> Gaine résistante et renforcée aux extrémités pour éviter l\'usure et les faux contacts lors des pliages fréquents.</span></li></ul></div>', '/files/products/7c4d0dd75f8a4879a4ef985909374c68.jpg', NULL, NULL, 'active', '2026-10-11 14:25:17', '2026-10-11 14:28:35', NULL, 10000, NULL, 1840),
+(13, 3, 'REF-20261011143349-W4V9', 'Mini FlashReader 2.0 – Lecteur de Carte Micro SD Ultra-Compact', 'Transférez facilement vos fichiers et transformez vos cartes Micro SD / TF en clé USB grâce à ce lecteur de carte ultra-compact et coloré. Idéal pour un usage quotidien au bureau, en voiture ou en déplacement.&nbsp;<div><ul><li><span style=\"color: rgb(22, 27, 45); font-size: 0.875rem;\"><b>Format ultra-mini :</b> Design compact et léger, facile à transporter dans une poche ou à accrocher à un porte-clés grâce à son œillet intégré.&nbsp;</span></li><li><span style=\"color: rgb(22, 27, 45); font-size: 0.875rem;\"><b>Interface USB 2.0 : </b>Offre un transfert rapide et stable de vos photos, vidéos, musiques et documents.&nbsp;</span></li><li><span style=\"color: rgb(22, 27, 45); font-size: 0.875rem;\"><b>Compatibilité universelle (Plug &amp; Play) </b>: Fonctionne immédiatement sans installation de pilote sur ordinateurs, Autoradios, TV et boîtiers multimédias.&nbsp;</span></li><li><span style=\"color: rgb(22, 27, 45); font-size: 0.875rem;\"><b>Finition métallisée :</b> Disponible en plusieurs couleurs vives (bleu, rouge, noir, or) avec une coque en aluminium élégante et résistant aux chocs.&nbsp;</span></li></ul></div>', '/files/products/c16a0b6b51a44deb87cfc23e55930331.jpg', NULL, NULL, 'active', '2026-10-11 14:35:39', '2026-10-11 20:24:18', NULL, NULL, NULL, 1100),
+(14, 4, 'REF-20261011204147-R21W', 'Sweat Technique Col Demi-Zip – Confort & Performance au Quotidien', 'Alliez style, confort et praticité avec notre haut à col demi-zip pour homme. Pensé aussi bien pour vos activités sportives (course, fitness, randonnée) que pour un look décontracté au quotidien, ce vêtement est un incontournable de votre garde-robe.&nbsp;<div><ul><li><b>Col Montant Zippé (1/4 Zip) :</b> Permet d\'ajuster facilement la ventilation et apporte une touche élégante et moderne.&nbsp;</li><li><b>Matière Respirante &amp; Extensible :</b> Conçu dans un tissu léger et technique qui évacue la transpiration tout en vous offrant une liberté de mouvement totale.</li><li><b style=\"color: rgb(22, 27, 45); font-size: 0.875rem;\">Coupe Ajustée &amp; Ergonomique : </b><span style=\"color: rgb(22, 27, 45); font-size: 0.875rem;\">S\'adapte parfaitement à la morphologie masculine tout en assurant un confort maximal.</span></li><li><span style=\"color: rgb(22, 27, 45); font-size: 0.875rem;\"><b>Design Épuré &amp; Polyvalent :</b> Se porte aussi bien seul que sous une veste pour superposer les couches.</span></li></ul></div>', '/files/products/5eec78f0353040298dcac95cad2dc518.jpg', 'pieces', NULL, 'active', '2026-10-11 20:44:17', '2026-10-11 20:44:40', NULL, 10000, NULL, 6000),
+(15, 4, 'RC-F06ABE2B56EE', 'SuperPower Treble 500W – Paire de Tweeters Audio Voiture', 'Améliorez le système audio de votre véhicule avec cette paire de tweeters à dôme haute efficacité de 500W. Conçus pour restituer des aigus clairs, précis et puissants, ils apportent une excellente définition sonore à vos musiques en voiture.&nbsp;<div><ul><li><b>Haute puissance 500W : </b>Délivre un son aigu puissant et cristallin pour enrichir l\'acoustique de votre système audio auto.&nbsp;</li><li><b>Filtre intégré (Crossover) :</b> Équipé d\'un condensateur interne permettant de protéger les haut-parleurs et de filtrer les fréquences de manière optimale.&nbsp;</li><li><b>Format compact &amp; Installation facile :</b> Conception compacte permettant une intégration simple sur le tableau de bord, les montants ou les portières.&nbsp;</li><li><b>Grille de protection robuste :</b> Dômes protégés par des grilles métalliques résistantes pour éviter tout dommage extérieur.&nbsp;</li></ul></div>', '/files/products/b0b421a5ede74a86bf6264c4ba075b5e.png', 'pieces', NULL, 'active', '2026-10-14 18:40:46', '2026-10-14 18:45:54', NULL, 20000, 18000, 2944),
+(16, 4, 'REF-20261016200144-2T4V', 'TS-A1095S – Haut-Parleurs Coaxiaux Auto 4 Pouces (10 cm)', '<p>Améliorez la qualité sonore de votre véhicule avec cette paire de haut-parleurs coaxiaux de 4 pouces (10 cm) au design moderne et dynamique. Conçus pour remplacer facilement les enceintes d\'origine, ils offrent un son équilibré avec des basses claires et des aiguës précises.&nbsp;</p><p><ul><li><b>Format standard 4\" (10 cm) :</b> Dimensions universelles idéales pour une installation facile dans les portières, le tableau de bord ou la plage arrière de la plupart des véhicules.&nbsp;</li><li><b>Conception coaxiale : </b>Intègre un haut-parleur principal pour les médiums/basses et un tweeter central chromé pour restituer des aigus nets.&nbsp;</li><li><b>Design finition chromée : </b>Support de tweeter au look moderne et métallisé apportant une touche esthétique à votre système audio.&nbsp;</li><li><b>Installation facile : </b>Pattes de fixation renforcées et perforées pour un montage rapide et sécurisé sur les emplacements d\'origine;</li></ul></p>', '/files/products/472dc3a1c2e74651a216ce033f88c085.jpg', 'pieces', NULL, 'active', '2026-10-16 20:03:04', '2026-10-16 20:04:43', NULL, 50000, NULL, 30000);
 
 -- --------------------------------------------------------
 
@@ -336,7 +352,24 @@ INSERT INTO `product_images` (`id`, `product_id`, `image`, `position`, `created_
 (32, 10, '/files/products/67a5777862114a5495f97b0edd839a7f.jpg', 0, '2026-10-11 13:58:07', '2026-10-11 13:58:07', NULL),
 (33, 10, '/files/products/516e1f6f04df40b8a6da0545f79dd9ca.jpg', 1, '2026-10-11 13:58:18', '2026-10-11 13:58:18', NULL),
 (34, 11, '/files/products/783cf5ceef75416e97e8db9aa99f6555.jpg', 0, '2026-10-11 14:04:07', '2026-10-11 14:04:07', NULL),
-(35, 11, '/files/products/6ffc33c676e8440db2eeccad58e881db.jpg', 1, '2026-10-11 14:04:16', '2026-10-11 14:04:16', NULL);
+(35, 11, '/files/products/6ffc33c676e8440db2eeccad58e881db.jpg', 1, '2026-10-11 14:04:16', '2026-10-11 14:04:16', NULL),
+(36, 12, '/files/products/7c4d0dd75f8a4879a4ef985909374c68.jpg', 0, '2026-10-11 14:27:05', '2026-10-11 14:27:05', NULL),
+(37, 12, '/files/products/0a16d9e10b164bd4b7286a2919ddcdac.jpg', 1, '2026-10-11 14:27:10', '2026-10-11 14:27:10', NULL),
+(38, 12, '/files/products/c94758a0908b4ec9a8dc44e60191bf99.jpg', 2, '2026-10-11 14:27:16', '2026-10-11 14:27:16', NULL),
+(39, 13, '/files/products/c16a0b6b51a44deb87cfc23e55930331.jpg', 0, '2026-10-11 14:35:55', '2026-10-11 14:35:55', NULL),
+(40, 13, '/files/products/49154df3d5494ca295b999d91069a9e5.png', 1, '2026-10-11 14:36:01', '2026-10-11 14:36:01', NULL),
+(41, 13, '/files/products/945db80fa50b46c1a448d9810eec1205.jpg', 2, '2026-10-11 14:36:07', '2026-10-11 14:36:07', NULL),
+(42, 13, '/files/products/8aae38c29b9d4b16a5679d7b07aaf0aa.jpg', 3, '2026-10-11 14:36:19', '2026-10-11 14:36:19', NULL),
+(43, 14, '/files/products/5eec78f0353040298dcac95cad2dc518.jpg', 0, '2026-10-11 20:44:40', '2026-10-11 20:44:40', NULL),
+(45, 14, '/files/products/2b37d9ce50e94bf6bbc098fe98129f6b.png', 1, '2026-10-11 20:48:40', '2026-10-11 20:48:40', NULL),
+(46, 14, '/files/products/10242ecbe994424d9ee094b34b7764d9.png', 2, '2026-10-11 20:48:45', '2026-10-11 20:48:45', NULL),
+(47, 15, '/files/products/b0b421a5ede74a86bf6264c4ba075b5e.png', 0, '2026-10-14 18:45:54', '2026-10-14 18:45:54', NULL),
+(48, 15, '/files/products/f6d17e405d7746c7b70fe36b9a634db0.jpg', 1, '2026-10-14 18:46:00', '2026-10-14 18:46:00', NULL),
+(49, 15, '/files/products/e4854a32c81340a8ac5b9a6253e4e8f2.jpg', 2, '2026-10-14 18:46:06', '2026-10-14 18:46:06', NULL),
+(50, 15, '/files/products/c42d5b042aec43bfaa3aae7d534cd7c8.jpg', 3, '2026-10-14 18:46:13', '2026-10-14 18:46:13', NULL),
+(51, 16, '/files/products/472dc3a1c2e74651a216ce033f88c085.jpg', 0, '2026-10-16 20:04:43', '2026-10-16 20:04:43', NULL),
+(52, 16, '/files/products/11a366a0486246759b4e52347d8d0d00.jpg', 1, '2026-10-16 20:04:50', '2026-10-16 20:04:50', NULL),
+(53, 16, '/files/products/abd7dcda32d841a09eaf46fb15011db2.jpg', 2, '2026-10-16 20:04:58', '2026-10-16 20:04:58', NULL);
 
 -- --------------------------------------------------------
 
@@ -365,12 +398,11 @@ CREATE TABLE `product_variants` (
 --
 
 INSERT INTO `product_variants` (`id`, `product_id`, `parent_id`, `name`, `sku`, `quantity`, `created_at`, `updated_at`, `deleted_at`, `selling_price`, `image`, `unit_cost`, `discount_price`) VALUES
-(1, 1, NULL, 'Pointure 40', NULL, 1, '2026-10-11 08:22:43', '2026-10-11 12:49:09', NULL, 42000, NULL, 17756, 39000),
+(1, 1, NULL, 'Pointure 40', NULL, 0, '2026-10-11 08:22:43', '2026-10-11 20:20:48', NULL, 35000, NULL, 17756, 39000),
 (2, 1, NULL, 'Pointure 41', NULL, 1, '2026-10-11 08:23:18', '2026-10-11 12:49:11', NULL, 42000, NULL, 17756, 39000),
-(3, 1, NULL, 'Pointure 42', NULL, 1, '2026-10-11 08:23:33', '2026-10-11 12:49:16', NULL, 42000, NULL, 17756, 39000),
-(4, 1, NULL, 'Pointure 43', NULL, 1, '2026-10-11 08:23:41', '2026-10-11 12:49:18', NULL, 42000, NULL, 17756, 39000),
+(3, 1, NULL, 'Pointure 42', NULL, 2, '2026-10-11 08:23:33', '2026-10-11 20:18:28', NULL, 42000, NULL, 17756, 39000),
 (5, 2, NULL, 'Pointure 39', NULL, 1, '2026-10-11 10:47:35', '2026-10-11 12:48:01', NULL, 38000, NULL, 13800, 35000),
-(6, 2, NULL, 'Pointure 40', NULL, 1, '2026-10-11 10:47:41', '2026-10-11 12:48:02', NULL, 38000, NULL, 13800, 35000),
+(6, 2, NULL, 'Pointure 40', NULL, 0, '2026-10-11 10:47:41', '2026-10-11 20:20:48', NULL, 28000, NULL, 13800, 35000),
 (7, 2, NULL, 'Pointure 41', NULL, 1, '2026-10-11 10:47:48', '2026-10-11 12:48:03', NULL, 38000, NULL, 13800, 35000),
 (8, 2, NULL, 'Pointure 42', NULL, 1, '2026-10-11 10:48:00', '2026-10-11 12:48:05', NULL, 38000, NULL, 13800, 35000),
 (9, 2, NULL, 'Pointure 43', NULL, 1, '2026-10-11 10:48:09', '2026-10-11 12:48:10', NULL, 38000, NULL, 13800, 35000),
@@ -379,11 +411,10 @@ INSERT INTO `product_variants` (`id`, `product_id`, `parent_id`, `name`, `sku`, 
 (12, 3, NULL, 'Couleur  Blue', NULL, 0, '2026-10-11 10:51:06', '2026-10-11 10:51:54', NULL, NULL, NULL, NULL, NULL),
 (13, 3, 12, 'Pointure 42', NULL, 2, '2026-10-11 10:51:06', '2026-10-11 12:31:10', NULL, 45000, NULL, 20700, NULL),
 (14, 4, NULL, 'Couleur gris', NULL, 2, '2026-10-11 11:03:10', '2026-10-11 11:03:33', NULL, NULL, NULL, 22724, NULL),
-(15, 4, 14, 'Pointure 41', NULL, 2, '2026-10-11 11:03:38', '2026-10-11 12:56:04', NULL, 60000, NULL, 22724, 54000),
+(15, 4, 14, 'Pointure 41', NULL, 1, '2026-10-11 11:03:38', '2026-10-11 20:20:48', NULL, 45000, NULL, 22724, 54000),
 (16, 4, NULL, 'Couleur beige', NULL, 2, '2026-10-11 11:04:10', '2026-10-11 11:04:15', NULL, NULL, NULL, 22724, NULL),
-(17, 4, 16, 'Pointure 42', NULL, 2, '2026-10-11 11:04:33', '2026-10-11 12:56:07', NULL, 60000, NULL, 22724, 54000),
+(17, 4, 16, 'Pointure 42', NULL, 1, '2026-10-11 11:04:33', '2026-10-11 20:14:07', NULL, 60000, NULL, 22724, 54000),
 (18, 5, NULL, 'Pointure 42', NULL, 2, '2026-10-11 11:22:05', '2026-10-11 12:44:49', NULL, 50000, NULL, 18354, 48000),
-(19, 5, NULL, 'Pointure 43', NULL, 2, '2026-10-11 11:22:16', '2026-10-11 12:44:54', NULL, 50000, NULL, 18354, 48000),
 (20, 6, NULL, 'Couleur blanc-bleu', NULL, 0, '2026-10-11 11:47:18', '2026-10-11 11:50:10', NULL, NULL, NULL, NULL, NULL),
 (21, 6, 20, 'Pointure 40', NULL, 1, '2026-10-11 11:47:18', '2026-10-11 12:31:09', NULL, 55000, NULL, 24840, NULL),
 (22, 6, NULL, 'Couleur noir', NULL, 0, '2026-10-11 11:47:18', '2026-10-11 11:50:40', NULL, NULL, NULL, NULL, NULL),
@@ -433,7 +464,17 @@ INSERT INTO `product_variants` (`id`, `product_id`, `parent_id`, `name`, `sku`, 
 (66, 11, 57, 'Iphone 13 Pro max', NULL, 1, '2026-10-11 14:11:12', '2026-10-11 14:15:33', NULL, 11000, NULL, 5888, NULL),
 (67, 8, NULL, 'Couleur Marron', NULL, 0, '2026-10-11 14:11:53', '2026-10-11 14:11:53', NULL, NULL, NULL, 3634, NULL),
 (68, 8, 67, 'Iphone 12 pro', NULL, 1, '2026-10-11 14:12:05', '2026-10-11 14:19:49', NULL, 10000, NULL, 3634, NULL),
-(69, 9, NULL, 'Iphone 14 Pro max', NULL, 1, '2026-10-11 14:12:34', '2026-10-11 14:18:45', NULL, 18000, NULL, 2392, 15000);
+(69, 9, NULL, 'Iphone 14 Pro max', NULL, 1, '2026-10-11 14:12:34', '2026-10-11 14:18:45', NULL, 18000, NULL, 2392, 15000),
+(70, 13, NULL, 'Couleur Orange', NULL, 2, '2026-10-11 14:38:03', '2026-10-11 14:40:38', NULL, 5000, NULL, 1100, NULL),
+(71, 13, NULL, 'Couleur Rouge', NULL, 2, '2026-10-11 14:38:18', '2026-10-11 14:40:40', NULL, 5000, NULL, 1100, NULL),
+(72, 13, NULL, 'Couleur vert', NULL, 2, '2026-10-11 14:38:36', '2026-10-11 14:40:42', NULL, 5000, NULL, 1100, NULL),
+(73, 13, NULL, 'Couleur violet', NULL, 2, '2026-10-11 14:39:01', '2026-10-11 20:23:34', NULL, 5000, NULL, 1100, NULL),
+(74, 13, NULL, 'Couleur Noir', NULL, 1, '2026-10-11 14:39:33', '2026-10-11 14:40:43', NULL, 5000, NULL, 1100, NULL),
+(75, 13, NULL, 'Couleur bleu', NULL, 1, '2026-10-11 14:39:46', '2026-10-11 14:40:45', NULL, 5000, NULL, 1100, NULL),
+(76, 5, NULL, 'Pointure 41', NULL, 2, '2026-10-11 20:08:57', '2026-10-11 20:09:13', NULL, NULL, NULL, 18354, NULL),
+(77, 4, 16, 'Pointure 40', NULL, 1, '2026-10-11 20:13:45', '2026-10-11 20:14:03', NULL, NULL, NULL, 22724, NULL),
+(78, 14, NULL, 'Couleur Blanc', NULL, 18, '2026-10-11 20:44:59', '2026-10-11 20:45:52', NULL, 12000, NULL, 6000, 10000),
+(79, 14, NULL, 'Couleur Noir', NULL, 26, '2026-10-11 20:45:17', '2026-10-11 20:46:05', NULL, 12000, NULL, 6000, 10000);
 
 -- --------------------------------------------------------
 
@@ -493,7 +534,9 @@ INSERT INTO `receipts` (`id`, `receipt_number`, `file_name`, `seller`, `currency
 (8, '307498410501020665', 'candy.pdf', 'Shenzhen L&y Technology Co., Ltd.', 'USD', 1, 1, '2026-10-11 13:25:05', '2026-10-11 13:25:05', NULL, NULL),
 (9, '307594026001020665', 'Receipt_307594026001020665_1790854029874_housse_semi_transparent.pdf', 'Shenzhen Hongchangyu Electronic Co., Ltd.', 'USD', 1, 1, '2026-10-11 13:44:46', '2026-10-11 13:44:46', NULL, NULL),
 (10, '307580118001020665', 'multy.pdf', 'Jiexi County Mianhu Mowang Plastic Products', 'USD', 10, 1, '2026-10-11 13:54:34', '2026-10-11 13:54:34', NULL, NULL),
-(11, '307562386001020665', 'Receipt_307562386001020665_1790855035280_coeur.pdf', 'Shenzhen Zhenyuan Technology Co., Ltd.', 'USD', 1, 1, '2026-10-11 14:01:24', '2026-10-11 14:01:24', NULL, NULL);
+(11, '307562386001020665', 'Receipt_307562386001020665_1790855035280_coeur.pdf', 'Shenzhen Zhenyuan Technology Co., Ltd.', 'USD', 1, 1, '2026-10-11 14:01:24', '2026-10-11 14:01:24', NULL, NULL),
+(12, '306447719501020665', 'cable.pdf', 'Shenzhen Shijihuaxia Electronic Technology Co.,', 'USD', 1, 1, '2026-10-11 14:25:17', '2026-10-11 14:25:17', NULL, NULL),
+(13, '308794735001020665', 'Receipt_308794735001020665_1791992394563.pdf', 'Guangzhou Kuer Automotive Supplies Co., Ltd.', 'USD', 1, 1, '2026-10-14 18:40:47', '2026-10-14 18:40:47', NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -545,7 +588,10 @@ INSERT INTO `stock` (`id`, `product_id`, `quantity`, `reserved`, `created_at`, `
 (5, 7, 10, NULL, '2026-10-11 11:54:12', '2026-10-11 11:54:12', NULL),
 (6, 8, 10, NULL, '2026-10-11 13:25:05', '2026-10-11 13:25:05', NULL),
 (7, 9, 12, NULL, '2026-10-11 13:44:46', '2026-10-11 13:44:46', NULL),
-(8, 11, 10, NULL, '2026-10-11 14:01:24', '2026-10-11 14:01:24', NULL);
+(8, 11, 10, NULL, '2026-10-11 14:01:24', '2026-10-11 14:01:24', NULL),
+(9, 12, 6, NULL, '2026-10-11 14:25:17', '2026-10-11 14:25:17', NULL),
+(10, 15, 9, NULL, '2026-10-14 18:40:47', '2026-10-14 18:40:47', NULL),
+(11, 16, 1, NULL, '2026-10-16 20:03:04', '2026-10-16 20:03:04', NULL);
 
 -- --------------------------------------------------------
 
@@ -641,7 +687,26 @@ INSERT INTO `stock_movements` (`id`, `product_id`, `user_id`, `type`, `quantity`
 (60, 11, 1, 'in_stoct', 1, 0, 1, 'Ajustement variante - Iphone 13 Pro max', '2026-10-11 14:11:16', '2026-10-11 14:11:16', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 66),
 (61, 8, 1, 'in_stoct', 1, 0, 1, 'Ajustement variante - Iphone 12 pro', '2026-10-11 14:12:07', '2026-10-11 14:12:07', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 68),
 (62, 9, 1, 'in_stoct', 1, 0, 1, 'Ajustement variante - Iphone 14 Pro max', '2026-10-11 14:12:37', '2026-10-11 14:12:37', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 69),
-(63, 11, 1, 'in_stoct', 1, 0, 1, 'Ajustement variante - Iphone 13 Pro', '2026-10-11 14:14:13', '2026-10-11 14:14:13', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 59);
+(63, 11, 1, 'in_stoct', 1, 0, 1, 'Ajustement variante - Iphone 13 Pro', '2026-10-11 14:14:13', '2026-10-11 14:14:13', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 59),
+(64, 12, 1, 'in_stoct', 6, 0, 6, 'IMPORT-REÇU 306447719501020665 - ACHAT-20260916', '2026-10-11 14:25:17', '2026-10-11 14:25:17', NULL, 2, 1840, 21068, 10028, NULL, NULL, NULL),
+(65, 13, 1, 'in_stoct', 2, 0, 2, 'Ajustement variante - Couleur Orange', '2026-10-11 14:38:07', '2026-10-11 14:38:07', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 70),
+(66, 13, 1, 'in_stoct', 2, 0, 2, 'Ajustement variante - Couleur Rouge', '2026-10-11 14:38:24', '2026-10-11 14:38:24', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 71),
+(67, 13, 1, 'in_stoct', 2, 0, 2, 'Ajustement variante - Couleur vert', '2026-10-11 14:38:40', '2026-10-11 14:38:40', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 72),
+(68, 13, 1, 'in_stoct', 2, 0, 2, 'Ajustement variante - Couleur violet', '2026-10-11 14:39:05', '2026-10-11 14:39:05', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 73),
+(69, 13, 1, 'in_stoct', 1, 0, 1, 'Ajustement variante - Couleur Noir', '2026-10-11 14:39:37', '2026-10-11 14:39:37', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 74),
+(70, 13, 1, 'in_stoct', 1, 0, 1, 'Ajustement variante - Couleur bleu', '2026-10-11 14:39:49', '2026-10-11 14:39:49', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 75),
+(71, 5, 1, 'in_stoct', 1, 0, 1, 'Ajustement variante - Pointure 41', '2026-10-11 20:09:01', '2026-10-11 20:09:01', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 76),
+(72, 5, 1, 'in_stoct', 1, 1, 2, 'Ajustement variante - Pointure 41', '2026-10-11 20:09:13', '2026-10-11 20:09:13', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 76),
+(73, 4, 1, 'in_stoct', 1, 0, 1, 'Ajustement variante - Pointure 40', '2026-10-11 20:14:03', '2026-10-11 20:14:03', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 77),
+(74, 4, 1, 'out_stock', 1, 2, 1, 'Ajustement variante - Pointure 42', '2026-10-11 20:14:07', '2026-10-11 20:14:07', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 17),
+(75, 1, 1, 'in_stoct', 1, 1, 2, 'Ajustement variante - Pointure 42', '2026-10-11 20:18:28', '2026-10-11 20:18:28', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 3),
+(76, 4, 1, 'out_stock', 1, 2, 1, '20261011172035-708E20', '2026-10-11 20:20:48', '2026-10-11 20:20:48', NULL, NULL, 45000, 45000, 0, 1, NULL, 15),
+(77, 1, 1, 'out_stock', 1, 1, 0, '20261011172035-708E20', '2026-10-11 20:20:48', '2026-10-11 20:20:48', NULL, NULL, 35000, 35000, 0, 1, NULL, 1),
+(78, 2, 1, 'out_stock', 1, 1, 0, '20261011172035-708E20', '2026-10-11 20:20:48', '2026-10-11 20:20:48', NULL, NULL, 28000, 28000, 0, 1, NULL, 6),
+(79, 14, 1, 'in_stoct', 18, 0, 18, 'Ajustement variante - Couleur Blanc', '2026-10-11 20:45:09', '2026-10-11 20:45:09', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 78),
+(80, 14, 1, 'in_stoct', 26, 0, 26, 'Ajustement variante - Couleur Noir', '2026-10-11 20:45:29', '2026-10-11 20:45:29', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 79),
+(81, 15, 1, 'in_stoct', 9, 0, 9, 'IMPORT-REÇU 308794735001020665 - ACHAT-20260916', '2026-10-14 18:40:47', '2026-10-14 18:40:47', NULL, 2, 2944, 34500, 8004, NULL, NULL, NULL),
+(82, 16, 1, 'in_stoct', 1, 0, 1, 'LOT#1 - ACHAT-20261003', '2026-10-16 20:03:04', '2026-10-16 20:03:04', NULL, 1, 30000, 40000, 10000, NULL, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -695,7 +760,11 @@ CREATE TABLE `visits` (
 INSERT INTO `visits` (`id`, `visitor_key`, `visit_date`, `path`, `created_at`) VALUES
 (1, '95311fa6-f449-421e-95ae-525c199391f6', '2026-10-11', '/', '2026-10-11 07:54:57'),
 (2, 'c58df267-b941-4ce0-8b81-2d66abb5fad6', '2026-10-11', '/produit/5', '2026-10-11 11:28:41'),
-(3, 'c7f534bc-cdbe-43d8-9c43-b9dcb96981c3', '2026-10-11', '/', '2026-10-11 13:02:11');
+(3, 'c7f534bc-cdbe-43d8-9c43-b9dcb96981c3', '2026-10-11', '/', '2026-10-11 13:02:11'),
+(4, '95311fa6-f449-421e-95ae-525c199391f6', '2026-10-13', '/', '2026-10-13 18:24:10'),
+(5, '95311fa6-f449-421e-95ae-525c199391f6', '2026-10-14', '/', '2026-10-14 18:46:30'),
+(6, '0b9bc8f4-df1f-498d-9f12-9d81601437d5', '2026-10-14', '/', '2026-10-14 20:10:41'),
+(7, '45b6f9f6-fbbd-4cdc-b63a-b83570b530e7', '2026-10-16', '/', '2026-10-16 19:58:39');
 
 --
 -- Index pour les tables déchargées
@@ -874,7 +943,7 @@ ALTER TABLE `visits`
 -- AUTO_INCREMENT pour la table `cart_items`
 --
 ALTER TABLE `cart_items`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT pour la table `categories`
@@ -886,7 +955,7 @@ ALTER TABLE `categories`
 -- AUTO_INCREMENT pour la table `customers`
 --
 ALTER TABLE `customers`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT pour la table `lots`
@@ -904,13 +973,13 @@ ALTER TABLE `lot_expenses`
 -- AUTO_INCREMENT pour la table `notifications`
 --
 ALTER TABLE `notifications`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT pour la table `orders`
 --
 ALTER TABLE `orders`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT pour la table `otp_codes`
@@ -922,19 +991,19 @@ ALTER TABLE `otp_codes`
 -- AUTO_INCREMENT pour la table `products`
 --
 ALTER TABLE `products`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
 
 --
 -- AUTO_INCREMENT pour la table `product_images`
 --
 ALTER TABLE `product_images`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=36;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=54;
 
 --
 -- AUTO_INCREMENT pour la table `product_variants`
 --
 ALTER TABLE `product_variants`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=70;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=80;
 
 --
 -- AUTO_INCREMENT pour la table `promo_codes`
@@ -946,7 +1015,7 @@ ALTER TABLE `promo_codes`
 -- AUTO_INCREMENT pour la table `receipts`
 --
 ALTER TABLE `receipts`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
 
 --
 -- AUTO_INCREMENT pour la table `roles`
@@ -958,13 +1027,13 @@ ALTER TABLE `roles`
 -- AUTO_INCREMENT pour la table `stock`
 --
 ALTER TABLE `stock`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- AUTO_INCREMENT pour la table `stock_movements`
 --
 ALTER TABLE `stock_movements`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=64;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=83;
 
 --
 -- AUTO_INCREMENT pour la table `users`
@@ -976,7 +1045,7 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT pour la table `visits`
 --
 ALTER TABLE `visits`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- Contraintes pour les tables déchargées

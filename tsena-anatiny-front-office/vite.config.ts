@@ -29,6 +29,7 @@ export default defineConfig(({ mode }) => {
           "favicon.svg",
           "favicon.png",
           "apple-touch-icon.png",
+          "apple-touch-icon-512.png",
           "logo.png",
           "icons/pwa-192x192.png",
           "icons/pwa-512x512.png",

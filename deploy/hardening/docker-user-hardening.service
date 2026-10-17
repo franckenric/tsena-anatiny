@@ -1,0 +1,15 @@
+[Unit]
+Description=Restreint les ports publies par Docker a 80/443 (durcissement DOCKER-USER)
+Documentation=https://docs.docker.com/network/iptables/
+After=docker.service network-online.target
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/docker-user-hardening.sh
+ExecStop=/bin/sh -c 'iptables -F DOCKER-USER; ip6tables -F DOCKER-USER'
+
+[Install]
+WantedBy=multi-user.target

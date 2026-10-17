@@ -32,7 +32,7 @@ import {
 import type { Category, Product } from "../types/product";
 import { ProductCard } from "../components/ProductCard";
 import { ProductImage } from "../components/ProductImage";
-import { ProductGridSkeleton } from "../components/Skeletons";
+import { ProductCardSkeleton, ProductGridSkeleton } from "../components/Skeletons";
 import { InfiniteScrollSentinel } from "../components/InfiniteScrollSentinel";
 import { PromoCodeCard } from "../components/PromoCodeCard";
 import { Page } from "../components/Page";
@@ -470,6 +470,61 @@ function PromoBanner({ onPress }: { onPress: () => void }) {
   );
 }
 
+/**
+ * Réserve la hauteur exacte des rails asynchrones pendant le chargement.
+ *
+ * Sans ces squelettes, les catégories puis les rails « Nouveautés » et
+ * « Recommandés » sont insérés entre le hero et la bannière promo dès que l'API
+ * répond : tout le contenu situé en dessous (bannière, carte promo, catalogue)
+ * est alors poussé vers le bas, ce qui provoque un décalage de mise en page
+ * important (CLS). Les squelettes occupent la place dès le premier rendu.
+ */
+function CategoryRailSkeleton() {
+  return (
+    <section className="mt-6 lg:mx-auto lg:max-w-6xl" aria-hidden>
+      <div className="flex items-center justify-between px-4 sm:px-6">
+        <span className="flex items-center gap-2.5">
+          <span className="skeleton h-9 w-9 rounded-xl" />
+          <span className="skeleton h-6 w-40 rounded-lg" />
+        </span>
+        <span className="skeleton h-9 w-24 rounded-full" />
+      </div>
+      <div className="mx-4 mt-3 rounded-2xl border border-border bg-panel p-1.5 shadow-card sm:mx-6 lg:mx-auto lg:max-w-6xl">
+        <div className="flex items-center gap-1 overflow-hidden">
+          {[64, 96, 80, 120, 74, 104, 88].map((width, index) => (
+            <span
+              key={index}
+              className="skeleton h-9 shrink-0 rounded-xl"
+              style={{ width: `${width}px` }}
+            />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/** Miroir de la variante compacte de `ProductRail` (2 produits maximum). */
+function ProductRailSkeleton() {
+  return (
+    <section className="mt-7 sm:mt-9 lg:mx-auto lg:max-w-6xl" aria-hidden>
+      <div className="mx-4 overflow-hidden rounded-[2rem] border border-border/70 bg-gradient-to-br from-brand-soft/50 via-panel to-panel p-4 shadow-card sm:mx-6 sm:p-6">
+        <div className="flex items-center justify-between gap-3">
+          <span className="flex items-center gap-2.5">
+            <span className="skeleton h-9 w-9 rounded-xl" />
+            <span className="skeleton h-6 w-44 rounded-lg" />
+          </span>
+          <span className="skeleton h-9 w-24 rounded-full" />
+        </div>
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:gap-6 md:grid-cols-3 lg:grid-cols-4">
+          <ProductCardSkeleton />
+          <ProductCardSkeleton />
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export function HomePage() {
   const { t } = useI18n();
   usePageTitle(t("nav.shop"));
@@ -496,6 +551,7 @@ export function HomePage() {
   );
 
   const [categories, setCategories] = useState<Category[]>([]);
+  const [categoriesLoaded, setCategoriesLoaded] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -556,6 +612,9 @@ export function HomePage() {
       })
       .catch(() => {
         // catégories optionnelles
+      })
+      .finally(() => {
+        if (!cancelled) setCategoriesLoaded(true);
       });
     return () => {
       cancelled = true;
@@ -607,6 +666,12 @@ export function HomePage() {
       ? t("home.recommended")
       : t("home.toDiscover");
 
+  // Les rails (catégories + nouveautés + recommandés) s'insèrent entre le hero
+  // et la bannière promo une fois les données chargées : tant que les produits
+  // ou les catégories ne sont pas prêts, on réserve leur place avec des
+  // squelettes pour ne rien décaler (CLS).
+  const railsLoading = isLoading || !categoriesLoaded;
+
   const pushQuery = useCallback(
     (nextQuery: string, nextCategories: Set<number>) => {
       const params = new URLSearchParams();
@@ -653,38 +718,52 @@ export function HomePage() {
           onExplore={scrollToProducts}
           onNewest={goNewest}
         />
-        <CategoryRail
-          categories={categories}
-          activeCategories={activeCategories}
-          onToggleCategory={toggleCategory}
-          onClearCategories={clearCategories}
-          onExplore={() => history.push("/categories")}
-        />
+        {railsLoading ? (
+          <>
+            <CategoryRailSkeleton />
+            {!hasActiveFilter && (
+              <>
+                <ProductRailSkeleton />
+                <ProductRailSkeleton />
+              </>
+            )}
+          </>
+        ) : (
+          <>
+            <CategoryRail
+              categories={categories}
+              activeCategories={activeCategories}
+              onToggleCategory={toggleCategory}
+              onClearCategories={clearCategories}
+              onExplore={() => history.push("/categories")}
+            />
 
-        {!hasActiveFilter && newestProducts.length > 0 && (
-          <ProductRail
-            title={t("home.new")}
-            icon={Flame}
-            delay={40}
-            action={{
-              label: t("common.seeAll"),
-              onPress: () => history.push("/nouveautes")
-            }}
-            products={newestProducts}
-          />
-        )}
+            {!hasActiveFilter && newestProducts.length > 0 && (
+              <ProductRail
+                title={t("home.new")}
+                icon={Flame}
+                delay={40}
+                action={{
+                  label: t("common.seeAll"),
+                  onPress: () => history.push("/nouveautes")
+                }}
+                products={newestProducts}
+              />
+            )}
 
-        {!hasActiveFilter && recommended.length > 0 && (
-          <ProductRail
-            title={recTitle}
-            icon={Sparkles}
-            delay={40}
-            action={{
-              label: t("common.seeAll"),
-              onPress: () => history.push("/recommandes")
-            }}
-            products={recommended}
-          />
+            {!hasActiveFilter && recommended.length > 0 && (
+              <ProductRail
+                title={recTitle}
+                icon={Sparkles}
+                delay={40}
+                action={{
+                  label: t("common.seeAll"),
+                  onPress: () => history.push("/recommandes")
+                }}
+                products={recommended}
+              />
+            )}
+          </>
         )}
 
         {!hasActiveFilter && (

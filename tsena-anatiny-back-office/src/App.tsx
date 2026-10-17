@@ -8,12 +8,14 @@ import { ReceiptImportPage } from "./pages/ReceiptImportPage";
 import { CategoriesPage } from "./pages/CategoriesPage";
 import { CategoryFormPage } from "./pages/CategoryFormPage";
 import { PromoCodesPage } from "./pages/PromoCodesPage";
+import { PromoCodeFormPage } from "./pages/PromoCodeFormPage";
 import { StockPage } from "./pages/StockPage";
 import { ArrivalsPage } from "./pages/ArrivalsPage";
 import { LotsPage } from "./pages/LotsPage";
 import { LotFormPage } from "./pages/LotFormPage";
 import { LotDetailsPage } from "./pages/LotDetailsPage";
 import { StockMovementsPage } from "./pages/StockMovementsPage";
+import { StockMovementFormPage } from "./pages/StockMovementFormPage";
 import { OrdersPage } from "./pages/OrdersPage";
 import { OrderEditPage } from "./pages/OrderEditPage";
 import { CustomersPage } from "./pages/CustomersPage";
@@ -36,6 +38,12 @@ function App() {
       <ProtectedRoute exact path="/categories/new" component={CategoryFormPage} />
       <ProtectedRoute exact path="/categories/:id/edit" component={CategoryFormPage} />
       <ProtectedRoute exact path="/promo-codes" component={PromoCodesPage} />
+      <ProtectedRoute exact path="/promo-codes/new" component={PromoCodeFormPage} />
+      <ProtectedRoute
+        exact
+        path="/promo-codes/:id/edit"
+        component={PromoCodeFormPage}
+      />
         <ProtectedRoute exact path="/stock" component={StockPage} />
         <ProtectedRoute exact path="/arrivals" component={ArrivalsPage} />
       <ProtectedRoute exact path="/lots" component={LotsPage} />
@@ -43,6 +51,16 @@ function App() {
       <ProtectedRoute exact path="/lots/:id/edit" component={LotFormPage} />
       <ProtectedRoute exact path="/lots/:id" component={LotDetailsPage} />
       <ProtectedRoute exact path="/stock-movements" component={StockMovementsPage} />
+      <ProtectedRoute
+        exact
+        path="/stock-movements/new"
+        component={StockMovementFormPage}
+      />
+      <ProtectedRoute
+        exact
+        path="/stock-movements/:id/edit"
+        component={StockMovementFormPage}
+      />
       <ProtectedRoute exact path="/orders/new" component={OrderEditPage} />
       <ProtectedRoute exact path="/orders/:id/edit" component={OrderEditPage} />
       <ProtectedRoute exact path="/orders" component={OrdersPage} />

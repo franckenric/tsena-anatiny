@@ -50,7 +50,7 @@ export function RegisterPage() {
 
   return (
     <Page>
-      <div className="mx-auto max-w-lg px-4 py-14 pb-16 sm:px-6">
+      <div className="mx-auto max-w-lg px-4 py-14 pb-12 sm:px-6">
         <div className="rounded-3xl border border-border bg-panel p-8 shadow-card">
           <img
             src="/logo.png"

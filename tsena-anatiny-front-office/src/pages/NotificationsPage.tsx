@@ -102,7 +102,7 @@ export function NotificationsPage() {
             contenu (~410px sur 320px de viewport). La carte deborde alors hors
             de l'ecran et `overflow-x: hidden` sur html/body la rogne sans
             possibilité de scroller. `page-shell` (index.css) fait de meme. */}
-      <div className="mx-auto w-full max-w-3xl px-4 py-6 pb-12 sm:px-6">
+      <div className="mx-auto w-full max-w-3xl px-4 py-6 pb-8 sm:px-6">
         <div className="animate-fade-up flex flex-col gap-5">
           {/* Meme strategie que le back-office (`Card`) : un en-tete a part
               avec son propre padding, puis une liste `divide-y` pleine largeur

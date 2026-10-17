@@ -77,7 +77,7 @@ export function OtpPage() {
 
   return (
     <Page>
-      <div className="mx-auto max-w-md px-4 py-14 pb-16 sm:px-6">
+      <div className="mx-auto max-w-md px-4 py-14 pb-12 sm:px-6">
         <div className="rounded-3xl border border-border bg-panel p-8 shadow-card">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-brand/10">
             <ShieldCheck className="h-6 w-6 text-brand" />

@@ -709,7 +709,7 @@ export function HomePage() {
 
   return (
     <Page>
-      <div className="pb-8">
+      <div className="pb-4">
         <AnnouncementBar />
         <GreetingHero
           featured={hasActiveFilter ? null : availableProducts[0] ?? null}

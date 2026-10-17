@@ -27,7 +27,7 @@ export function Layout({ children }: { children?: ReactNode }) {
       <Header />
       <OfflineBanner />
 
-      <main className="flex flex-1 flex-col pb-[calc(3.5rem+env(safe-area-inset-bottom))] lg:pb-0">
+      <main className="flex flex-1 flex-col pb-[calc(3rem+env(safe-area-inset-bottom))] lg:pb-0">
         {children}
       </main>
 

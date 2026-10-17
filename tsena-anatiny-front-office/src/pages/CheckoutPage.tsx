@@ -176,7 +176,7 @@ export function CheckoutPage() {
 
   return (
     <Page>
-      <div className="page-shell py-10 pb-12">
+      <div className="page-shell py-10 pb-8">
       <Link
         to="/panier"
         className="inline-flex items-center gap-1.5 text-sm font-medium text-muted transition hover:text-ink"

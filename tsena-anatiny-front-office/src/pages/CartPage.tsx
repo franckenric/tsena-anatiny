@@ -157,7 +157,7 @@ export function CartPage() {
 
   return (
     <Page>
-      <div className="page-shell py-10 pb-12">
+      <div className="page-shell py-10 pb-8">
       <h1 className="text-2xl font-bold text-ink sm:text-3xl">
         {t("cart.myCart")}
       </h1>

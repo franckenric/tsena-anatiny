@@ -232,7 +232,7 @@ export function AccountPage() {
 
   return (
     <Page>
-      <div className="page-shell py-6 pb-12">
+      <div className="page-shell py-6 pb-8">
         <div className="animate-fade-up flex flex-col gap-5">
           {/* Profil */}
           <section className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-[#7c2d12] via-brand to-[hsl(16_85%_14%)] p-5 text-white shadow-glow sm:p-7">

@@ -797,7 +797,7 @@ export function ProductPage() {
         title={t("product.addToCart")}
         className={cn(
           "fixed right-4 z-[45] flex h-14 w-14 items-center justify-center",
-          "bottom-[calc(4.75rem+env(safe-area-inset-bottom))] sm:hidden",
+          "bottom-[calc(4.25rem+env(safe-area-inset-bottom))] sm:hidden",
           "rounded-full bg-brand text-white shadow-lift shadow-brand/30",
           "transition-all duration-200 active:scale-90",
           "disabled:cursor-not-allowed disabled:opacity-40"

@@ -133,7 +133,7 @@ export function OrderSuccessPage() {
 
   return (
     <Page>
-      <div className="mx-auto max-w-2xl px-4 py-12 pb-16 sm:px-6">
+      <div className="mx-auto max-w-2xl px-4 py-12 pb-12 sm:px-6">
       <div className="rounded-3xl border border-border bg-panel p-8 text-center shadow-card">
         <div
           className={`mx-auto flex h-16 w-16 items-center justify-center rounded-full ${

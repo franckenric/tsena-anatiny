@@ -237,7 +237,7 @@ export function CategoriesPage() {
         )}
 
         {activeCategories.size > 0 && (
-          <div className="fixed inset-x-0 z-40 border-t border-border bg-bg/90 p-4 backdrop-blur bottom-[calc(3.5rem+env(safe-area-inset-bottom))] sm:px-6 lg:bottom-0">
+          <div className="fixed inset-x-0 z-40 border-t border-border bg-bg/90 p-4 backdrop-blur bottom-[calc(3rem+env(safe-area-inset-bottom))] sm:px-6 lg:bottom-0">
             <div className="mx-auto w-full max-w-6xl">
               <button
                 type="button"

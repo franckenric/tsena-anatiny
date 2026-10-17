@@ -15,7 +15,10 @@ export function BottomNav() {
       className="fixed inset-x-0 bottom-0 z-40 border-t border-border/70 bg-panel/95 backdrop-blur-xl lg:hidden"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      <ul className="mx-auto flex h-14 max-w-lg items-stretch">
+      {/* h-12 (3rem) = hauteur de la barre, sans le retrait iOS. Cette valeur
+          est reprise a l'identique dans Layout, PwaUi et CategoriesPage :
+          toute modification doit etre faite dans les 4 fichiers. */}
+      <ul className="mx-auto flex h-12 max-w-lg items-stretch">
         {BOTTOM_NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           const isCart = item.to === "/panier";

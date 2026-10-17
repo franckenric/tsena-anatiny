@@ -50,7 +50,7 @@ export function InstallPrompt() {
   const isIosMode = installMode === "ios";
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-50 flex justify-center px-3 lg:bottom-5">
+    <div className="pointer-events-none fixed inset-x-0 bottom-[calc(3rem+env(safe-area-inset-bottom))] z-50 flex justify-center px-3 lg:bottom-5">
       <div
         role="dialog"
         aria-label={t("pwa.installTitle")}

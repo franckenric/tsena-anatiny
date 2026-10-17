@@ -18,6 +18,15 @@ interface PwaContextValue {
   isOffline: boolean;
   /** L'app est lancee depuis le mode standalone (installee). */
   isInstalled: boolean;
+  /** Appareil iOS/iPadOS : aucune invite native d'installation n'existe. */
+  isIos: boolean;
+  /**
+   * Methode d'installation proposee :
+   * - "native" : invite du navigateur (Chrome/Edge/Android) ;
+   * - "ios" : marche a suivre manuelle (Partager > Sur l'ecran d'accueil) ;
+   * - null : rien de propose (deja installe ou navigateur non compatible).
+   */
+  installMode: "native" | "ios" | null;
   /** Le navigateur propose l'installation de la PWA. */
   canInstall: boolean;
   /** Declenche l'invite d'installation native du navigateur. */
@@ -25,18 +34,56 @@ interface PwaContextValue {
   /** L'utilisateur a refuse l'invite d'installation. */
   dismissInstall: () => void;
   installDismissed: boolean;
+  /** La fiche d'instructions iOS est ouverte. */
+  iosInstructionsOpen: boolean;
+  /** Ouvre la fiche d'instructions iOS. */
+  openIosInstructions: () => void;
+  /** Ferme la fiche d'instructions iOS. */
+  closeIosInstructions: () => void;
 }
 
 const PwaContext = createContext<PwaContextValue | null>(null);
 
 const INSTALL_DISMISSED_KEY = "fo.pwa.install.dismissed";
 
+// Un refus n'est plus definitif : on repropose l'installation apres une
+// semaine, sinon un simple "Plus tard" condamnait l'app a ne plus jamais
+// proposer l'ajout a l'ecran d'accueil.
+const INSTALL_DISMISSED_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
 function readInstallDismissed(): boolean {
   try {
-    return localStorage.getItem(INSTALL_DISMISSED_KEY) === "1";
+    const raw = localStorage.getItem(INSTALL_DISMISSED_KEY);
+    if (!raw) return false;
+    const at = Number(raw);
+    // Ancien format ("1") = refus juge definitif : on le considere expire pour
+    // reproposer l'installation aux personnes deja bloquees.
+    if (!Number.isFinite(at) || at <= 0) return false;
+    return Date.now() - at < INSTALL_DISMISSED_TTL_MS;
   } catch {
     return false;
   }
+}
+
+function markInstallDismissed(): void {
+  try {
+    localStorage.setItem(INSTALL_DISMISSED_KEY, String(Date.now()));
+  } catch {
+    // stockage indisponible
+  }
+}
+
+/**
+ * iOS/iPadOS n'emet jamais `beforeinstallprompt` : l'installation passe
+ * obligatoirement par le menu Partager de Safari. On detecte aussi l'iPad
+ * qui se presente comme un Mac depuis iPadOS 13.
+ */
+function isIosDevice(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent;
+  const ipadOs =
+    navigator.platform === "MacIntel" && (navigator.maxTouchPoints ?? 0) > 1;
+  return /iPad|iPhone|iPod/.test(ua) || ipadOs;
 }
 
 function isStandalone(): boolean {
@@ -81,6 +128,8 @@ export function PwaProvider({ children }: { children: ReactNode }) {
   const [installDismissed, setInstallDismissed] = useState(
     readInstallDismissed
   );
+  const [iosInstructionsOpen, setIosInstructionsOpen] = useState(false);
+  const isIos = useMemo(() => isIosDevice(), []);
 
   useEffect(() => {
     const onBeforeInstall = (e: Event) => {
@@ -112,37 +161,48 @@ export function PwaProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  const dismissInstall = useCallback(() => {
+    setInstallDismissed(true);
+    markInstallDismissed();
+  }, []);
+
+  const openIosInstructions = useCallback(() => {
+    setIosInstructionsOpen(true);
+  }, []);
+
+  const closeIosInstructions = useCallback(() => {
+    setIosInstructionsOpen(false);
+  }, []);
+
   const promptInstall = useCallback(() => {
-    if (!deferredPrompt) return;
+    // Pas d'invite native disponible : sur iOS on affiche la marche a suivre.
+    if (!deferredPrompt) {
+      if (isIos) setIosInstructionsOpen(true);
+      return;
+    }
     void deferredPrompt.prompt();
     void deferredPrompt.userChoice.then((choice) => {
       if (choice.outcome === "accepted") {
         setIsInstalled(true);
         setDeferredPrompt(null);
       } else {
-        setInstallDismissed(true);
-        try {
-          localStorage.setItem(INSTALL_DISMISSED_KEY, "1");
-        } catch {
-          // stockage indisponible
-        }
+        dismissInstall();
       }
     });
-  }, [deferredPrompt]);
-
-  const dismissInstall = useCallback(() => {
-    setInstallDismissed(true);
-    try {
-      localStorage.setItem(INSTALL_DISMISSED_KEY, "1");
-    } catch {
-      // stockage indisponible
-    }
-  }, []);
+  }, [deferredPrompt, isIos, dismissInstall]);
 
   const updateApp = useCallback(() => {
     setNeedRefresh(false);
     void updateServiceWorker(true);
   }, [setNeedRefresh, updateServiceWorker]);
+
+  const installMode: "native" | "ios" | null = isInstalled
+    ? null
+    : deferredPrompt
+      ? "native"
+      : isIos
+        ? "ios"
+        : null;
 
   const value = useMemo<PwaContextValue>(
     () => ({
@@ -150,20 +210,29 @@ export function PwaProvider({ children }: { children: ReactNode }) {
       updateApp,
       isOffline,
       isInstalled,
-      canInstall: Boolean(deferredPrompt) && !isInstalled && !installDismissed,
+      isIos,
+      installMode,
+      canInstall: installMode !== null && !installDismissed,
       promptInstall,
       dismissInstall,
-      installDismissed
+      installDismissed,
+      iosInstructionsOpen,
+      openIosInstructions,
+      closeIosInstructions
     }),
     [
       needRefresh,
       updateApp,
       isOffline,
       isInstalled,
-      deferredPrompt,
+      isIos,
+      installMode,
       installDismissed,
       promptInstall,
-      dismissInstall
+      dismissInstall,
+      iosInstructionsOpen,
+      openIosInstructions,
+      closeIosInstructions
     ]
   );
 

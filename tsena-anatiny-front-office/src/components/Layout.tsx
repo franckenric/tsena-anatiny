@@ -4,7 +4,12 @@ import type { ReactNode } from "react";
 import { Header } from "./Header";
 import { BottomNav } from "./BottomNav";
 import { Footer } from "./Footer";
-import { InstallPrompt, OfflineBanner, UpdatePrompt } from "./PwaUi";
+import {
+  InstallPrompt,
+  IosInstallSheet,
+  OfflineBanner,
+  UpdatePrompt
+} from "./PwaUi";
 
 export function Layout({ children }: { children?: ReactNode }) {
   const location = useLocation();
@@ -29,6 +34,7 @@ export function Layout({ children }: { children?: ReactNode }) {
       <Footer />
       <BottomNav />
       <InstallPrompt />
+      <IosInstallSheet />
     </div>
   );
 }

@@ -63,6 +63,17 @@ export const dictionaries: Record<Language, Record<string, string>> = {
     "pwa.installSub":
       "Ajoutez l'application à votre écran d'accueil pour un accès rapide, même hors connexion.",
     "pwa.installHint": "Installable sur votre appareil, disponible hors connexion.",
+    "pwa.iosTitle": `Installer ${PROJECT_NAME} sur iPhone / iPad`,
+    "pwa.iosSub":
+      "Sur iPhone et iPad, l'installation se fait depuis Safari, via le menu Partager.",
+    "pwa.iosStep1": "Ouvrez ce site dans le navigateur Safari.",
+    "pwa.iosStep2": "Touchez l'icône Partager en bas de l'écran.",
+    "pwa.iosStep3":
+      "Choisissez « Sur l'écran d'accueil », puis touchez « Ajouter ».",
+    "pwa.iosOpen": "Voir comment installer",
+    "pwa.iosNote":
+      "Sur Android, utilisez le bouton « Installer » ou le menu du navigateur.",
+    "pwa.iosGotIt": "J'ai compris",
     "pwa.updateAvailable": "Une nouvelle version est disponible.",
     "pwa.updateNow": "Mettre à jour",
     "pwa.offline": "Vous êtes hors ligne — certaines données peuvent être obsolètes.",
@@ -393,6 +404,17 @@ export const dictionaries: Record<Language, Record<string, string>> = {
     "pwa.installSub":
       "Ampio ny rindranasa amin'ny ekrananao mba hafaingana ny fidirana, na dia tsy misy tambajotra aza.",
     "pwa.installHint": "Azo apetraka amin'ny findaynao, miaina koa amin'ny tsy misy tambajotra.",
+    "pwa.iosTitle": `Apetraho amin'ny iPhone / iPad ny ${PROJECT_NAME}`,
+    "pwa.iosSub":
+      "Amin'ny iPhone sy iPad, ny fametrahana dia atao ao amin'ny Safari, amin'ny menio Zarao.",
+    "pwa.iosStep1": "Sokafy ao amin'ny Safari ity tranokala ity.",
+    "pwa.iosStep2": "Tsindrio ny kisary Zarao eo amin'ny farany ambany.",
+    "pwa.iosStep3":
+      "Safidio ny « Amin'ny efijery fiandohana », dia tsindrio « Hampio ».",
+    "pwa.iosOpen": "Jereo ny fomba fametrahana",
+    "pwa.iosNote":
+      "Amin'ny Android, ampiasao ny bokotra « Apetraho » na ny menion'ny navigateur.",
+    "pwa.iosGotIt": "Azoko",
     "pwa.updateAvailable": "Misy kinava vaovao.",
     "pwa.updateNow": "Hanavao",
     "pwa.offline": "Tsy misy tambajotra — mety ho efa tsy marina ny angona.",

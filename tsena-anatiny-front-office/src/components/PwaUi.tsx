@@ -22,7 +22,7 @@ export function OfflineBanner() {
 
 /** Banniere d'installation de la PWA, affichee une seule fois. */
 export function InstallPrompt() {
-  const { canInstall, promptInstall, dismissInstall } = usePwa();
+  const { canInstall, installMode, promptInstall, dismissInstall } = usePwa();
   const { t } = useI18n();
   const [visible, setVisible] = useState(false);
 
@@ -46,6 +46,9 @@ export function InstallPrompt() {
 
   if (!canInstall || !visible) return null;
 
+  // Sur iOS l'invite native n'existe pas : le bouton ouvre la marche a suivre.
+  const isIosMode = installMode === "ios";
+
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-50 flex justify-center px-3 lg:bottom-5">
       <div
@@ -59,7 +62,7 @@ export function InstallPrompt() {
         <div className="min-w-0 flex-1">
           <p className="text-sm font-bold text-ink">{t("pwa.installTitle")}</p>
           <p className="mt-0.5 text-xs leading-relaxed text-muted">
-            {t("pwa.installSub")}
+            {t(isIosMode ? "pwa.iosSub" : "pwa.installSub")}
           </p>
           <div className="mt-2.5 flex gap-2">
             <button
@@ -70,7 +73,7 @@ export function InstallPrompt() {
               }}
               className="inline-flex h-9 items-center rounded-xl bg-brand px-3.5 text-xs font-bold text-white shadow-md shadow-brand/25 transition hover:bg-brand/90"
             >
-              {t("pwa.install")}
+              {t(isIosMode ? "pwa.iosOpen" : "pwa.install")}
             </button>
             <button
               type="button"
@@ -94,6 +97,105 @@ export function InstallPrompt() {
           className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-muted transition hover:bg-bg hover:text-ink"
         >
           <X className="h-4 w-4" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Fiche "comment installer" pour iOS/iPadOS : Safari n'affiche aucune invite
+ * native, l'installation passe par Partager > Sur l'ecran d'accueil.
+ */
+export function IosInstallSheet() {
+  const { iosInstructionsOpen, closeIosInstructions, dismissInstall } = usePwa();
+  const { t } = useI18n();
+
+  useEffect(() => {
+    if (!iosInstructionsOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeIosInstructions();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [iosInstructionsOpen, closeIosInstructions]);
+
+  if (!iosInstructionsOpen) return null;
+
+  const steps = ["pwa.iosStep1", "pwa.iosStep2", "pwa.iosStep3"] as const;
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center sm:p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="ios-install-title"
+    >
+      {/* Voile : ferme la fiche au clic. */}
+      <button
+        type="button"
+        aria-label={t("common.close")}
+        onClick={closeIosInstructions}
+        className="animate-fade-in absolute inset-0 cursor-default bg-ink/70 backdrop-blur-sm"
+      />
+
+      <div className="animate-modal-pop relative w-full max-w-md rounded-t-[2rem] border border-border bg-panel p-5 shadow-lift sm:rounded-[2rem]">
+        {/* Poignee de feuille inferieure, sur mobile uniquement. */}
+        <div className="flex justify-center pb-3 sm:hidden">
+          <span className="h-1.5 w-10 rounded-full bg-border" />
+        </div>
+
+        <div className="flex items-start gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand">
+            <Download className="h-5 w-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <h2
+              id="ios-install-title"
+              className="font-display text-base font-bold text-ink"
+            >
+              {t("pwa.iosTitle")}
+            </h2>
+            <p className="mt-1 text-xs leading-relaxed text-muted">
+              {t("pwa.iosSub")}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={closeIosInstructions}
+            aria-label={t("common.close")}
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-muted transition hover:bg-bg hover:text-ink"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <ol className="mt-4 space-y-3">
+          {steps.map((key, index) => (
+            <li key={key} className="flex items-start gap-3">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand text-xs font-bold text-white">
+                {index + 1}
+              </span>
+              <span className="pt-0.5 text-sm leading-snug text-ink">
+                {t(key)}
+              </span>
+            </li>
+          ))}
+        </ol>
+
+        <p className="mt-4 rounded-xl bg-bg px-3 py-2 text-[11px] leading-relaxed text-muted">
+          {t("pwa.iosNote")}
+        </p>
+
+        <button
+          type="button"
+          onClick={() => {
+            closeIosInstructions();
+            dismissInstall();
+          }}
+          className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-xl bg-brand px-4 text-sm font-bold text-white shadow-md shadow-brand/25 transition hover:bg-brand/90"
+        >
+          {t("pwa.iosGotIt")}
         </button>
       </div>
     </div>

@@ -1,16 +1,8 @@
 import { Link } from "react-router-dom";
-import {
-  ArrowUp,
-  Banknote,
-  ChevronRight,
-  Download,
-  ShieldCheck,
-  Truck
-} from "lucide-react";
+import { ArrowUp, Banknote, ChevronRight, Download, ShieldCheck, Truck } from "lucide-react";
 import { useI18n } from "../contexts/I18nContext";
 import { DESKTOP_NAV_ITEMS, accountSectionItems } from "../lib/nav";
 import { useAuth } from "../contexts/AuthContext";
-import { usePwa } from "../contexts/PwaContext";
 import { cn } from "../lib/utils";
 import { PROJECT_NAME } from "../lib/projectName";
 
@@ -53,7 +45,6 @@ function FooterLink({ to, label }: { to: string; label: string }) {
 export function Footer() {
   const { t, language, setLanguage } = useI18n();
   const { customer } = useAuth();
-  const { canInstall, promptInstall } = usePwa();
   const accountItems = accountSectionItems(Boolean(customer));
   const year = new Date().getFullYear();
 
@@ -88,17 +79,6 @@ export function Footer() {
             <Download className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand" />
             <span>{t("pwa.installHint")}</span>
           </p>
-
-          {canInstall && (
-            <button
-              type="button"
-              onClick={promptInstall}
-              className="mt-4 inline-flex h-9 items-center gap-2 rounded-xl border border-brand/30 bg-brand-soft/50 px-3.5 text-xs font-bold text-brand transition hover:bg-brand-soft active:scale-95"
-            >
-              <Download className="h-3.5 w-3.5" />
-              {t("pwa.install")}
-            </button>
-          )}
         </div>
 
         {/* Boutique */}

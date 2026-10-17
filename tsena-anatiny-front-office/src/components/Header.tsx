@@ -1,13 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useHistory, useLocation } from "react-router-dom";
-import { Menu, ShoppingBag, LogOut, User, ChevronDown, Download, Bell } from "lucide-react";
+import { Menu, ShoppingBag, LogOut, User, ChevronDown, Bell } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { useAuthModal } from "../contexts/AuthModalContext";
 import { useCart } from "../contexts/CartContext";
 import { useCartDrawer } from "../contexts/CartDrawerContext";
 import { useMobileMenu } from "../contexts/MobileMenuContext";
 import { useI18n } from "../contexts/I18nContext";
-import { usePwa } from "../contexts/PwaContext";
 import { useCurrentPageTitle } from "../contexts/PageTitleContext";
 import { NotificationsBell } from "./NotificationsBell";
 import { DESKTOP_NAV_ITEMS, isNavActive } from "../lib/nav";
@@ -21,7 +20,6 @@ export function Header() {
   const { openCart } = useCartDrawer();
   const { openMenu } = useMobileMenu();
   const { t, language, setLanguage } = useI18n();
-  const { canInstall, promptInstall } = usePwa();
   const pageTitle = useCurrentPageTitle();
   const history = useHistory();
   const { pathname } = useLocation();
@@ -142,17 +140,6 @@ export function Header() {
               </button>
             ))}
           </div>
-
-          {canInstall && (
-            <button
-              type="button"
-              onClick={promptInstall}
-              className="hidden h-9 items-center gap-1.5 rounded-xl border border-brand/30 bg-brand-soft/50 px-2.5 text-xs font-bold text-brand transition hover:bg-brand-soft md:inline-flex"
-            >
-              <Download className="h-3.5 w-3.5" />
-              <span className="hidden xl:inline">{t("pwa.install")}</span>
-            </button>
-          )}
 
           <button
             type="button"

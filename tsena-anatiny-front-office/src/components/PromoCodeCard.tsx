@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { BadgePercent, Check, Ticket, X } from "lucide-react";
 import { promoCodesService } from "../services/operations.service";
 import {
@@ -6,7 +6,7 @@ import {
   setAppliedPromo,
   type AppliedPromo
 } from "../lib/promo";
-import { getGuestPromo, setGuestPromo } from "../lib/guestCart";
+import { setGuestPromo } from "../lib/guestCart";
 import { useCart } from "../contexts/CartContext";
 import { useI18n } from "../contexts/I18nContext";
 
@@ -14,11 +14,20 @@ export function PromoCodeCard() {
   const { t } = useI18n();
   const { isGuest } = useCart();
   const [applied, setApplied] = useState<AppliedPromo | null>(() =>
-    isGuest ? getGuestPromo() : getAppliedPromo()
+    getAppliedPromo()
   );
   const [code, setCode] = useState("");
   const [isChecking, setIsChecking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Les codes promo sont reserves aux comptes : aucun champ de saisie pour un
+  // invite, et l'eventuel code stocke en local (avant cette regle) est purge.
+  useEffect(() => {
+    if (isGuest) {
+      setGuestPromo(null);
+      setApplied(null);
+    }
+  }, [isGuest]);
 
   const handleApply = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,8 +42,7 @@ export function PromoCodeCard() {
         discount_type: res.discount_type,
         discount_value: res.discount_value
       };
-      if (isGuest) setGuestPromo(promo);
-      else setAppliedPromo(promo);
+      setAppliedPromo(promo);
       setApplied(promo);
       setCode("");
     } catch (err) {
@@ -45,11 +53,12 @@ export function PromoCodeCard() {
   };
 
   const handleRemove = () => {
-    if (isGuest) setGuestPromo(null);
-    else setAppliedPromo(null);
+    setAppliedPromo(null);
     setApplied(null);
     setError(null);
   };
+
+  if (isGuest) return null;
 
   if (applied) {
     return (

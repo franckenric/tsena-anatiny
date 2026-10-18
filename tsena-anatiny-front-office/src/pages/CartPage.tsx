@@ -23,7 +23,6 @@ import {
   type AppliedPromo
 } from "../lib/promo";
 import {
-  getGuestPromo,
   removeFromGuestCart,
   setGuestPromo,
   updateGuestCartQuantity
@@ -41,10 +40,15 @@ export function CartPage() {
   const [error, setError] = useState<string | null>(null);
   const [promo, setPromo] = useState<AppliedPromo | null>(null);
 
-  // Les quantites sont mises a jour en place par le contexte pour les deux
-  // sources de panier : une simple relecture suffit apres validation serveur.
+  // Les codes promo sont reserves aux comptes : l'invite ne voit aucun bloc
+  // code, et l'eventuel code stocke en local (avant cette regle) est purge.
   useEffect(() => {
-    setPromo(isGuest ? getGuestPromo() : getAppliedPromo());
+    if (isGuest) {
+      setGuestPromo(null);
+      setPromo(null);
+      return;
+    }
+    setPromo(getAppliedPromo());
   }, [isGuest, items.length]);
 
   const subtotal = useMemo(
@@ -57,7 +61,8 @@ export function CartPage() {
   );
 
   useEffect(() => {
-    const stored = isGuest ? getGuestPromo() : getAppliedPromo();
+    if (isGuest) return;
+    const stored = getAppliedPromo();
     if (!stored || items.length === 0) return;
     // Un code « livraison offerte » depend d'une zone qui n'est pas encore
     // choisie ici : le panier ne peut pas le juger et le serveur le rejetterait
@@ -71,8 +76,7 @@ export function CartPage() {
         if (!cancelled) setPromo(stored);
       })
       .catch(() => {
-        if (isGuest) setGuestPromo(null);
-        else setAppliedPromo(null);
+        setAppliedPromo(null);
         if (!cancelled) setPromo(null);
       });
     return () => {

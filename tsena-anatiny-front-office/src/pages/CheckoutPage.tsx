@@ -33,7 +33,6 @@ import {
 } from "../lib/promo";
 import type { DeliveryZone } from "../types/operations";
 import {
-  getGuestPromo,
   setGuestOrderRef,
   setGuestPromo
 } from "../lib/guestCart";
@@ -104,9 +103,15 @@ export function CheckoutPage() {
     [items]
   );
 
-  // Revalidate the applied promo code against the real cart subtotal.
+  // Les codes promo sont reserves aux comptes : l'eventuel code invite stocke
+  // en local (avant cette regle) est purge, seul un connecte peut valider.
   useEffect(() => {
-    const stored = isGuest ? getGuestPromo() : getAppliedPromo();
+    if (isGuest) {
+      setGuestPromo(null);
+      setPromo(null);
+      return;
+    }
+    const stored = getAppliedPromo();
     if (!stored || items.length === 0) return;
     // Un code « livraison offerte » depend de la zone : l'attendre evite de
     // l'ecarter faute de tarif connu pendant le chargement.
@@ -118,8 +123,7 @@ export function CheckoutPage() {
         if (!cancelled) setPromo(stored);
       })
       .catch(() => {
-        if (isGuest) setGuestPromo(null);
-        else setAppliedPromo(null);
+        setAppliedPromo(null);
         if (!cancelled) setPromo(null);
       });
     return () => {
@@ -182,7 +186,8 @@ export function CheckoutPage() {
           })),
           status: "draft",
           note: note.trim() || undefined,
-          promo_code: promo?.code,
+          // Pas de code promo sans compte : le serveur l'ignorerait (le champ
+          // n'existe plus sur le schema invite), inutile de l'envoyer.
           delivery_zone_id: selectedZoneId ?? undefined
         });
         // Sans compte, la page de succes relit la commande via le lookup

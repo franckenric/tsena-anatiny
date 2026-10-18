@@ -136,29 +136,9 @@ export function clearGuestCart(): void {
 }
 
 /**
- * Code promo du visiteur sans compte, memorise sous sa forme complete
- * (type + valeur) pour que l'affichage du panier puisse calculer la remise
- * sans repasser par l'API.
+ * Les codes promo sont reserves aux comptes : ce nettoyage purge l'eventuel
+ * code invite stocke avant cette regle. Plus rien n'est jamais ecrit ici.
  */
-export function getGuestPromo(): AppliedPromo | null {
-  try {
-    const raw = localStorage.getItem(GUEST_PROMO_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (
-      parsed &&
-      typeof parsed.code === "string" &&
-      (parsed.discount_type === "percent" || parsed.discount_type === "fixed") &&
-      typeof parsed.discount_value === "number"
-    ) {
-      return parsed as AppliedPromo;
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
 export function setGuestPromo(promo: AppliedPromo | null): void {
   try {
     if (promo) localStorage.setItem(GUEST_PROMO_KEY, JSON.stringify(promo));

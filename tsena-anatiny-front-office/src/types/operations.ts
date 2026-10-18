@@ -75,7 +75,6 @@ export interface GuestCheckoutPayload {
   items: GuestCheckoutLine[];
   status?: OrderStatus;
   note?: string;
-  promo_code?: string;
   delivery_zone_id?: number;
 }
 

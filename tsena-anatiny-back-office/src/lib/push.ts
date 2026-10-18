@@ -52,10 +52,16 @@ function base64UrlToUint8Array(value: string) {
   const padding = "=".repeat((4 - (value.length % 4)) % 4);
   const base64 = (value + padding).replace(/-/g, "+").replace(/_/g, "/");
   const raw = atob(base64);
-  const buffer = new ArrayBuffer(raw.length);
+  // L'API Web Push attend le point non compresse SEC1 (RFC 5480 §2.2) : l'octet
+  // 0x04 suivi de X puis Y (65 o). Le serveur livre X||Y seul (64 o) ; sans ce
+  // prefixe, `pushManager.subscribe` rejette la cle (« must contain a valid
+  // P-256 public key »). A distinguer du format « raw » de WebCrypto (X||Y sans
+  // 0x04), qui est different.
+  const buffer = new ArrayBuffer(raw.length + 1);
   const output = new Uint8Array(buffer);
+  output[0] = 0x04;
   for (let i = 0; i < raw.length; i += 1) {
-    output[i] = raw.charCodeAt(i);
+    output[i + 1] = raw.charCodeAt(i);
   }
   return output;
 }

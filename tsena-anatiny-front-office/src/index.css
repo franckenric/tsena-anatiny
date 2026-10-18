@@ -39,6 +39,15 @@
     min-height: 100dvh;
   }
 
+  /* iOS zoome automatiquement dans un champ de saisie dont la police fait
+     moins de 16 px (ex. text-sm) au focus, ce que `user-scalable=no` n'empeche
+     pas dans Safari. Forcer 16 px l'empeche sans toucher au theme. */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
   h1,
   h2,
   h3,

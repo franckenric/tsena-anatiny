@@ -58,5 +58,8 @@ coverage.xml
 .pytest_cache/
 .mypy_cache/
 
+Data/*
+invoice_test/*
+
 # Dist / Build artifacts
 *.tsbuildinfo

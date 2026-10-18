@@ -177,3 +177,37 @@ export function markNotificationRead(id: number): Promise<RestNotification> {
 export function clearNotifications(): Promise<{ success: boolean }> {
   return restFetch("/notifications", { method: "DELETE" });
 }
+
+// ---------------------------------------------------------------------------
+// Web Push (badge + notification sur l'icone, application fermee)
+// ---------------------------------------------------------------------------
+
+export function fetchVapidPublicKey(): Promise<{ public_key: string }> {
+  // 503 si le serveur n'a pas de cles VAPID : l'appelant doit simplement
+  // masquer l'action « activer les alertes » plutot que d'echouer bruyamment.
+  return restFetch("/notifications/push/vapid-public-key");
+}
+
+export type PushSubscriptionBody = {
+  endpoint: string;
+  keys: { p256dh: string; auth: string };
+  user_agent?: string;
+};
+
+export function subscribePush(
+  body: PushSubscriptionBody
+): Promise<{ success: boolean; id: number }> {
+  return restFetch("/notifications/push/subscribe", {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+}
+
+export function unsubscribePush(
+  endpoint: string
+): Promise<{ success: boolean; count: number }> {
+  return restFetch(
+    `/notifications/push/subscribe?endpoint=${encodeURIComponent(endpoint)}`,
+    { method: "DELETE" }
+  );
+}

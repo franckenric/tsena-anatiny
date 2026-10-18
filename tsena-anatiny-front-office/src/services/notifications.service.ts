@@ -75,4 +75,40 @@ export const notificationsService = {
   }
 };
 
+// ---------------------------------------------------------------------------
+// Web Push (badge + notification sur l'icone, application fermee)
+// ---------------------------------------------------------------------------
+
+export function fetchVapidPublicKey(): Promise<{ public_key: string }> {
+  // 503 si le serveur n'a pas de cles VAPID : l'appelant masque simplement
+  // l'action plutot que d'echouer bruyamment.
+  return apiFetch<{ public_key: string }>(
+    "/notifications/push/vapid-public-key"
+  );
+}
+
+export type PushSubscriptionBody = {
+  endpoint: string;
+  keys: { p256dh: string; auth: string };
+  user_agent?: string;
+};
+
+export function subscribePush(
+  body: PushSubscriptionBody
+): Promise<{ success: boolean; id: number }> {
+  return apiFetch("/notifications/push/subscribe", {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+}
+
+export function unsubscribePush(
+  endpoint: string
+): Promise<{ success: boolean; count: number }> {
+  return apiFetch(
+    `/notifications/push/subscribe?endpoint=${encodeURIComponent(endpoint)}`,
+    { method: "DELETE" }
+  );
+}
+
 export type { Notification, NotificationListResponse };

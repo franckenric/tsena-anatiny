@@ -9,6 +9,7 @@ import { useMobileMenu } from "../contexts/MobileMenuContext";
 import { useI18n } from "../contexts/I18nContext";
 import { useCurrentPageTitle } from "../contexts/PageTitleContext";
 import { NotificationsBell } from "./NotificationsBell";
+import { PushToggle } from "./PushToggle";
 import { DESKTOP_NAV_ITEMS, isNavActive } from "../lib/nav";
 import { cn } from "../lib/utils";
 import { PROJECT_NAME } from "../lib/projectName";
@@ -167,6 +168,7 @@ export function Header() {
 
           {isBooting ? null : customer ? (
             <div className="flex items-center gap-1">
+              <PushToggle />
               <NotificationsBell />
               <div ref={userMenuRef} className="relative">
                 <button

@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { NotificationsBell } from "./NotificationsBell";
+import { PushToggle } from "./PushToggle";
 import { cn } from "../lib/utils";
 import { PROJECT_NAME } from "../lib/projectName";
 
@@ -306,6 +307,7 @@ export function Layout({ children, title }: LayoutProps) {
           </nav>
 
           <div className="ml-auto flex items-center gap-1">
+            <PushToggle />
             <NotificationsBell />
 
             <div ref={userMenuRef} className="relative">

@@ -79,6 +79,12 @@ export default defineConfig(({ mode }) => {
         },
         workbox: {
           globPatterns: ["**/*.{js,css,html,svg,png,ico,woff,woff2,ttf,webmanifest}"],
+          // Handlers push/notificationclick, ajoutes au service worker genere
+          // par Workbox sans remplacer sa gestion du cache. Chemin absolu : le
+          // SW tourne a la racine (/), et le fichier est copie tel quel depuis
+          // public/. Le navigateur re-verifie ce fichier a chaque mise a jour
+          // du service worker, donc une modification declenche aussi un update.
+          importScripts: ["/push-sw.js"],
           // SPA (BrowserRouter) : une navigation retombe sur l'app shell.
           navigateFallback: "/index.html",
           // Les appels API ne passent jamais par le cache : les donnees du

@@ -12,6 +12,7 @@ from .products import Products
 from .promo_codes import PromoCodes
 from .product_images import ProductImages
 from .product_variants import ProductVariants
+from .push_subscriptions import PushSubscriptions
 from .receipts import Receipts
 from .roles import Roles
 from .stock import Stock

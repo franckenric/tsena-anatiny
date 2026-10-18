@@ -9,6 +9,9 @@ from app.api.api_v1.endpoints import login_facebook
 from app.api.api_v1.endpoints import login_google
 from app.api.api_v1.endpoints import lot_expenses
 from app.api.api_v1.endpoints import lots
+# Enregistré AVANT notifications_api : `/notifications/push/*` ne doit jamais
+# être interprété comme `{notifications_id}` (int) par le routeur suivant.
+from app.api.api_v1.endpoints import push
 from app.api.api_v1.endpoints import notifications_api
 from app.api.api_v1.endpoints import orders
 from app.api.api_v1.endpoints import otp
@@ -32,6 +35,7 @@ api_router.include_router(login_facebook.router, prefix="/login", tags=["login"]
 api_router.include_router(login_google.router, prefix="/login", tags=["login"])
 api_router.include_router(lot_expenses.router, prefix="/lot_expenses", tags=["lot_expenses"])
 api_router.include_router(lots.router, prefix="/lots", tags=["lots"])
+api_router.include_router(push.router, prefix="/notifications/push", tags=["push"])
 api_router.include_router(notifications_api.router, prefix="/notifications", tags=["notifications"])
 api_router.include_router(orders.router, prefix="/orders", tags=["orders"])
 api_router.include_router(otp.router, prefix="/otp", tags=["otp"])

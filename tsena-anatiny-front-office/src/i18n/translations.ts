@@ -342,6 +342,16 @@ export const dictionaries: Record<Language, Record<string, string>> = {
     "notifications.bellLabel": "Notifications",
     "notifications.markRead": "Tout lu",
 
+    "push.enable": "Activer les alertes",
+    "push.disable": "Désactiver les alertes",
+    "push.enableHint": "Recevoir une alerte sur l'icône, même l'app fermée",
+    "push.enabled": "Alertes activées sur cet appareil",
+    "push.disabled": "Alertes désactivées",
+    "push.denied": "Permission refusée dans le navigateur",
+    "push.needInstall":
+      "Ajoutez d'abord le site à l'écran d'accueil pour activer les alertes.",
+    "push.error": "Activation impossible",
+
     "error.loadCart": "Erreur chargement panier",
     "error.update": "Erreur mise à jour",
     "error.delete": "Erreur suppression",
@@ -699,6 +709,17 @@ export const dictionaries: Record<Language, Record<string, string>> = {
     "notifications.seeAll": "Jereo daholo",
     "notifications.bellLabel": "Fampandrenesana",
     "notifications.markRead": "Vakiana daholo",
+
+    "push.enable": "Akeny ny fanambara",
+    "push.disable": "Alemo ny fanambara",
+    "push.enableHint":
+      "Mahazatra ny fanambara amin'ny sary, na dia tsy voasokafana aza ny rindrina",
+    "push.enabled": "Voakena ny fanambara amin'ity enda ity",
+    "push.disabled": "Voalana ny fanambara",
+    "push.denied": "Nanao aoka ny fahafahana ao amin'ny mpankafy",
+    "push.needInstall":
+      "Apetraho aloha ny tranonkala eo amin'ny efijery hanombohana ny fanambara.",
+    "push.error": "Tsy afaka nanombohana",
 
     "error.loadCart": "Hadisoana tamin'ny fampidirana ny harona",
     "error.update": "Hadisoana tamin'ny fanavaozana",

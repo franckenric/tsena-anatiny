@@ -24,6 +24,7 @@ import {
   type RestNotificationsResponse
 } from "../services/notifications.service";
 import { sendSms } from "../services/sms.service";
+import { setAppBadgeIfStandalone } from "../lib/appBadge";
 import { PROJECT_NAME } from "../lib/projectName";
 
 export type NotificationItem =
@@ -338,6 +339,13 @@ export function NotificationsProvider({
     [token, notifications]
   );
   const liveUnreadCount = token ? unreadCount : 0;
+
+  // Badge sur l'icône de l'application installée (Badging API). Sans session,
+  // `liveUnreadCount` vaut 0 : le badge s'efface tout seul à la déconnexion.
+  // L'appel est no-op dans un onglet de navigateur non installé.
+  useEffect(() => {
+    void setAppBadgeIfStandalone(liveUnreadCount);
+  }, [liveUnreadCount]);
 
   const value = useMemo<NotificationsContextValue>(
     () => ({

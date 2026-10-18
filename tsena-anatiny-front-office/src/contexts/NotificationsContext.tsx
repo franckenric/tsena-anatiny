@@ -14,6 +14,7 @@ import {
   parseNotificationEvent
 } from "../services/notifications.service";
 import { getStoredApiToken } from "../services/api";
+import { setAppBadgeIfStandalone } from "../lib/appBadge";
 import { useAuth } from "./AuthContext";
 import type { Notification } from "../types/notification";
 
@@ -198,6 +199,13 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       await refresh();
     }
   }, [customer, refresh]);
+
+  // Badge sur l'icone de l'application installee (Badging API). Sans client
+  // connecte, `unreadCount` vaut deja 0 : le badge s'efface a la deconnexion.
+  // No-op dans un simple onglet de navigateur non installe.
+  useEffect(() => {
+    void setAppBadgeIfStandalone(unreadCount);
+  }, [unreadCount]);
 
   const value = useMemo<NotificationsContextValue>(
     () => ({

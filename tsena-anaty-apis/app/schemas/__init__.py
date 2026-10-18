@@ -40,6 +40,13 @@ from .notifications import (
   ResponseNotifications,
   ResponsePresence
 )
+from .push_subscriptions import (
+  PushSubscription,
+  PushSubscriptionCreate,
+  PushSubscriptionKeys,
+  PushSubscriptionUpdate,
+  ResponseVapidKey,
+)
 from .otp import OtpRequest, OtpVerifyRequest, OtpVerifyResponse
 from .register import RegisterRequest, RegisterResponse
 from .orders import ( 

@@ -102,5 +102,21 @@ class Settings(BaseSettings):
         "on",
     }
 
+    # ── Web Push (VAPID) ─────────────────────────────────────────────────────
+    # Notifications et badge sur l'icone de l'application, meme app fermee.
+    # Ca n'a RIEN a voir avec le SMTP : le push passe par le service de push
+    # du navigateur (FCM pour Android/Chrome, APNs pour iOS/Safari). Une
+    # erreur de configuration ici n'empeche jamais l'envoi d'un email.
+    #
+    # Les cles se generent UNE fois puis ne changent plus : regenerer la cle
+    # privee invalide tous les abonnements existants. Voir
+    # `docs/push.md` (script `scripts/generate_vapid_keys.py`).
+    # Sans ces variables, l'API repond 503 sur /push/vapid-public-key et le
+    # badge reste un simple compteur affiche dans l'application ouverte.
+    VAPID_PUBLIC_KEY: str = os.getenv("VAPID_PUBLIC_KEY", "")
+    VAPID_PRIVATE_KEY: str = os.getenv("VAPID_PRIVATE_KEY", "")
+    # Contact obligatoire (RFC 8292) : une URL https ou un mailto.
+    VAPID_SUBJECT: str = os.getenv("VAPID_SUBJECT", "mailto:contact@gabbieboutique.com")
+
 
 settings = Settings()

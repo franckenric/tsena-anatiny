@@ -1,3 +1,4 @@
+import logging
 from typing import Any, Optional, Set
 from datetime import datetime
 
@@ -7,8 +8,11 @@ from sqlalchemy.orm import Session
 
 from app import crud, models
 from app.api import deps
+from app.core import push
 from app.core.ws import connection_manager
 from app.db import session as db_session
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -202,6 +206,36 @@ def _persist_notifications(
     db.commit()
 
 
+def _dispatch_push(
+    db: Session,
+    user_ids: Set[int],
+    *,
+    title: str,
+    message: str,
+    tag: Optional[str] = None,
+) -> None:
+    """Pousse la notification sur l'icone de l'application (Web Push).
+
+    Aucune exception ne doit remonter ici : le push est un effet de bord. Une
+    panne de FCM/APNs ne doit pas empecher une commande d'etre enregistree.
+    Le badge (nombre affiche sur l'icone) est lu depuis la base, il suit donc
+    le nombre de non-lues reel de chaque destinataire.
+    """
+    if not user_ids:
+        return
+    try:
+        push.send_push_to_users(
+            db,
+            user_ids=user_ids,
+            title=title,
+            body=message,
+            url="/notifications",
+            tag=tag,
+        )
+    except Exception as exc:  # noqa: BLE001 - voir docstring
+        logger.warning("Web Push interrompu (event=%s): %s", tag, exc)
+
+
 # ---------------------------------------------------------------------------
 # Public notifiers (called from order/cart endpoints)
 # ---------------------------------------------------------------------------
@@ -218,6 +252,14 @@ def notify_order_created(
     _persist_notifications(db, recipient_ids, "order.created", data)
     connection_manager.broadcast_to(
         recipient_ids, {"type": "order.created", "data": data}
+    )
+    title, message = _build_message("order.created", data)
+    _dispatch_push(
+        db,
+        recipient_ids,
+        title=title,
+        message=message,
+        tag=f"order-{data.get('order_id')}",
     )
 
 
@@ -240,6 +282,14 @@ def notify_order_status_changed(
     _persist_notifications(db, recipient_ids, "order.status_changed", data)
     connection_manager.broadcast_to(
         recipient_ids, {"type": "order.status_changed", "data": data}
+    )
+    title, message = _build_message("order.status_changed", data)
+    _dispatch_push(
+        db,
+        recipient_ids,
+        title=title,
+        message=message,
+        tag=f"order-{data.get('order_id')}",
     )
 
 
@@ -284,4 +334,14 @@ def notify_account_created(
     db.commit()
     connection_manager.broadcast_to(
         recipient_ids, {"type": "account.created", "data": data}
+    )
+    # Le push ne porte JAMAIS l'OTP : il transite par FCM/APNs (tiers) et
+    # resterait dans le centre de notifications du telephone, a portee de
+    # quiconque tient l'appareil. Le WebSocket reste le seul canal a OTP.
+    _dispatch_push(
+        db,
+        recipient_ids,
+        title="Nouveau compte client",
+        message=f"Compte créé pour {name or email} ({email}).",
+        tag=f"account-{getattr(customer, 'id', None)}",
     )

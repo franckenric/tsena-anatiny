@@ -94,6 +94,10 @@ export default defineConfig(({ mode }) => {
         },
         workbox: {
           globPatterns: ["**/*.{js,css,html,svg,png,ico,woff2,json,webmanifest}"],
+          // Handlers push/notificationclick ajoutes au service worker Workbox
+          // (meme mecanisme que le back-office). Le fichier vit dans public/
+          // et est copie tel quel a la racine de dist.
+          importScripts: ["/push-sw.js"],
           navigateFallback: "/index.html",
           navigateFallbackDenylist: [/^\/api\//],
           cleanupOutdatedCaches: true,

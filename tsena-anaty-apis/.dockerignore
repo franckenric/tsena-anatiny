@@ -1,0 +1,31 @@
+# Exclut du contexte de build tout ce que le Dockerfile ne COPY pas.
+# Sans ce fichier, Docker transfere l'integralite de tsena-anaty-apis/ a chaque
+# build : 12 Mo de fichiers produits (files/) et des artefacts Python inutiles.
+#
+# NE PAS exclure (copiés par le Dockerfile) :
+#   requirements.txt, app/, tests/, alembic/, alembic.ini, main.py,
+#   prestart.sh, prestart.py, backend_pre_start.py, initial_data.py,
+#   run_tests.sh
+
+# Artefacts Python : inutiles dans l'image, et leurs permissions (parfois
+# root:ubuntu, mode 710) peuvent bloquer l'envoi du contexte de build.
+# ATTENTION : les motifs .dockerignore ne sont PAS recursifs par defaut — sans
+# le prefixe `**/`, `.pytest_cache/` ne vise que la racine et laisse passer
+# `tests/.pytest_cache/`, ce qui fait echouer le build.
+**/__pycache__/
+*.py[cod]
+**/.pytest_cache/
+.coverage
+htmlcov/
+
+# Donnees et configuration runtime : montees en volume ou fournies par
+# docker-compose (env_file), jamais embarquees dans l'image.
+files/
+*.db
+.env
+.env.*
+!.env.example
+
+# Divers
+.git/
+*.log

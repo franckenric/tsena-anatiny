@@ -49,6 +49,10 @@ class Settings(BaseSettings):
     # emails transactionnels.
     PROJECT_NAME: str = os.getenv("PROJECT_NAME", "Tsena Anatiny")
 
+    # URL publique du front-office : lien "Acceder a la boutique" et signature
+    # des emails transactionnels. Vide = pas de lien dans les emails.
+    FRONTEND_URL: str = os.getenv("FRONTEND_URL", "https://gabbieboutique.com")
+
     SQLITE_DATABASE: str = os.getenv("SQLITE_DATABASE", "app.db")
 
     # MySQL configuration

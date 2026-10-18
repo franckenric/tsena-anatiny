@@ -48,9 +48,12 @@
     -webkit-tap-highlight-color: transparent;
   }
 
+  /* Pas de overflow-x ici : sur body, cela forcerait overflow-y a "auto" et
+     ferait de body un conteneur de defilement, ce qui casse position:fixed
+     (la barre de navigation mobile remonte au scroll). Le clip horizontal est
+     deja assure par la regle html ci-dessus. */
   body {
     @apply m-0 bg-bg bg-mesh text-ink font-sans antialiased;
-    overflow-x: hidden;
     min-height: 100dvh;
   }
 

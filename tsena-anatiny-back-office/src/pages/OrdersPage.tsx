@@ -12,7 +12,6 @@ import {
   Plus,
   Printer,
   Share2,
-  ShoppingCart,
   Trash2
 } from "lucide-react";
 import type {
@@ -676,14 +675,6 @@ export function OrdersPage() {
         onClick={() => history.push("/orders/new")}
       />
       <div className="animate-fade-up page-fill">
-        <div className="hidden items-center justify-between rounded-2xl border border-border/60 bg-panel/65 px-4 py-3 sm:flex">
-          <div className="inline-flex items-center gap-2 text-sm font-semibold text-ink">
-            <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-brand/15 text-brand ring-1 ring-brand/20">
-              <ShoppingCart className="h-4 w-4" />
-            </span>
-            Gestion des commandes
-          </div>
-        </div>
         {thermalStatus !== "unsupported" && (
           <div className="mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 rounded-xl border border-border/50 bg-panel/50 px-3 py-2 text-xs">
             <span className="inline-flex items-center gap-2 font-medium text-ink">
@@ -728,6 +719,7 @@ export function OrdersPage() {
           </div>
         )}
         <DataList
+          title="Gestion des commandes"
           itemLabel="commandes"
           page={page}
           totalPages={totalPages}

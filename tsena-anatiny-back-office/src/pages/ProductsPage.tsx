@@ -1502,14 +1502,6 @@ export function ProductsPage() {
         onClick={() => history.push("/products/new")}
       />
       <div className="animate-fade-up page-fill">
-        <div className="hidden items-center justify-between rounded-2xl border border-border/60 bg-panel/65 px-4 py-3 sm:flex">
-          <div className="inline-flex items-center gap-2 text-sm font-semibold text-ink">
-            <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-brand/15 text-brand ring-1 ring-brand/20">
-              <Boxes className="h-4 w-4" />
-            </span>
-            Gestion du catalogue
-          </div>
-        </div>
         {error && (
           <div className="rounded-2xl border border-warning/50 bg-warning/10 px-4 py-3 text-sm text-ink">
             {error}
@@ -1521,6 +1513,7 @@ export function ProductsPage() {
           </div>
         )}
         <DataList
+          title="Gestion du catalogue"
           itemLabel="produits"
           page={page}
           totalPages={totalPages}

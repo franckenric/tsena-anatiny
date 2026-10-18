@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useHistory, useLocation, useParams } from "react-router-dom";
 import {
   ArrowLeft,
   Banknote,
+  ChevronLeft,
   ChevronDown,
   ChevronRight,
   FileText,
@@ -72,14 +73,19 @@ export function ProductPage() {
   const galleryImages = useMemo(() => {
     if (!product) return [];
     const urls: string[] = [];
-    if (isRealImage(product.image)) {
-      urls.push(resolveImageUrl(product.image) ?? product.image);
-    }
-    for (const img of product.images ?? []) {
-      if (isRealImage(img.image) && !urls.includes(img.image)) {
-        urls.push(resolveImageUrl(img.image) ?? img.image);
-      }
-    }
+    const seen = new Set<string>();
+    // Dedup sur l'URL resolue : la photo principale est souvent repetee dans
+    // `product.images`, ce qui creerait deux slides (et deux cles React)
+    // identiques dans le carrousel.
+    const push = (raw?: string | null) => {
+      if (!isRealImage(raw)) return;
+      const resolved = resolveImageUrl(raw) ?? raw;
+      if (seen.has(resolved)) return;
+      seen.add(resolved);
+      urls.push(resolved);
+    };
+    push(product.image);
+    for (const img of product.images ?? []) push(img.image);
     return urls;
   }, [product]);
 
@@ -95,11 +101,55 @@ export function ProductPage() {
   );
   const descriptionClampable = descriptionLength > 420;
 
+  const galleryRef = useRef<HTMLDivElement | null>(null);
+
   useEffect(() => {
     if (!product) return;
+    // Le conteneur de scroll persiste entre deux rendus de la meme route :
+    // on repart du premier visuel quand on ouvre un autre produit.
+    galleryRef.current?.scrollTo({ left: 0 });
     setSelectedImage(galleryImages[0]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product?.id, galleryImages.length]);
+
+  // ── Carrousel d'images (mobile first) ──
+  // Le defilement horizontal (doigt ou trackpad) pilote l'image active : le
+  // scroll snap natif gere l'inertie et le "return to snap" du geste, sans
+  // calcul de drag maison et sans casser le scroll vertical de la page.
+  const activeIndex = selectedImage
+    ? Math.max(0, galleryImages.indexOf(selectedImage))
+    : 0;
+  // Une seule slide quand il n'y a rien a swiper (visuel unique ou absent).
+  const slides: (string | undefined)[] =
+    galleryImages.length > 0 ? galleryImages : [undefined];
+
+  const prefersReducedMotion = () =>
+    typeof window !== "undefined" &&
+    window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
+
+  const goToSlide = (index: number) => {
+    const count = galleryImages.length;
+    if (count < 2) return;
+    const next = ((index % count) + count) % count;
+    const el = galleryRef.current;
+    setSelectedImage(galleryImages[next]);
+    el?.scrollTo({
+      left: next * el.clientWidth,
+      behavior: prefersReducedMotion() ? "auto" : "smooth",
+    });
+  };
+
+  const handleGalleryScroll = () => {
+    const el = galleryRef.current;
+    if (!el || galleryImages.length < 2) return;
+    const width = el.clientWidth || 1;
+    const index = Math.min(
+      galleryImages.length - 1,
+      Math.max(0, Math.round(el.scrollLeft / width))
+    );
+    const next = galleryImages[index];
+    setSelectedImage((prev) => (prev === next ? prev : next));
+  };
 
   const hasVariants = (product?.variants ?? []).length > 0;
 
@@ -318,39 +368,83 @@ export function ProductPage() {
                 className="absolute -inset-4 -z-10 hidden rounded-[2.75rem] bg-gradient-to-br from-brand-soft/60 via-transparent to-accent/10 opacity-80 blur-2xl sm:block"
               />
               <div className="relative overflow-hidden rounded-[2rem] border border-border/60 bg-panel p-2 shadow-card sm:p-3">
-                <ProductImage
-                  src={selectedImage}
-                  alt={product.name}
-                  size="card"
-                  fit="contain"
-                  loading="eager"
-                  className="rounded-[1.5rem]"
-                  imageClassName="p-2 sm:p-5 group-hover:scale-[1.06]"
-                >
+                <div className="relative overflow-hidden rounded-[1.5rem]">
+                  <div
+                    ref={galleryRef}
+                    onScroll={handleGalleryScroll}
+                    aria-label={t("product.preview", { name: product.name })}
+                    className={cn(
+                      "scrollbar-hide flex snap-x snap-mandatory",
+                      slides.length > 1 ? "overflow-x-auto" : "overflow-hidden"
+                    )}
+                  >
+                    {slides.map((url) => (
+                      <div
+                        key={url ?? "no-image"}
+                        className="w-full shrink-0 snap-center"
+                      >
+                        <ProductImage
+                          src={url}
+                          alt={product.name}
+                          size="card"
+                          fit="contain"
+                          loading="eager"
+                          className="rounded-[1.5rem]"
+                          imageClassName="p-2 sm:p-5 group-hover:scale-[1.06]"
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Badges fixes au-dessus du scroll : `pointer-events-none`
+                      pour que le geste commence meme depuis les coins. */}
                   {hasDiscount && (
-                    <span className="absolute left-4 top-4 inline-flex items-center gap-1 rounded-full bg-accent px-3 py-1.5 text-xs font-extrabold uppercase tracking-wide text-white shadow-lg">
+                    <span className="pointer-events-none absolute left-4 top-4 inline-flex items-center gap-1 rounded-full bg-accent px-3 py-1.5 text-xs font-extrabold uppercase tracking-wide text-white shadow-lg">
                       <Sparkles className="h-3 w-3" />-{discountPercent}%
                     </span>
                   )}
 
-                  {galleryImages.length > 1 && selectedImage && (
-                    <span className="absolute right-4 top-4 rounded-full bg-ink/45 px-3 py-1 text-[11px] font-semibold text-white backdrop-blur-md">
-                      {galleryImages.indexOf(selectedImage) + 1}/{galleryImages.length}
+                  {galleryImages.length > 1 && (
+                    <span className="pointer-events-none absolute right-4 top-4 rounded-full bg-ink/45 px-3 py-1 text-[11px] font-semibold text-white backdrop-blur-md">
+                      {activeIndex + 1}/{galleryImages.length}
                     </span>
                   )}
-                </ProductImage>
+
+                  {/* Flèches réservées au pointeur (masquées sur mobile : le
+                      doigt glisse directement sur l'image). */}
+                  {galleryImages.length > 1 && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => goToSlide(activeIndex - 1)}
+                        aria-label={t("product.prevImage")}
+                        className="absolute left-2 top-1/2 z-10 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-ink/45 text-white shadow-md backdrop-blur-md transition hover:bg-ink/70 md:flex"
+                      >
+                        <ChevronLeft className="h-5 w-5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => goToSlide(activeIndex + 1)}
+                        aria-label={t("product.nextImage")}
+                        className="absolute right-2 top-1/2 z-10 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-ink/45 text-white shadow-md backdrop-blur-md transition hover:bg-ink/70 md:flex"
+                      >
+                        <ChevronRight className="h-5 w-5" />
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
 
             {galleryImages.length > 1 && (
               <div className="-mx-4 mt-4 flex gap-3 overflow-x-auto scrollbar-hide px-4 pb-1 sm:mx-auto sm:max-w-[34rem] sm:px-0">
-                {galleryImages.map((url) => {
-                  const isActive = selectedImage === url;
+                {galleryImages.map((url, index) => {
+                  const isActive = index === activeIndex;
                   return (
                     <button
                       key={url}
                       type="button"
-                      onClick={() => setSelectedImage(url)}
+                      onClick={() => goToSlide(index)}
                       aria-label={t("product.preview", { name: product.name })}
                       aria-current={isActive}
                       className={cn(

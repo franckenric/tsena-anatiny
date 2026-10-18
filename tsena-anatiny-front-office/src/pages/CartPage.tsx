@@ -18,6 +18,7 @@ import { formatAr, resolveImageUrl, toThumbUrl } from "../lib/utils";
 import {
   computeDiscountAmount,
   getAppliedPromo,
+  isFreeShippingPromo,
   setAppliedPromo,
   type AppliedPromo
 } from "../lib/promo";
@@ -58,6 +59,11 @@ export function CartPage() {
   useEffect(() => {
     const stored = isGuest ? getGuestPromo() : getAppliedPromo();
     if (!stored || items.length === 0) return;
+    // Un code « livraison offerte » depend d'une zone qui n'est pas encore
+    // choisie ici : le panier ne peut pas le juger et le serveur le rejetterait
+    // (ce qui effacerait le code). On le garde tel quel, le checkout le
+    // reverifiera avec la zone retenue.
+    if (stored.discount_type === "free_shipping") return;
     let cancelled = false;
     promoCodesService
       .validate(stored.code, subtotal)
@@ -272,10 +278,20 @@ export function CartPage() {
               <dd className="font-semibold text-ink">{formatAr(subtotal)}</dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-muted">{t("common.delivery")}</dt>
-              <dd className="font-semibold text-ink">
-                {t("common.toConvene")}
-              </dd>
+              <dt className="text-muted">
+                {promo && isFreeShippingPromo(promo)
+                  ? t("checkout.freeDeliveryPromo", { code: promo.code })
+                  : t("common.delivery")}
+              </dt>
+              {promo && isFreeShippingPromo(promo) ? (
+                <dd className="font-semibold text-success">
+                  {t("checkout.freeDelivery")}
+                </dd>
+              ) : (
+                <dd className="font-semibold text-ink">
+                  {t("common.toConvene")}
+                </dd>
+              )}
             </div>
             {discount > 0 && promo && (
               <div className="flex justify-between text-success">

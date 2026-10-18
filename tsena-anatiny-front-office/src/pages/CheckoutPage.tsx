@@ -8,6 +8,7 @@ import { useI18n } from "../contexts/I18nContext";
 import { usePageTitle } from "../contexts/PageTitleContext";
 import {
   cartItemsService,
+  deliveryZonesService,
   promoCodesService
 } from "../services/operations.service";
 import { PageLoader, Spinner } from "../components/Spinner";
@@ -23,7 +24,14 @@ import {
   resolveImageUrl,
   toThumbUrl
 } from "../lib/utils";
-import { computeDiscountAmount, getAppliedPromo, setAppliedPromo, type AppliedPromo } from "../lib/promo";
+import {
+  computeDiscountAmount,
+  getAppliedPromo,
+  isFreeShippingPromo,
+  setAppliedPromo,
+  type AppliedPromo
+} from "../lib/promo";
+import type { DeliveryZone } from "../types/operations";
 import {
   getGuestPromo,
   setGuestOrderRef,
@@ -47,6 +55,9 @@ export function CheckoutPage() {
   );
   const [note, setNote] = useState("");
   const [promo, setPromo] = useState<AppliedPromo | null>(null);
+  const [zones, setZones] = useState<DeliveryZone[]>([]);
+  const [zonesLoaded, setZonesLoaded] = useState(false);
+  const [selectedZoneId, setSelectedZoneId] = useState<number | null>(null);
 
   // Pre-remplissage depuis la fiche client. Dependances completees : la saisie
   // d'un invite ne doit pas etre effacee par un rendu sans session.
@@ -56,6 +67,33 @@ export function CheckoutPage() {
     setAddress(customer.delivery_address ?? "");
     setPhone(customer.phone ? formatPhoneMadagascar(customer.phone) : "");
   }, [customer]);
+
+  // Zones de livraison (endpoint public, sans auth). La premiere est
+  // preselectionnee : le client voit tout de suite un tarif plutot qu'un
+  // « a convenir », et peut changer de zone dans la liste.
+  useEffect(() => {
+    let cancelled = false;
+    deliveryZonesService
+      .getOptions()
+      .then((list) => {
+        if (cancelled) return;
+        setZones(list);
+        setZonesLoaded(true);
+        setSelectedZoneId((prev) => prev ?? (list[0]?.id ?? null));
+      })
+      .catch(() => {
+        // Pas de zone configuree : la livraison reste « a convenir ».
+        if (!cancelled) setZonesLoaded(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const selectedZone = useMemo(
+    () => zones.find((zone) => zone.id === selectedZoneId) ?? null,
+    [zones, selectedZoneId]
+  );
 
   const subtotal = useMemo(
     () =>
@@ -70,9 +108,12 @@ export function CheckoutPage() {
   useEffect(() => {
     const stored = isGuest ? getGuestPromo() : getAppliedPromo();
     if (!stored || items.length === 0) return;
+    // Un code « livraison offerte » depend de la zone : l'attendre evite de
+    // l'ecarter faute de tarif connu pendant le chargement.
+    if (stored.discount_type === "free_shipping" && !zonesLoaded) return;
     let cancelled = false;
     promoCodesService
-      .validate(stored.code, subtotal)
+      .validate(stored.code, subtotal, selectedZoneId ?? undefined)
       .then(() => {
         if (!cancelled) setPromo(stored);
       })
@@ -84,10 +125,15 @@ export function CheckoutPage() {
     return () => {
       cancelled = true;
     };
-  }, [items.length, subtotal, isGuest]);
+  }, [items.length, subtotal, isGuest, selectedZoneId, zonesLoaded]);
 
   const discount = promo ? computeDiscountAmount(promo, subtotal) : 0;
-  const total = Math.max(0, subtotal - discount);
+  // Tarif de la zone choisie. Un code « livraison offerte » l'annule ici pour
+  // l'aperçu ; le serveur refait le meme calcul au moment de la commande.
+  const zoneFee = selectedZone ? Math.max(0, Number(selectedZone.fee) || 0) : 0;
+  const freeDelivery = isFreeShippingPromo(promo);
+  const deliveryFee = freeDelivery ? 0 : zoneFee;
+  const total = Math.max(0, subtotal - discount + deliveryFee);
 
   const handleConfirm = async () => {
     if (items.length === 0) return;
@@ -100,6 +146,11 @@ export function CheckoutPage() {
     const cleanName = name.trim();
     if (isGuest && !cleanName) {
       setError(t("checkout.nameRequiredError"));
+      return;
+    }
+
+    if (zones.length > 0 && !selectedZoneId) {
+      setError(t("checkout.zoneRequired"));
       return;
     }
 
@@ -116,7 +167,8 @@ export function CheckoutPage() {
           delivery_address: address.trim() || undefined,
           status: "draft",
           note: note.trim() || undefined,
-          promo_code: promo?.code
+          promo_code: promo?.code,
+          delivery_zone_id: selectedZoneId ?? undefined
         });
       } else {
         order = await cartItemsService.checkoutGuest({
@@ -130,7 +182,8 @@ export function CheckoutPage() {
           })),
           status: "draft",
           note: note.trim() || undefined,
-          promo_code: promo?.code
+          promo_code: promo?.code,
+          delivery_zone_id: selectedZoneId ?? undefined
         });
         // Sans compte, la page de succes relit la commande via le lookup
         // public (numero + telephone) : on memorise la reference ici.
@@ -285,6 +338,36 @@ export function CheckoutPage() {
                   className="mt-2 h-11 w-full rounded-xl border border-border bg-bg px-3 text-sm text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
                 />
               </div>
+              {zones.length > 0 && (
+                <div>
+                  <label
+                    htmlFor="delivery-zone"
+                    className="text-xs font-semibold uppercase tracking-widest text-muted"
+                  >
+                    {t("checkout.zone")}
+                  </label>
+                  <select
+                    id="delivery-zone"
+                    value={selectedZoneId ?? ""}
+                    onChange={(e) =>
+                      setSelectedZoneId(
+                        e.target.value === "" ? null : Number(e.target.value)
+                      )
+                    }
+                    className="mt-2 h-11 w-full rounded-xl border border-border bg-bg px-3 text-sm text-ink outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
+                  >
+                    <option value="">{t("checkout.zonePlaceholder")}</option>
+                    {zones.map((zone) => (
+                      <option key={zone.id} value={zone.id}>
+                        {`${zone.name} — ${formatAr(Number(zone.fee) || 0)}`}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-1 text-xs text-muted">
+                    {t("checkout.zoneHint")}
+                  </p>
+                </div>
+              )}
               <div>
                 <label
                   htmlFor="note"
@@ -353,10 +436,29 @@ export function CheckoutPage() {
               <dd className="font-semibold text-ink">{formatAr(subtotal)}</dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-muted">{t("common.delivery")}</dt>
-              <dd className="font-semibold text-ink">
-                {t("common.toConvene")}
-              </dd>
+              <dt className="text-muted">
+                {freeDelivery && promo
+                  ? t("checkout.freeDeliveryPromo", { code: promo.code })
+                  : t("common.delivery")}
+              </dt>
+              {freeDelivery ? (
+                <dd className="font-semibold text-success">
+                  {zoneFee > 0 && (
+                    <span className="mr-2 font-normal text-muted line-through">
+                      {formatAr(zoneFee)}
+                    </span>
+                  )}
+                  {t("checkout.freeDelivery")}
+                </dd>
+              ) : selectedZone ? (
+                <dd className="font-semibold text-ink">
+                  {formatAr(deliveryFee)}
+                </dd>
+              ) : (
+                <dd className="font-semibold text-ink">
+                  {t("common.toConvene")}
+                </dd>
+              )}
             </div>
             {discount > 0 && promo && (
               <div className="flex justify-between text-success">

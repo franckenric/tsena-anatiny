@@ -12,20 +12,44 @@ import type {
   CheckoutPayload,
   GuestCheckoutPayload,
   Order,
-  OrderListResponse
+  OrderListResponse,
+  DeliveryZone
 } from "../types/operations";
 
 export const promoCodesService = {
   /**
    * Endpoint public : un invite doit pouvoir tester un code avant de commander.
    * `skipAuth` evite de demander le jeton de service, absent en mode invite.
+   *
+   * `deliveryZoneId` n'est utile que pour un code « livraison offerte » : sans
+   * zone, le serveur ne sait pas quel tarif il pourrait annuler et rejette le
+   * code avec une explication plutot que de l'accepter pour rien.
    */
-  async validate(code: string, subtotal?: number): Promise<PromoCodeValidation> {
+  async validate(
+    code: string,
+    subtotal?: number,
+    deliveryZoneId?: number
+  ): Promise<PromoCodeValidation> {
     return apiFetch<PromoCodeValidation>("/promo_codes/validate", {
       method: "POST",
       skipAuth: true,
-      body: JSON.stringify({ code: code.trim(), subtotal })
+      body: JSON.stringify({
+        code: code.trim(),
+        subtotal,
+        delivery_zone_id: deliveryZoneId
+      })
     });
+  }
+};
+
+export const deliveryZonesService = {
+  /** Endpoint public, sans auth : le visiteur doit voir le tarif de livraison. */
+  async getOptions(): Promise<DeliveryZone[]> {
+    const payload = await apiFetch<DeliveryZone[]>(
+      "/delivery_zones/options",
+      { skipAuth: true }
+    );
+    return Array.isArray(payload) ? payload : [];
   }
 };
 

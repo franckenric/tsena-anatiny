@@ -59,12 +59,19 @@ export function PromoCodeCard() {
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-success/20 text-success">
               <Check className="h-4 w-4" strokeWidth={2.5} />
             </span>
-            <p className="min-w-0 truncate text-sm font-semibold text-ink">
-              {t("promo.applied")}{" "}
-              <span className="rounded-lg bg-success/15 px-2 py-0.5 font-mono text-xs font-bold tracking-wider text-success">
-                {applied.code}
-              </span>
-            </p>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-ink">
+                {t("promo.applied")}{" "}
+                <span className="rounded-lg bg-success/15 px-2 py-0.5 font-mono text-xs font-bold tracking-wider text-success">
+                  {applied.code}
+                </span>
+              </p>
+              {applied.discount_type === "free_shipping" && (
+                <p className="truncate text-xs font-medium text-success">
+                  {t("promo.freeDelivery")}
+                </p>
+              )}
+            </div>
           </div>
           <button
             type="button"

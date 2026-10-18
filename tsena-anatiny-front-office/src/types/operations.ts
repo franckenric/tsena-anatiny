@@ -57,6 +57,8 @@ export interface CheckoutPayload {
   status?: OrderStatus;
   note?: string;
   promo_code?: string;
+  /** Zone de livraison choisie : le tarif est relu par l'API. */
+  delivery_zone_id?: number;
 }
 
 export interface GuestCheckoutLine {
@@ -74,6 +76,7 @@ export interface GuestCheckoutPayload {
   status?: OrderStatus;
   note?: string;
   promo_code?: string;
+  delivery_zone_id?: number;
 }
 
 export interface OrderMovement {
@@ -107,6 +110,9 @@ export interface Order {
   other_price_reason?: string;
   promo_code?: string | null;
   discount?: number;
+  /** Zone de livraison choisie et tarif retenu (annule par un code offert). */
+  delivery_zone_id?: number | null;
+  delivery_fee?: number;
   note?: string;
   created_at?: string;
   customer?: {
@@ -118,13 +124,24 @@ export interface Order {
   stock_movements?: OrderMovement[];
 }
 
+export type PromoDiscountType = "percent" | "fixed" | "free_shipping";
+
 export interface PromoCodeValidation {
   valid: boolean;
   code: string;
-  discount_type: "percent" | "fixed";
+  discount_type: PromoDiscountType;
   discount_value: number;
   discount_amount: number;
+  /** True quand ce code annule les frais de livraison de la zone choisie. */
+  free_shipping?: boolean;
   description?: string | null;
+}
+
+/** Zone de livraison proposee au checkout (endpoint public). */
+export interface DeliveryZone {
+  id: number;
+  name: string;
+  fee: number;
 }
 
 export interface OrderListResponse {

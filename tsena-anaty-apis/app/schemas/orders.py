@@ -27,7 +27,11 @@ class OrdersBase(BaseModel):
     another_price: Optional[float] = 0
     other_price_reason: Optional[str] = None
     promo_code: Optional[str] = None
+    promo_code_id: Optional[int] = None
     discount: Optional[float] = 0
+    # Livraison : zone choisie par le client et tarif fige par le serveur.
+    delivery_zone_id: Optional[int] = None
+    delivery_fee: Optional[float] = 0
     status: Optional[ProductStatusEnum] = None
     note: Optional[str] = None
 

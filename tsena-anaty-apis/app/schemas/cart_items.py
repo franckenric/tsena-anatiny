@@ -72,6 +72,9 @@ class CartCheckoutRequest(BaseModel):
     another_price: Optional[float] = 0
     other_price_reason: Optional[str] = None
     promo_code: Optional[str] = None
+    # Zone de livraison choisie : le tarif est relu par le serveur depuis la
+    # base, jamais pris dans le payload.
+    delivery_zone_id: Optional[int] = None
     status: Optional[ProductStatusEnum] = ProductStatusEnum.draft
     note: Optional[str] = None
 
@@ -102,5 +105,6 @@ class GuestCartCheckoutRequest(BaseModel):
     delivery_address: Optional[str] = None
     items: List[GuestCheckoutItem]
     promo_code: Optional[str] = None
+    delivery_zone_id: Optional[int] = None
     status: Optional[ProductStatusEnum] = ProductStatusEnum.draft
     note: Optional[str] = None

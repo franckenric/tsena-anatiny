@@ -4,6 +4,7 @@ from sqlalchemy.orm import relationship
 
 from app.enum.discount_type import DiscountTypeEnum
 from app.enum.status import StatusEnum
+from app.models.promo_code_delivery_zones import promo_code_delivery_zones
 
 
 class PromoCodes(Base):
@@ -26,3 +27,15 @@ class PromoCodes(Base):
     deleted_at = Column(DateTime)
 
     orders = relationship("Orders", foreign_keys="Orders.promo_code_id", back_populates="promo_code_ref")
+
+    # Zones pour lesquelles ce code offre la livraison. Vide = toutes les zones.
+    free_shipping_zones = relationship(
+        "DeliveryZones",
+        secondary=promo_code_delivery_zones,
+        lazy="selectin",
+    )
+
+    @property
+    def free_shipping_zone_ids(self) -> list[int]:
+        """Ids des zones, pour l'API. Vide = le code s'applique a toutes."""
+        return [zone.id for zone in (self.free_shipping_zones or [])]

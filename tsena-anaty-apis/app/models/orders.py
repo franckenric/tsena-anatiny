@@ -21,6 +21,14 @@ class Orders(Base):
     promo_code_id = Column(Integer, ForeignKey('promo_codes.id'))
     promo_code = Column(String(64))
     discount = Column(Float, nullable=False, default=0)
+    # Livraison : zone choisie par le client et tarif fige par le serveur.
+    delivery_zone_id = Column(Integer, ForeignKey('delivery_zones.id'))
+    delivery_fee = Column(Float, nullable=False, default=0)
+    # Code promo dont l'utilisation a ete consommee pour cette commande.
+    # Null = aucune utilisation consommee (brouillon, ou remise sans code).
+    # Permet d'etre idempotent : confirmer deux fois ne compte pas deux fois,
+    # et une annulation libere bien le BON code meme si l'admin l'a change.
+    promo_counted_code_id = Column(Integer, ForeignKey('promo_codes.id'))
     status = Column(Enum(ProductStatusEnum))
     note = Column(Text)
 
@@ -34,6 +42,7 @@ class Orders(Base):
     customer = relationship('Customers', foreign_keys=[customer_id], overlaps='orders')
     stock_movements = relationship('StockMovements', back_populates='order')
     promo_code_ref = relationship('PromoCodes', foreign_keys=[promo_code_id], back_populates='orders')
+    delivery_zone = relationship('DeliveryZones', foreign_keys=[delivery_zone_id])
 
 
 # begin #

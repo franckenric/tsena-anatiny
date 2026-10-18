@@ -1,6 +1,7 @@
 from .crud_categories import categories
 from .crud_cart_items import cart_items
 from .crud_customers import customers
+from .crud_delivery_zones import delivery_zones
 from .crud_lot_expenses import lot_expenses
 from .crud_lots import lots
 from .crud_notifications import notifications

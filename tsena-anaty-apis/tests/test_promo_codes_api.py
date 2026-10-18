@@ -210,10 +210,43 @@ def test_checkout_applies_discount_and_updates_used_count(client, db):
     )
     assert notif is not None and "PROMO50" in (notif.message or "")
 
-    # used_count incremented
+    # Un code promo n'est consomme qu'a la CONFIRMATION : la commande est en
+    # brouillon, donc rien n'est encore retenu.
     fresh = TestingSessionLocal()
     p = fresh.query(models.PromoCodes).filter_by(code="PROMO50").first()
-    assert p.used_count == 1
+    assert p.used_count == 0
+
+    order_id = order["id"]
+
+    # Confirmation -> l'utilisation est consommee.
+    resp_confirm = client.put(
+        f"/api/v1/orders/{order_id}",
+        json={"customer_id": customer_id, "status": "confirmed"},
+        headers=AUTH(token),
+    )
+    assert resp_confirm.status_code == 200, resp_confirm.text
+    fresh.expire_all()
+    assert fresh.query(models.PromoCodes).filter_by(code="PROMO50").first().used_count == 1
+
+    # Re-confirmer ne consomme pas une deuxieme fois (idempotent).
+    resp_confirm2 = client.put(
+        f"/api/v1/orders/{order_id}",
+        json={"customer_id": customer_id, "status": "confirmed"},
+        headers=AUTH(token),
+    )
+    assert resp_confirm2.status_code == 200, resp_confirm2.text
+    fresh.expire_all()
+    assert fresh.query(models.PromoCodes).filter_by(code="PROMO50").first().used_count == 1
+
+    # Annulation -> l'utilisation est restituee.
+    resp_cancel = client.put(
+        f"/api/v1/orders/{order_id}",
+        json={"customer_id": customer_id, "status": "cancelled"},
+        headers=AUTH(token),
+    )
+    assert resp_cancel.status_code == 200, resp_cancel.text
+    fresh.expire_all()
+    assert fresh.query(models.PromoCodes).filter_by(code="PROMO50").first().used_count == 0
     fresh.close()
 
     # Cart cleared

@@ -100,6 +100,23 @@ def _is_validated_status(status: ProductStatusEnum | None) -> bool:
     return status in (ProductStatusEnum.confirmed, ProductStatusEnum.delivered)
 
 
+def _link_order_promo_code(*, db: Session, order: models.Orders) -> None:
+    """Resout `orders.promo_code_id` depuis la chaine si besoin.
+
+    Le back-office n'envoie que le code saisi ; sans identifiant, la commande
+    ne pourrait pas consommer (ni restituer) son utilisation a la confirmation.
+    Un code introuvable laisse la colonne a NULL plutot que d'echouer : la
+    commande reste creable, seule la comptabilisation du promo saute.
+    """
+    if order.promo_code_id or not (order.promo_code or "").strip():
+        return
+    promo = crud.promo_codes.get_by_code(db=db, code=order.promo_code)
+    if promo is None:
+        return
+    order.promo_code_id = promo.id
+    db.add(order)
+
+
 def _resolve_or_create_customer_for_order(
     *,
     db: Session,
@@ -463,6 +480,17 @@ def create_orders(
                     variant_id=movement.variant_id,
                 )
 
+        # Une commande creee deja confirmee consomme son code promo tout de suite.
+        # Renseigne d'abord l'identifiant du code : le back-office n'envoie que
+        # la chaine, et sans cet id la commande ne consommerait rien a la
+        # confirmation.
+        _link_order_promo_code(db=db, order=orders)
+        crud.orders.sync_promo_usage(
+            db=db,
+            order=orders,
+            next_validated=_is_validated_status(orders.status),
+        )
+
         db.commit()
         db.refresh(orders)
         notify_order_created(
@@ -474,7 +502,8 @@ def create_orders(
                 + float(m.another_price or 0)
                 for m in movements
             )
-            + float(orders_in.another_price or 0),
+            + float(orders_in.another_price or 0)
+            + float(orders.delivery_fee or 0),
         )
         return orders
     except HTTPException as e:
@@ -656,6 +685,16 @@ def update_orders(
                             for movement in movements
                         ],
                     )
+
+        # Le compteur d'utilisations suit les transitions de confirmation, et
+        # non la creation : une commande brouillon ne consomme rien, une
+        # confirmation consomme, une annulation restitue.
+        _link_order_promo_code(db=db, order=orders)
+        crud.orders.sync_promo_usage(
+            db=db,
+            order=orders,
+            next_validated=next_is_validated,
+        )
 
         db.commit()
         db.refresh(orders)

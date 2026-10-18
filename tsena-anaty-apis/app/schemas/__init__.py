@@ -63,6 +63,13 @@ from .product_variants import (
   ProductVariantUpdate,
   ProductVariantNode,
 )
+from .delivery_zones import (
+  DeliveryZones,
+  DeliveryZonesCreate,
+  DeliveryZonesUpdate,
+  ResponseDeliveryZones,
+  DeliveryZoneOption,
+)
 from .promo_codes import (
   PromoCodes,
   PromoCodesCreate,

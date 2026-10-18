@@ -12,6 +12,46 @@ from app.crud.crud_promo_codes import InvalidPromoCode
 router = APIRouter()
 
 
+def _apply_free_shipping_zones(
+    db: Session,
+    promo_code: models.PromoCodes,
+    zone_ids: list[int] | None,
+) -> None:
+    """Fixe les zones couvertes par un code « livraison offerte ».
+
+    `None` = le champ n'a pas ete envoye, on ne touche a rien (mise a jour
+    partielle). Une liste vide = le code s'applique a toutes les zones.
+    """
+    if zone_ids is None:
+        return
+    zones = []
+    if zone_ids:
+        zones = (
+            db.query(models.DeliveryZones)
+            .filter(models.DeliveryZones.id.in_(zone_ids))
+            .filter(models.DeliveryZones.deleted_at.is_(None))
+            .all()
+        )
+    promo_code.free_shipping_zones = zones
+    db.add(promo_code)
+    db.commit()
+    db.refresh(promo_code)
+
+
+def _zone_ids_by_code(promo_codes: list) -> dict[int, list[int]]:
+    """Mappe `promo_code.id` -> ids des zones couvertes par le code.
+
+    `free_shipping_zone_ids` est une property du modele : `jsonable_encoder`
+    ne lit que l'`__dict__` de l'instance, d'ou un `null` systematique dans
+    la liste des codes. La relation est chargée en `selectin`, pas de N+1 ici.
+    """
+    return {
+        code.id: code.free_shipping_zone_ids
+        for code in promo_codes
+        if code is not None and code.id is not None
+    }
+
+
 @router.get("/", response_model=schemas.ResponsePromoCodes)
 def read_promo_codes(
     *,
@@ -42,7 +82,12 @@ def read_promo_codes(
         base_columns=bases_columns,
     )
     count = crud.promo_codes.get_count_where_array(db=db, where=wheres)
-    return schemas.ResponsePromoCodes(count=count, data=jsonable_encoder(promo_codes))
+    data = jsonable_encoder(promo_codes)
+    zone_ids_by_code = _zone_ids_by_code(promo_codes)
+    for item in data:
+        if isinstance(item, dict) and item.get("id") in zone_ids_by_code:
+            item["free_shipping_zone_ids"] = zone_ids_by_code[item["id"]]
+    return schemas.ResponsePromoCodes(count=count, data=data)
 
 
 @router.post("/", response_model=schemas.PromoCodes)
@@ -56,7 +101,9 @@ def create_promo_code(
     existing = crud.promo_codes.get_by_code(db=db, code=promo_code_in.code)
     if existing:
         raise HTTPException(status_code=409, detail="Promo code already exists")
-    return crud.promo_codes.create(db=db, obj_in=promo_code_in)
+    promo_code = crud.promo_codes.create(db=db, obj_in=promo_code_in)
+    _apply_free_shipping_zones(db, promo_code, promo_code_in.free_shipping_zone_ids)
+    return promo_code
 
 
 @router.put("/{promo_code_id}", response_model=schemas.PromoCodes)
@@ -76,7 +123,11 @@ def update_promo_code(
         existing = crud.promo_codes.get_by_code(db=db, code=normalized)
         if existing and existing.id != promo_code.id:
             raise HTTPException(status_code=409, detail="Promo code already exists")
-    return crud.promo_codes.update(db=db, db_obj=promo_code, obj_in=promo_code_in)
+    promo_code = crud.promo_codes.update(
+        db=db, db_obj=promo_code, obj_in=promo_code_in
+    )
+    _apply_free_shipping_zones(db, promo_code, promo_code_in.free_shipping_zone_ids)
+    return promo_code
 
 
 @router.delete("/{promo_code_id}", response_model=schemas.Msg)
@@ -111,18 +162,21 @@ def validate_promo_code(
     `_build_promo_discount` au moment de la commande.
     """
     try:
-        promo_code, discount_amount = crud.promo_codes.validate_for_subtotal(
+        result = crud.promo_codes.validate_for_subtotal(
             db=db,
             code=request.code,
             subtotal=request.subtotal,
+            delivery_zone_id=request.delivery_zone_id,
         )
     except InvalidPromoCode as exc:
         raise HTTPException(status_code=422, detail=str(exc))
+    promo_code = result.promo_code
     return schemas.PromoCodeValidateResponse(
         valid=True,
         code=promo_code.code,
         discount_type=promo_code.discount_type,
         discount_value=float(promo_code.discount_value or 0),
-        discount_amount=discount_amount,
+        discount_amount=result.discount_amount,
+        free_shipping=result.free_shipping,
         description=promo_code.description,
     )

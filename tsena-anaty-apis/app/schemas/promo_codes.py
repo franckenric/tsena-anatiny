@@ -4,7 +4,7 @@
 
 from datetime import datetime
 from typing import List, Optional
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 from app.enum.discount_type import DiscountTypeEnum
 from app.enum.status import StatusEnum
 
@@ -19,6 +19,8 @@ class PromoCodesBase(BaseModel):
     starts_at: Optional[datetime] = None
     expires_at: Optional[datetime] = None
     status: Optional[StatusEnum] = None
+    # Zones concernees par un code « livraison offerte ». Vide = toutes les zones.
+    free_shipping_zone_ids: Optional[List[int]] = None
 
     @field_validator("code")
     @classmethod
@@ -34,12 +36,17 @@ class PromoCodesCreate(PromoCodesBase):
     discount_type: DiscountTypeEnum
     discount_value: float
 
-    @field_validator("discount_value")
-    @classmethod
-    def validate_discount_value(cls, v: float) -> float:
-        if v <= 0:
+    @model_validator(mode="after")
+    def validate_discount_value(self) -> "PromoCodesCreate":
+        # Un code « livraison offerte » ne remonte rien des produits : 0 est
+        # attendu, pas une erreur de validation.
+        if self.discount_type == DiscountTypeEnum.free_shipping:
+            if self.discount_value < 0:
+                raise ValueError("discount_value must be greater than or equal to 0")
+            return self
+        if self.discount_value <= 0:
             raise ValueError("discount_value must be greater than 0")
-        return v
+        return self
 
     @field_validator("min_order_amount", "max_uses")
     @classmethod
@@ -80,6 +87,9 @@ class ResponsePromoCodes(BaseModel):
 class PromoCodeValidateRequest(BaseModel):
     code: str
     subtotal: Optional[float] = None
+    # Zone choisie par le client : indispensable pour juger un code
+    # « livraison offerte », et pour le restreindre a certaines zones.
+    delivery_zone_id: Optional[int] = None
 
     @field_validator("code")
     @classmethod
@@ -93,6 +103,8 @@ class PromoCodeValidateResponse(BaseModel):
     discount_type: DiscountTypeEnum
     discount_value: float
     discount_amount: float = 0
+    # True si ce code annule les frais de livraison de la zone choisie.
+    free_shipping: bool = False
     description: Optional[str] = None
 
 

@@ -339,21 +339,56 @@ def _build_promo_discount(
     db: Session,
     promo_code: str | None,
     subtotal: float,
-) -> tuple[models.PromoCodes | None, float, str | None]:
-    """Valide un code promo contre le sous-total et retourne (code, remise, code normalise)."""
+    delivery_zone_id: int | None = None,
+) -> tuple[models.PromoCodes | None, float, str | None, bool]:
+    """Valide un code promo et retourne (code, remise, code normalise, livraison offerte).
+
+    La remise porte sur les produits. Un code « livraison offerte » ne retire
+    rien du panier : il annule le tarif de la zone, d'ou le quatrieme element.
+    """
     promo_code_str = (promo_code or "").strip().upper()
     if not promo_code_str:
-        return None, 0.0, None
+        return None, 0.0, None, False
 
     try:
-        promo_code_obj, discount_amount = crud.promo_codes.validate_for_subtotal(
+        result = crud.promo_codes.validate_for_subtotal(
             db=db,
             code=promo_code_str,
             subtotal=subtotal,
+            delivery_zone_id=delivery_zone_id,
         )
     except InvalidPromoCode as exc:
         raise HTTPException(status_code=422, detail=f'Promo code invalide: {exc.reason}')
-    return promo_code_obj, discount_amount, promo_code_str
+    return (
+        result.promo_code,
+        result.discount_amount,
+        promo_code_str,
+        result.free_shipping,
+    )
+
+
+def _resolve_delivery_zone(
+    *,
+    db: Session,
+    delivery_zone_id: int | None,
+) -> tuple[models.DeliveryZones | None, float]:
+    """Retourne (zone, tarif) en reluissant le tarif cote serveur.
+
+    Le tarif vient toujours de la base : le payload du client ne peut pas se
+    servir une livraison moins chere (ou gratuite). Une zone desactivee entre
+    la selection et la commande reste acceptee, tant qu'elle existe.
+    """
+    if delivery_zone_id is None:
+        return None, 0.0
+    zone = (
+        db.query(models.DeliveryZones)
+        .filter(models.DeliveryZones.id == delivery_zone_id)
+        .filter(models.DeliveryZones.deleted_at.is_(None))
+        .first()
+    )
+    if not zone:
+        raise HTTPException(status_code=422, detail='Zone de livraison inconnue')
+    return zone, max(0.0, float(zone.fee or 0))
 
 
 def _price_order(
@@ -369,17 +404,30 @@ def _price_order(
     another_price: float | None = None,
     other_price_reason: str | None = None,
     current_user: models.Users | None = None,
+    delivery_zone_id: int | None = None,
 ) -> models.Orders:
     """Cree la commande, applique (ou differe) le stock et notifie le back-office.
 
     `lines` porte des prix deja resolus cote serveur (`unit_cost`) : c'est la
     seule source de verite pour la valorisation.
     """
-    promo_code_obj, discount_amount, promo_code_str = _build_promo_discount(
-        db=db,
-        promo_code=promo_code,
-        subtotal=sum(float(line['quantity']) * float(line['unit_cost']) for line in lines),
+    subtotal = sum(
+        float(line['quantity']) * float(line['unit_cost']) for line in lines
     )
+    delivery_zone, delivery_fee = _resolve_delivery_zone(
+        db=db, delivery_zone_id=delivery_zone_id
+    )
+
+    promo_code_obj, discount_amount, promo_code_str, free_shipping = (
+        _build_promo_discount(
+            db=db,
+            promo_code=promo_code,
+            subtotal=subtotal,
+            delivery_zone_id=delivery_zone.id if delivery_zone else None,
+        )
+    )
+    if free_shipping:
+        delivery_fee = 0.0
 
     order_status = status or ProductStatusEnum.draft
     order_payload = schemas.OrdersCreateRequest(
@@ -391,8 +439,13 @@ def _price_order(
         delivery_address=customer.delivery_address,
         another_price=another_price,
         other_price_reason=other_price_reason,
-        promo_code=promo_code_str if discount_amount > 0 else None,
+        promo_code=promo_code_str
+        if (discount_amount > 0 or free_shipping)
+        else None,
+        promo_code_id=promo_code_obj.id if promo_code_obj else None,
         discount=discount_amount,
+        delivery_zone_id=delivery_zone.id if delivery_zone else None,
+        delivery_fee=delivery_fee,
         status=order_status,
         note=note,
         movements=[
@@ -455,9 +508,15 @@ def _price_order(
         db.commit()
         db.refresh(order)
 
-        if promo_code_obj is not None and discount_amount > 0:
-            promo_code_obj.used_count = (promo_code_obj.used_count or 0) + 1
+        # Une commande creee deja confirmee (saisie back-office) consomme son
+        # code tout de suite ; une commande client demeure en attente et sera
+        # comptee a la confirmation, via `sync_promo_usage`.
+        if crud.orders.is_validated_status(order_status):
+            crud.orders.sync_promo_usage(
+                db=db, order=order, next_validated=True
+            )
             db.commit()
+            db.refresh(order)
 
         notify_order_created(
             db,
@@ -471,6 +530,7 @@ def _price_order(
                     for line in lines
                 )
                 + float(another_price or 0)
+                + float(delivery_fee or 0)
                 - float(discount_amount or 0),
             ),
         )
@@ -542,6 +602,7 @@ def checkout_cart(
             another_price=checkout_in.another_price,
             other_price_reason=checkout_in.other_price_reason,
             current_user=current_user,
+            delivery_zone_id=checkout_in.delivery_zone_id,
         )
 
         # Le panier est vide apres commande, quel que soit le statut : les lignes
@@ -658,4 +719,5 @@ def checkout_guest(
         promo_code=checkout_in.promo_code,
         status=checkout_in.status or ProductStatusEnum.draft,
         note=checkout_in.note,
+        delivery_zone_id=checkout_in.delivery_zone_id,
     )

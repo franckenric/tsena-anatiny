@@ -711,12 +711,15 @@ def checkout_guest(
         require_phone=True,
     )
 
+    # Reserve aux comptes : sans session, aucun code promo ne s'applique a une
+    # commande invitee. Le champ n'existe plus sur le schema (extra ignore),
+    # et on force `None` ici pour que la regle se lise au point d'appel.
     return _price_order(
         db=db,
         customer=customer,
         lines=lines,
         user_id=None,
-        promo_code=checkout_in.promo_code,
+        promo_code=None,
         status=checkout_in.status or ProductStatusEnum.draft,
         note=checkout_in.note,
         delivery_zone_id=checkout_in.delivery_zone_id,

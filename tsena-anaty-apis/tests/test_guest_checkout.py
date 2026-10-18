@@ -218,7 +218,13 @@ def test_guest_checkout_refuses_more_than_the_available_stock(client, db):
     assert "Stock insuffisant" in response.json()["detail"]
 
 
-def test_guest_checkout_applies_the_promo_code(client, db):
+def test_guest_checkout_ignores_the_promo_code(client, db):
+    """Les codes promo sont reserves aux comptes.
+
+    Un payload invite qui envoie quand meme un code est accepte (le champ
+    n'existe plus sur le schema, il est ignore), mais sans aucune remise :
+    la validation reste possible sans jeton, l'avantage non.
+    """
     product = _seed_product(db, selling_price=1000)
     crud.promo_codes.create(
         db,
@@ -244,8 +250,9 @@ def test_guest_checkout_applies_the_promo_code(client, db):
 
     assert response.status_code == status.HTTP_200_OK, response.text
     body = response.json()
-    assert body["promo_code"] == "BIENVENUE10"
-    assert body["discount"] == 200
+    assert body["promo_code"] is None
+    assert body["discount"] == 0
+    assert body["delivery_fee"] in (0, None) or float(body["delivery_fee"]) >= 0
 
 
 def test_register_claims_the_customer_created_by_a_guest_order(client, db):

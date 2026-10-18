@@ -104,7 +104,9 @@ class GuestCartCheckoutRequest(BaseModel):
     customer_phone: str
     delivery_address: Optional[str] = None
     items: List[GuestCheckoutItem]
-    promo_code: Optional[str] = None
+    # Pas de `promo_code` ici : les codes promo sont reserves aux comptes. Un
+    # champ envoye en trop par un client (ancien bundle en cache, requete
+    # manuelle) est ignore, donc la commande est acceptee... sans remise.
     delivery_zone_id: Optional[int] = None
     status: Optional[ProductStatusEnum] = ProductStatusEnum.draft
     note: Optional[str] = None

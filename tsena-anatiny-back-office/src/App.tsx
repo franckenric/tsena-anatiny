@@ -9,6 +9,8 @@ import { CategoriesPage } from "./pages/CategoriesPage";
 import { CategoryFormPage } from "./pages/CategoryFormPage";
 import { PromoCodesPage } from "./pages/PromoCodesPage";
 import { PromoCodeFormPage } from "./pages/PromoCodeFormPage";
+import { DeliveryZonesPage } from "./pages/DeliveryZonesPage";
+import { DeliveryZoneFormPage } from "./pages/DeliveryZoneFormPage";
 import { StockPage } from "./pages/StockPage";
 import { ArrivalsPage } from "./pages/ArrivalsPage";
 import { LotsPage } from "./pages/LotsPage";
@@ -43,6 +45,17 @@ function App() {
         exact
         path="/promo-codes/:id/edit"
         component={PromoCodeFormPage}
+      />
+      <ProtectedRoute exact path="/delivery-zones" component={DeliveryZonesPage} />
+      <ProtectedRoute
+        exact
+        path="/delivery-zones/new"
+        component={DeliveryZoneFormPage}
+      />
+      <ProtectedRoute
+        exact
+        path="/delivery-zones/:id/edit"
+        component={DeliveryZoneFormPage}
       />
         <ProtectedRoute exact path="/stock" component={StockPage} />
         <ProtectedRoute exact path="/arrivals" component={ArrivalsPage} />

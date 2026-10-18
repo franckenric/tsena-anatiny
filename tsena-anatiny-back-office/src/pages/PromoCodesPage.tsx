@@ -67,10 +67,12 @@ export function PromoCodesPage() {
     }
   };
 
-  const renderDiscount = (promo: PromoCode) =>
-    promo.discount_type === "percent"
+  const renderDiscount = (promo: PromoCode) => {
+    if (promo.discount_type === "free_shipping") return "Livraison offerte";
+    return promo.discount_type === "percent"
       ? `-${promo.discount_value}%`
       : `-${formatAr(promo.discount_value)}`;
+  };
 
   const columns: Column<PromoCode>[] = [
     {

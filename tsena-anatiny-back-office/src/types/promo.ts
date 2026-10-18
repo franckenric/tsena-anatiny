@@ -1,4 +1,4 @@
-export type DiscountType = "percent" | "fixed";
+export type DiscountType = "percent" | "fixed" | "free_shipping";
 
 export interface PromoCode {
   id: number;
@@ -13,6 +13,11 @@ export interface PromoCode {
   expires_at?: string | null;
   status: "active" | "inactive";
   created_at?: string;
+  /**
+   * Zones couvertes par un code « livraison offerte ».
+   * Tableau vide = le code s'applique a toutes les zones.
+   */
+  free_shipping_zone_ids?: number[];
 }
 
 export interface PromoCodeListResponse {
@@ -30,6 +35,7 @@ export interface CreatePromoCodePayload {
   starts_at?: string;
   expires_at?: string;
   status: "active" | "inactive";
+  free_shipping_zone_ids?: number[];
 }
 
 export type UpdatePromoCodePayload = Partial<CreatePromoCodePayload>;

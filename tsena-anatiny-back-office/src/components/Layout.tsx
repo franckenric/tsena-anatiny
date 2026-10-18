@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  MapPin,
   Package,
   ScanBarcode,
   Shapes,
@@ -41,6 +42,7 @@ const navItems = [
   { label: "Mouvements", href: "/stock-movements", icon: ScanBarcode },
   { label: "Catégories", href: "/categories", icon: Shapes },
   { label: "Codes promo", href: "/promo-codes", icon: TicketPercent },
+  { label: "Zones de livraison", href: "/delivery-zones", icon: MapPin },
   { label: "Notifications", href: "/notifications", icon: Bell },
   { label: "Utilisateurs", href: "/users", icon: Users }
 ];

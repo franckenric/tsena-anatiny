@@ -45,6 +45,7 @@ import {
 import {
   STATUS_LABELS,
   formatAr,
+  parsePendingLines,
   buildOrderReceiptHtml
 } from "../components/OrderFormComponent";
 
@@ -196,6 +197,25 @@ export function OrdersPage() {
       (movement) => !movement.type || movement.type === "out_stock"
     );
 
+  // Une commande passee par le panier client range ses lignes dans la note
+  // tant qu'elle n'est pas confirmee : sans ce repli, son total resterait a 0
+  // exactement pendant la phase ou le code promo est cense s'appliquer.
+  const getOrderPendingLines = (order: Order) =>
+    parsePendingLines(order.note).map((raw) => {
+      const productName = raw["product_name"];
+      const variantName = raw["variant_name"];
+      const reason = raw["other_price_reason"];
+      return {
+        product_id: Number(raw["product_id"] ?? 0),
+        product_name: typeof productName === "string" ? productName : null,
+        variant_name: typeof variantName === "string" ? variantName : null,
+        quantity: Number(raw["quantity"] ?? 0),
+        unit_cost: Number(raw["unit_cost"] ?? 0),
+        another_price: Number(raw["another_price"] ?? 0),
+        other_price_reason: typeof reason === "string" ? reason : null
+      };
+    });
+
   const getOrderProductCount = (order: Order): number => {
     const outMovements = getOrderOutMovements(order);
     if (outMovements.length > 0) {
@@ -203,6 +223,12 @@ export function OrdersPage() {
         outMovements
           .map((movement) => Number(movement.product_id || 0))
           .filter((id) => id > 0)
+      ).size;
+    }
+    const pendingLines = getOrderPendingLines(order);
+    if (pendingLines.length > 0) {
+      return new Set(
+        pendingLines.map((line) => line.product_id).filter((id) => id > 0)
       ).size;
     }
     return order.product_id ? 1 : 0;
@@ -216,26 +242,60 @@ export function OrdersPage() {
         0
       );
     }
+    const pendingLines = getOrderPendingLines(order);
+    if (pendingLines.length > 0) {
+      return pendingLines.reduce((sum, line) => sum + line.quantity, 0);
+    }
     return Number(order.quantity || 0);
   };
 
+  /**
+   * Meme calcul que l'API au checkout :
+   * produits + frais de ligne + frais de commande + livraison - remise.
+   * Les mouvements passent en premier (commande confirmee), les lignes en
+   * attente de la note en repli, puis les champs produits historiques.
+   */
   const getOrderTotal = (order: Order): number => {
     const outMovements = getOrderOutMovements(order);
+    const pendingLines = getOrderPendingLines(order);
+
+    let productsTotal = 0;
+    let lineExtrasTotal = 0;
+
     if (outMovements.length > 0) {
-      const productsTotal = outMovements.reduce(
+      productsTotal = outMovements.reduce(
         (sum, movement) =>
           sum + Number(movement.quantity || 0) * Number(movement.unit_cost || 0),
         0
       );
-      const otherTotal = outMovements.reduce(
+      lineExtrasTotal = outMovements.reduce(
         (sum, movement) => sum + Number(movement.another_price || 0),
         0
       );
-      return productsTotal + otherTotal;
+    } else if (pendingLines.length > 0) {
+      productsTotal = pendingLines.reduce(
+        (sum, line) => sum + line.quantity * line.unit_cost,
+        0
+      );
+      lineExtrasTotal = pendingLines.reduce(
+        (sum, line) => sum + line.another_price,
+        0
+      );
+    } else {
+      productsTotal =
+        Number(order.quantity || 0) * Number(order.unit_cost || 0);
     }
-    return (
-      Number(order.quantity || 0) * Number(order.unit_cost || 0) +
-      Number(order.another_price || 0)
+
+    const discount = Math.max(0, Number(order.discount || 0));
+    const deliveryFee = Math.max(0, Number(order.delivery_fee || 0));
+
+    return Math.max(
+      0,
+      productsTotal +
+        lineExtrasTotal +
+        Number(order.another_price || 0) +
+        deliveryFee -
+        discount
     );
   };
 
@@ -260,40 +320,57 @@ export function OrdersPage() {
       };
     });
 
+    // Repli sur les lignes rangees dans la note : une commande brouillon n'a
+    // pas encore de mouvements de stock, mais ses produits doivent s'imprimer.
+    const pendingLines = getOrderPendingLines(order).map((line) => {
+      const baseName = line.product_name || `Produit #${line.product_id}`;
+      const variantName = line.variant_name?.trim();
+      return {
+        product_id: line.product_id,
+        name: variantName ? `${baseName} — ${variantName}` : baseName,
+        quantity: line.quantity,
+        unitPrice: line.unit_cost,
+        total: line.quantity * line.unit_cost,
+        another_price: line.another_price,
+        other_price_reason: line.other_price_reason || undefined
+      };
+    });
+
     const fallbackLines =
       movementLines.length > 0
         ? movementLines
-        : order.product_id && Number(order.quantity || 0) > 0
-          ? [
-              {
-                product_id: order.product_id,
-                name: order.product?.name || `Produit #${order.product_id}`,
-                quantity: Number(order.quantity || 0),
-                unitPrice: Number(order.unit_cost || 0),
-                total:
-                  Number(order.quantity || 0) * Number(order.unit_cost || 0),
-                another_price: Number(order.another_price || 0),
-                other_price_reason: order.other_price_reason || undefined
-              }
-            ]
-          : [];
+        : pendingLines.length > 0
+          ? pendingLines
+          : order.product_id && Number(order.quantity || 0) > 0
+            ? [
+                {
+                  product_id: order.product_id,
+                  name: order.product?.name || `Produit #${order.product_id}`,
+                  quantity: Number(order.quantity || 0),
+                  unitPrice: Number(order.unit_cost || 0),
+                  total:
+                    Number(order.quantity || 0) * Number(order.unit_cost || 0),
+                  // Frais de commande passes en separateur : les cumuler ici
+                  // comme en ligne les ferait apparaitre deux fois.
+                  another_price: 0,
+                  other_price_reason: undefined
+                }
+              ]
+            : [];
 
-    const movementOtherPrice = movementLines.reduce(
+    // Frais de ligne + frais de commande : le meme agregat que celui que
+    // calcule l'API pour la notification, donc aussi pour le ticket.
+    const lineExtras = fallbackLines.reduce(
       (sum, line) => sum + Number(line.another_price || 0),
       0
     );
-    const movementOtherPriceReason = movementLines
+    const lineExtrasReason = fallbackLines
       .map((line) => (line.other_price_reason || "").trim())
       .find((reason) => reason.length > 0);
 
-    const otherPrice =
-      Number(order.another_price || 0) > 0
-        ? Number(order.another_price || 0)
-        : movementOtherPrice;
+    const otherPrice = Number(order.another_price || 0) + lineExtras;
     const otherPriceReason =
-      (order.other_price_reason || "").trim() ||
-      movementOtherPriceReason ||
-      undefined;
+      (order.other_price_reason || "").trim() || lineExtrasReason || undefined;
 
     const resolvedOrderCustomerId =
       order.customer_id || order.customer?.id || undefined;

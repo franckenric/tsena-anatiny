@@ -6,7 +6,10 @@ import type {
   UpdatePromoCodePayload,
   DiscountType
 } from "../types/promo";
+import type { DeliveryZone } from "../types/delivery-zone";
 import { promoCodesService } from "../services/promo-codes.service";
+import { deliveryZonesService } from "../services/delivery-zones.service";
+import { formatAr } from "../components/OrderFormComponent";
 import {
   Input,
   Select,
@@ -42,6 +45,18 @@ export function PromoCodeFormPage() {
     expires_at: "",
     status: "active" as "active" | "inactive"
   });
+  // Zones couvertes par un code « livraison offerte ». Vide = toutes les zones.
+  const [freeShippingZoneIds, setFreeShippingZoneIds] = useState<number[]>([]);
+  const [zones, setZones] = useState<DeliveryZone[]>([]);
+
+  // Liste des zones pour le choix du rayon. Un echec ne bloque pas la
+  // creation du code : il sera simplement limite a toutes les zones.
+  useEffect(() => {
+    deliveryZonesService
+      .getDeliveryZones(1, 500)
+      .then((r) => setZones(r.items))
+      .catch(() => setZones([]));
+  }, []);
 
   useEffect(() => {
     if (!isEdit) return;
@@ -53,6 +68,7 @@ export function PromoCodeFormPage() {
           setErrors({ submit: "Code promo introuvable" });
           return;
         }
+        setFreeShippingZoneIds(promo.free_shipping_zone_ids ?? []);
         setForm({
           code: promo.code ?? "",
           description: promo.description ?? "",
@@ -75,7 +91,10 @@ export function PromoCodeFormPage() {
     const nextErrors: Record<string, string> = {};
     if (!form.code.trim()) nextErrors.code = "Code requis";
     const value = Number(form.discount_value);
-    if (!form.discount_value || Number.isNaN(value) || value <= 0) {
+    if (form.discount_type === "free_shipping") {
+      // Aucune remise sur les produits : la valeur est forcee a 0, il n'y a
+      // donc rien a valider ici.
+    } else if (!form.discount_value || Number.isNaN(value) || value <= 0) {
       nextErrors.discount_value = "Valeur de remise invalide";
     } else if (form.discount_type === "percent" && value > 100) {
       nextErrors.discount_value = "Un pourcentage ne peut pas dépasser 100";
@@ -98,7 +117,11 @@ export function PromoCodeFormPage() {
         code: form.code.trim().toUpperCase(),
         description: form.description.trim() || undefined,
         discount_type: form.discount_type,
-        discount_value: value,
+        discount_value: form.discount_type === "free_shipping" ? 0 : value,
+        // Vide = toutes les zones. Envoye seulement pour un code « livraison
+        // offerte » : les autres types n'en tiennent pas compte.
+        free_shipping_zone_ids:
+          form.discount_type === "free_shipping" ? freeShippingZoneIds : undefined,
         min_order_amount: form.min_order_amount
           ? Number(form.min_order_amount)
           : undefined,
@@ -210,24 +233,109 @@ export function PromoCodeFormPage() {
                   }
                   options={[
                     { value: "percent", label: "Pourcentage (%)" },
-                    { value: "fixed", label: "Montant fixe (Ar)" }
+                    { value: "fixed", label: "Montant fixe (Ar)" },
+                    { value: "free_shipping", label: "Livraison offerte" }
                   ]}
                   disabled={isSaving}
                 />
-                <Input
-                  label={
-                    form.discount_type === "percent" ? "Remise (%)" : "Remise (Ar)"
-                  }
-                  type="number"
-                  value={form.discount_value}
-                  onChange={(e) =>
-                    setForm((p) => ({ ...p, discount_value: e.target.value }))
-                  }
-                  error={errors.discount_value}
-                  placeholder={form.discount_type === "percent" ? "10" : "5000"}
-                  disabled={isSaving}
-                />
+                {form.discount_type === "free_shipping" ? (
+                  <Input
+                    label="Remise"
+                    value="0"
+                    readOnly
+                    disabled
+                    title="Ce code n'enlève rien des produits : il annule les frais de livraison"
+                  />
+                ) : (
+                  <Input
+                    label={
+                      form.discount_type === "percent"
+                        ? "Remise (%)"
+                        : "Remise (Ar)"
+                    }
+                    type="number"
+                    value={form.discount_value}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, discount_value: e.target.value }))
+                    }
+                    error={errors.discount_value}
+                    placeholder={form.discount_type === "percent" ? "10" : "5000"}
+                    disabled={isSaving}
+                  />
+                )}
               </div>
+
+              {form.discount_type === "free_shipping" && (
+                <div className="rounded-xl border border-border/70 bg-bg/40 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-muted">
+                    Rayon de livraison offerte
+                  </p>
+                  {zones.length === 0 ? (
+                    <p className="mt-2 text-sm text-muted">
+                      Aucune zone configurée : ce code offrira la livraison
+                      quel que soit le lieu. Créez des zones depuis la page
+                      « Zones de livraison » pour limiter le rayon.
+                    </p>
+                  ) : (
+                    <>
+                      <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm font-semibold text-ink">
+                        <input
+                          type="checkbox"
+                          checked={freeShippingZoneIds.length === 0}
+                          onChange={(e) =>
+                            setFreeShippingZoneIds(
+                              e.target.checked ? [] : zones.map((z) => z.id)
+                            )
+                          }
+                          disabled={isSaving}
+                          className="h-4 w-4 accent-brand"
+                        />
+                        Toutes les zones
+                      </label>
+                      <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                        {zones.map((zone) => {
+                          const locked = freeShippingZoneIds.length === 0;
+                          return (
+                            <label
+                              key={zone.id}
+                              className={`flex items-center gap-2 rounded-lg border border-border/60 bg-panel px-3 py-2 text-sm text-ink ${
+                                locked ? "opacity-60" : "cursor-pointer"
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={
+                                  !locked && freeShippingZoneIds.includes(zone.id)
+                                }
+                                disabled={isSaving || locked}
+                                onChange={(e) =>
+                                  setFreeShippingZoneIds((prev) =>
+                                    e.target.checked
+                                      ? [...prev, zone.id]
+                                      : prev.filter((zid) => zid !== zone.id)
+                                  )
+                                }
+                                className="h-4 w-4 accent-brand"
+                              />
+                              <span className="min-w-0 flex-1 truncate">
+                                {zone.name}
+                              </span>
+                              <span className="shrink-0 text-xs text-muted">
+                                {formatAr(zone.fee)}
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                      <p className="mt-2 text-xs text-muted">
+                        Cochez des zones pour limiter le rayon du code. Une
+                        zone non listée ne bénéficiera pas de la livraison
+                        offerte.
+                      </p>
+                    </>
+                  )}
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4">
                 <Input
                   label="Montant minimum (Ar)"

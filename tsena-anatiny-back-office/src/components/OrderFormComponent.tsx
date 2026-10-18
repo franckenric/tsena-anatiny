@@ -14,7 +14,9 @@ import type {
 import type { Customer } from "../types/customer";
 import type { Product } from "../types/product";
 import { cartItemsService } from "../services/operations.service";
+import { deliveryZonesService } from "../services/delivery-zones.service";
 import { customersService } from "../services/customers.service";
+import type { DeliveryZone } from "../types/delivery-zone";
 import { Button, Input, Select } from "./index";
 import { PROJECT_NAME } from "../lib/projectName";
 import { resolveImageUrl, toThumbUrl } from "../lib/utils";
@@ -175,7 +177,15 @@ export const buildOrderReceiptHtml = ({
     (sum, line) => sum + Number(line.total || 0),
     0
   );
-  const globalTotal = productsSubTotal + Number(otherPrice || 0);
+  // Remise et tarif de zone sont calcules par l'API : on les repasse sur le
+  // ticket pour que le montant imprime soit bien celui que paie le client.
+  const discountAmount = Math.max(0, Number(order?.discount || 0));
+  const deliveryFee = Math.max(0, Number(order?.delivery_fee || 0));
+  const hasDeliveryZone = Boolean(order?.delivery_zone_id);
+  const globalTotal = Math.max(
+    0,
+    productsSubTotal + Number(otherPrice || 0) - discountAmount + deliveryFee
+  );
   const globalTotalInWords = numberToFrenchWords(globalTotal);
   const trimmedOtherPriceReason = (otherPriceReason || "").trim();
   const extraPriceLabel =
@@ -327,7 +337,21 @@ export const buildOrderReceiptHtml = ({
   <div class="kv"><span class="key">Sous-total</span><span class="value">${formatAr(productsSubTotal)}</span></div>
 
   <div class="separator-strong"></div>
-  <div class="kv"><span class="key">${escapeHtml(extraPriceLabel)}</span><span class="value">${formatAr(otherPrice)}</span></div>
+  <div class="kv"><span class="key">${escapeHtml(extraPriceLabel)}</span><span class="value">${formatAr(otherPrice)}</span></div>${
+    hasDeliveryZone
+      ? `
+  <div class="kv"><span class="key">Livraison</span><span class="value">${
+    deliveryFee > 0 ? escapeHtml(formatAr(deliveryFee)) : "Offerte"
+  }</span></div>`
+      : ""
+  }${
+    discountAmount > 0
+      ? `
+  <div class="kv"><span class="key">Remise${
+    order?.promo_code ? ` ${escapeHtml(order.promo_code)}` : ""
+  }</span><span class="value">-${escapeHtml(formatAr(discountAmount))}</span></div>`
+      : ""
+  }
   <div class="kv"><span class="key">TOTAL</span><span class="value">${formatAr(globalTotal)}</span></div>
   <div class="row"><span class="label">Arrêté à:</span> ${escapeHtml(globalTotalInWords)}</div>
 
@@ -423,6 +447,17 @@ export function OrderForm({
     }
     return [];
   });
+  const [deliveryZones, setDeliveryZones] = useState<DeliveryZone[]>([]);
+
+  // Le nom de la zone n'est charge que si la commande en reference une : une
+  // commande classique ne paie donc aucun appel en plus.
+  useEffect(() => {
+    if (!order?.delivery_zone_id) return;
+    deliveryZonesService
+      .getDeliveryZones(1, 500)
+      .then((res) => setDeliveryZones(res.items))
+      .catch(() => setDeliveryZones([]));
+  }, [order?.delivery_zone_id]);
 
   const sel = (field: string, value: string | number) =>
     setForm((p) => ({ ...p, [field]: value }));
@@ -435,6 +470,19 @@ export function OrderForm({
     0
   );
   const grandTotal = cartTotal + Number(form.another_price || 0);
+  // Remise et tarif de zone ont ete calcules par l'API au checkout : on
+  // affiche ce que le client paie reellement, sans les refabriquer ici.
+  const discountAmount = Math.max(0, Number(order?.discount || 0));
+  const deliveryZoneId = order?.delivery_zone_id ?? null;
+  const deliveryFee = Math.max(0, Number(order?.delivery_fee || 0));
+  const deliveryZoneName = deliveryZoneId
+    ? deliveryZones.find((zone) => zone.id === deliveryZoneId)?.name ?? null
+    : null;
+  // Meme agregat que l'API : produits + frais + livraison - remise.
+  const totalToPay = Math.max(
+    0,
+    grandTotal - discountAmount + deliveryFee
+  );
   const selectedCustomer =
     searchCustomers.find((item) => item.id === form.customer_id) ||
     customers.find((item) => item.id === form.customer_id);
@@ -798,10 +846,36 @@ export function OrderForm({
                   {formatAr(cartTotal)}
                 </p>
               </div>
+              {(deliveryZoneId !== null || deliveryFee > 0) && (
+                <div className="flex items-center justify-between border-t border-border/60 pt-2">
+                  <p className="text-sm font-semibold text-ink">
+                    Livraison
+                    {deliveryZoneName ? ` — ${deliveryZoneName}` : ""}
+                  </p>
+                  {deliveryFee > 0 ? (
+                    <p className="text-sm font-semibold text-ink">
+                      {formatAr(deliveryFee)}
+                    </p>
+                  ) : (
+                    <p className="text-sm font-semibold text-success">Offerte</p>
+                  )}
+                </div>
+              )}
+              {discountAmount > 0 && (
+                <div className="flex items-center justify-between border-t border-border/60 pt-2">
+                  <p className="text-sm font-semibold text-ink">
+                    Remise
+                    {order?.promo_code ? ` ${order.promo_code}` : ""}
+                  </p>
+                  <p className="text-sm font-semibold text-success">
+                    -{formatAr(discountAmount)}
+                  </p>
+                </div>
+              )}
               <div className="flex items-center justify-between border-t border-border/60 pt-2">
                 <p className="text-sm font-semibold text-ink">Total commande</p>
                 <p className="text-sm font-bold text-brand">
-                  {formatAr(grandTotal)}
+                  {formatAr(totalToPay)}
                 </p>
               </div>
             </div>

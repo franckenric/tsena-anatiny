@@ -238,6 +238,12 @@ export interface Order {
   unit_cost?: number;
   another_price?: number;
   other_price_reason?: string;
+  /** Code promo applique et remise retenue sur la commande entiere. */
+  promo_code?: string | null;
+  discount?: number;
+  /** Zone de livraison choisie par le client et tarif fige par le serveur. */
+  delivery_zone_id?: number | null;
+  delivery_fee?: number;
   status?: OrderStatus;
   note?: string;
   user?: User | null;

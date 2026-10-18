@@ -62,6 +62,10 @@ const NotificationsContext = createContext<
 
 const MAX_NOTIFICATIONS = 50;
 const RECONNECT_DELAY_MS = 3000;
+// Keep-alive du WebSocket : un ping periodique evite qu'un proxy ou un reseau
+// mobile ne coupe une connexion devenue inutilisee (aucun evenement pendant une
+// session ouverte au premier plan). Le serveur ignore le contenu du message.
+const HEARTBEAT_MS = 25000;
 
 function mapRestNotification(notification: RestNotification): NotificationItem {
   if (notification.type === "account.created") {
@@ -209,15 +213,68 @@ export function NotificationsProvider({
     seedFromRest();
     seedPresence();
 
+    let heartbeatTimer: number | null = null;
+
+    const stopHeartbeat = () => {
+      if (heartbeatTimer !== null) {
+        window.clearInterval(heartbeatTimer);
+        heartbeatTimer = null;
+      }
+    };
+
     const connect = () => {
       if (cancelled) return;
-      const ws = new WebSocket(buildWebSocketUrl(token));
+
+      // Annule une reconnexion deja planifiee pour n'en avoir jamais deux.
+      if (reconnectTimer.current !== null) {
+        window.clearTimeout(reconnectTimer.current);
+        reconnectTimer.current = null;
+      }
+
+      // Referme l'eventuel socket precedent : au retour au premier plan il est
+      // souvent encore « ouvert » mais mort, il faut repartir sur une connexion
+      // neuve. On detache ses handlers pour qu'il n'ait aucun effet sur le
+      // nouveau (pas de reconnexion parasite, pas de seed en double).
+      const previous = socketRef.current;
+      if (previous) {
+        previous.onopen = null;
+        previous.onmessage = null;
+        previous.onclose = null;
+        previous.onerror = null;
+        try {
+          previous.close();
+        } catch {
+          // ignore
+        }
+        socketRef.current = null;
+      }
+      stopHeartbeat();
+
+      let ws: WebSocket;
+      try {
+        ws = new WebSocket(buildWebSocketUrl(token));
+      } catch {
+        reconnectTimer.current = window.setTimeout(connect, RECONNECT_DELAY_MS);
+        return;
+      }
       socketRef.current = ws;
 
       ws.onopen = () => {
-        if (!cancelled) setIsConnected(true);
+        if (cancelled || socketRef.current !== ws) return;
+        setIsConnected(true);
         seedFromRest();
         seedPresence();
+        stopHeartbeat();
+        heartbeatTimer = window.setInterval(() => {
+          if (socketRef.current !== ws || ws.readyState !== WebSocket.OPEN) return;
+          try {
+            ws.send("ping");
+          } catch {
+            // Envoi impossible : socket mort, on le referme pour declencher la
+            // reconnexion via l'evenement « close ».
+            ws.close();
+          }
+        }, HEARTBEAT_MS);
       };
 
       ws.onmessage = (event) => {
@@ -252,7 +309,9 @@ export function NotificationsProvider({
       };
 
       ws.onclose = () => {
+        if (socketRef.current !== ws) return;
         socketRef.current = null;
+        stopHeartbeat();
         if (cancelled) return;
         setIsConnected(false);
         reconnectTimer.current = window.setTimeout(connect, RECONNECT_DELAY_MS);
@@ -261,14 +320,32 @@ export function NotificationsProvider({
       ws.onerror = () => ws.close();
     };
 
+    // Retour au premier plan ou reseau revient : on repart sur une connexion
+    // garantie vivante plutot que de faire confiance a l'ancien socket (souvent
+    // encore « ouvert » mais mort apres un passage en arriere-plan).
+    const handleForeground = () => {
+      if (cancelled || document.visibilityState !== "visible") return;
+      connect();
+    };
+    const handleOnline = () => {
+      if (cancelled) return;
+      connect();
+    };
+
+    document.addEventListener("visibilitychange", handleForeground);
+    window.addEventListener("online", handleOnline);
+
     connect();
 
     return () => {
       cancelled = true;
+      document.removeEventListener("visibilitychange", handleForeground);
+      window.removeEventListener("online", handleOnline);
       if (reconnectTimer.current !== null) {
         window.clearTimeout(reconnectTimer.current);
         reconnectTimer.current = null;
       }
+      stopHeartbeat();
       socketRef.current?.close();
       socketRef.current = null;
       setIsConnected(false);

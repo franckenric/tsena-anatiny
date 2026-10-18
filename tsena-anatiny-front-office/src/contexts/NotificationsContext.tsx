@@ -36,6 +36,10 @@ const NotificationsContext = createContext<NotificationsContextValue | null>(
 );
 
 const RECONNECT_DELAY_MS = 5000;
+// Keep-alive du WebSocket : un ping periodique evite qu'un proxy ou un reseau
+// mobile ne coupe une connexion devenue inutilisee (aucun evenement pendant une
+// session ouverte au premier plan). Le serveur ignore le contenu du message.
+const HEARTBEAT_MS = 25000;
 
 export function NotificationsProvider({ children }: { children: ReactNode }) {
   const { customer } = useAuth();
@@ -100,6 +104,14 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   // Push temps reel : on ne recharge la liste que lorsqu'un evenement arrive.
+  //
+  // Une appli mobile installee (ou un onglet passe en arriere-plan) coupe le
+  // WebSocket SILENCIEMENT : l'evenement « close » ne se declenche jamais, le
+  // client croit rester connecte et plus aucun evenement n'arrive — d'ou la
+  // sensation qu'il faut rouvrir l'appli pour que les notifications bougent,
+  // la restant fige. On reconnexion donc a chaque retour au premier plan, et on
+  // keep-alive la session pour qu'un proxy/reseau ne coupe pas une connexion
+  // inutilisee.
   useEffect(() => {
     const token = getStoredApiToken();
     if (!customer || !token) {
@@ -109,42 +121,109 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
 
     let socket: WebSocket | null = null;
     let reconnectTimer: number | null = null;
+    let heartbeatTimer: number | null = null;
     let closed = false;
+
+    const stopHeartbeat = () => {
+      if (heartbeatTimer !== null) {
+        window.clearInterval(heartbeatTimer);
+        heartbeatTimer = null;
+      }
+    };
 
     const connect = () => {
       if (closed) return;
-      try {
-        socket = new WebSocket(buildWebSocketUrl(token));
-      } catch {
-        socket = null;
+
+      // Annule une reconnexion deja planifiee pour n'en avoir jamais deux.
+      if (reconnectTimer !== null) {
+        window.clearTimeout(reconnectTimer);
+        reconnectTimer = null;
       }
 
-      socket?.addEventListener("open", () => {
-        if (!closed) setIsLive(true);
+      // Referme l'eventuel socket precedent : au retour au premier plan il est
+      // souvent encore « ouvert » mais mort, il faut repartir sur une
+      // connexion neuve. L'ancien socket est ignore via le garde `socket !== ws`
+      // (son « close » ne touchera pas l'etat du nouveau).
+      if (socket) {
+        const previous = socket;
+        socket = null;
+        try {
+          previous.close();
+        } catch {
+          // ignore
+        }
+      }
+      stopHeartbeat();
+
+      let ws: WebSocket;
+      try {
+        ws = new WebSocket(buildWebSocketUrl(token));
+      } catch {
+        reconnectTimer = window.setTimeout(connect, RECONNECT_DELAY_MS);
+        return;
+      }
+      socket = ws;
+
+      ws.addEventListener("open", () => {
+        if (closed || socket !== ws) return;
+        setIsLive(true);
+        // Rattrape ce qui a pu etre manque pendant l'arriere-plan.
+        void refresh();
+        stopHeartbeat();
+        heartbeatTimer = window.setInterval(() => {
+          if (socket !== ws || ws.readyState !== WebSocket.OPEN) return;
+          try {
+            ws.send("ping");
+          } catch {
+            // Envoi impossible : socket mort, on le referme pour declencher la
+            // reconnexion via l'evenement « close ».
+            ws.close();
+          }
+        }, HEARTBEAT_MS);
       });
 
-      socket?.addEventListener("message", (event) => {
+      ws.addEventListener("message", (event) => {
+        if (closed || socket !== ws) return;
         const payload = parseNotificationEvent(event.data as string);
         if (!payload) return;
         void refresh();
       });
 
-      socket?.addEventListener("close", () => {
-        if (closed) return;
+      ws.addEventListener("close", () => {
+        if (closed || socket !== ws) return;
+        socket = null;
         setIsLive(false);
+        stopHeartbeat();
         reconnectTimer = window.setTimeout(connect, RECONNECT_DELAY_MS);
       });
 
-      socket?.addEventListener("error", () => {
-        socket?.close();
+      ws.addEventListener("error", () => {
+        ws.close();
       });
     };
+
+    // Retour au premier plan ou reseau revient : on repart sur une connexion
+    // garantie vivante plutot que de faire confiance a l'ancien socket.
+    const handleForeground = () => {
+      if (closed || document.visibilityState !== "visible") return;
+      connect();
+    };
+    const handleOnline = () => {
+      if (closed) return;
+      connect();
+    };
+
+    document.addEventListener("visibilitychange", handleForeground);
+    window.addEventListener("online", handleOnline);
 
     connect();
 
     return () => {
       closed = true;
-      if (reconnectTimer) window.clearTimeout(reconnectTimer);
+      document.removeEventListener("visibilitychange", handleForeground);
+      window.removeEventListener("online", handleOnline);
+      if (reconnectTimer !== null) window.clearTimeout(reconnectTimer);
+      stopHeartbeat();
       socket?.close();
       setIsLive(false);
     };

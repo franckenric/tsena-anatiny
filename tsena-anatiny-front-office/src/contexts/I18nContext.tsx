@@ -20,11 +20,30 @@ interface I18nContextValue {
 
 const I18nContext = createContext<I18nContextValue | null>(null);
 
+const SUPPORTED_LANGUAGES: readonly Language[] = ["fr", "en"];
+
+function isSupported(value: string | null): value is Language {
+  return value !== null && (SUPPORTED_LANGUAGES as readonly string[]).includes(value);
+}
+
+function detectBrowserLanguage(): Language {
+  if (typeof navigator === "undefined") return "fr";
+  const candidates = navigator.languages ?? [navigator.language];
+  for (const raw of candidates) {
+    if (!raw) continue;
+    const base = raw.toLowerCase().split("-")[0];
+    if (isSupported(base)) return base;
+  }
+  return "fr";
+}
+
 function getInitialLanguage(): Language {
   try {
-    return localStorage.getItem(STORAGE_KEY) === "mg" ? "mg" : "fr";
+    const stored = localStorage.getItem(STORAGE_KEY);
+    // Une langue stockee mais retiree (ex. "mg") retombe sur la detection.
+    return isSupported(stored) ? stored : detectBrowserLanguage();
   } catch {
-    return "fr";
+    return detectBrowserLanguage();
   }
 }
 

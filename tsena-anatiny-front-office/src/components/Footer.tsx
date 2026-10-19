@@ -139,7 +139,7 @@ export function Footer() {
               aria-label={t("footer.language")}
               className="flex items-center overflow-hidden rounded-full border border-border/60 bg-panel"
             >
-              {(["fr", "mg"] as const).map((lang) => (
+              {(["fr", "en"] as const).map((lang) => (
                 <button
                   key={lang}
                   type="button"

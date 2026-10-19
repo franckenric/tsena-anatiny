@@ -124,7 +124,7 @@ export function Header() {
             aria-label="Langue"
             className="hidden items-center overflow-hidden rounded-full border border-border/60 bg-bg/80 sm:flex"
           >
-            {(["fr", "mg"] as const).map((lang) => (
+            {(["fr", "en"] as const).map((lang) => (
               <button
                 key={lang}
                 type="button"

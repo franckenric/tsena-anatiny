@@ -28,10 +28,12 @@ def upgrade() -> None:
         sa.Column("updated_at", sa.DateTime(), nullable=True, server_default=sa.func.now()),
     )
     op.create_index("ix_push_subscriptions_user_id", "push_subscriptions", ["user_id"], unique=False)
-    op.create_index("ix_push_subscriptions_endpoint", "push_subscriptions", ["endpoint"], unique=False)
+    # Pas d'index sur `endpoint` : c'est une colonne TEXT, et MySQL refuse
+    # d'indexer un TEXT sans longueur de prefixe (erreur 1170). La table ne
+    # contient qu'une ligne par appareil connecte, le scan est sans cout, et
+    # le modele ORM n'en declare pas non plus.
 
 
 def downgrade() -> None:
-    op.drop_index("ix_push_subscriptions_endpoint", table_name="push_subscriptions")
     op.drop_index("ix_push_subscriptions_user_id", table_name="push_subscriptions")
     op.drop_table("push_subscriptions")

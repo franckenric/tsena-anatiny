@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useHistory, useParams } from "react-router-dom";
 import type {
   Lot,
@@ -531,12 +531,30 @@ export function LotDetailsPage() {
     return rows;
   };
 
+  // Uniquement les sorties liees a des commandes confirmees ou livrees.
+  // Les commandes annulees (ou brouillons) ne comptent pas dans "Total vendu".
+  const orderStatusById = useMemo(
+    () =>
+      allOrders.reduce(
+        (acc, order) => {
+          acc[order.id] = order.status;
+          return acc;
+        },
+        {} as Record<number, string | undefined>
+      ),
+    [allOrders]
+  );
+
   const getLotSoldAmount = (lotId: number): number =>
     allStockMovements
-      .filter(
-        (movement) =>
-          movement.type === "out_stock" && movement.lot_id === lotId
-      )
+      .filter((movement) => {
+        if (movement.type !== "out_stock") return false;
+        if (movement.lot_id !== lotId) return false;
+        const orderId = movement.commande_id;
+        if (!orderId) return false;
+        const status = orderStatusById[orderId];
+        return status === "confirmed" || status === "delivered";
+      })
       .reduce((sum, movement) => {
         const quantity = Number(movement.quantity || 0);
         const unitCost = Number(movement.unit_cost || 0);

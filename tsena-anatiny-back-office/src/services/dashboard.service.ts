@@ -233,6 +233,8 @@ export const dashboardService = {
 
       const soldByCategoryMap = new Map<number, ProductSoldCategoryInsight>();
       for (const order of orders) {
+        const status = order.status;
+        if (status !== "confirmed" && status !== "delivered") continue;
         const productId = Number(order.product_id || 0);
         const units =
           typeof order.quantity === "number" && order.quantity > 0
@@ -270,14 +272,16 @@ export const dashboardService = {
         0
       );
 
-      const soldUnits = orders.reduce(
-        (sum, order) =>
+      const soldUnits = orders.reduce((sum, order) => {
+        const status = order.status;
+        if (status !== "confirmed" && status !== "delivered") return sum;
+        return (
           sum +
           (typeof order.quantity === "number" && order.quantity > 0
             ? order.quantity
-            : 1),
-        0
-      );
+            : 1)
+        );
+      }, 0);
 
       const totalUniverse = soldUnits + totalUnitsInStock;
       const soldPercentage =

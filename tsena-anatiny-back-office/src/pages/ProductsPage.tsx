@@ -1175,42 +1175,11 @@ export function ProductsPage() {
   ) => {
     try {
       setIsFormLoading(true);
+      // Le prix saisi est un tarif negocie pour cet achat : il ne vit que dans
+      // le panier du client. Le prix de vente d'origine du produit (catalogue)
+      // reste inchange.
       for (const payload of payloads) {
         await cartItemsService.createCartItem(payload);
-
-        if (Number(payload.unit_cost || 0) > 0) {
-          try {
-            if (payload.variant_id) {
-              await productsService.updateVariant(
-                payload.product_id,
-                payload.variant_id,
-                { selling_price: Number(payload.unit_cost) }
-              );
-            } else {
-              await productsService.updateProduct(payload.product_id, {
-                selling_price: Number(payload.unit_cost)
-              });
-            }
-            setProducts((prev) =>
-              prev.map((p) => {
-                if (p.id !== payload.product_id) return p;
-                if (payload.variant_id) {
-                  return {
-                    ...p,
-                    variants: (p.variants ?? []).map((v) =>
-                      v.id === payload.variant_id
-                        ? { ...v, selling_price: Number(payload.unit_cost) }
-                        : v
-                    )
-                  };
-                }
-                return { ...p, selling_price: Number(payload.unit_cost) };
-              })
-            );
-          } catch {
-            // le prix de vente reste inchange si la mise a jour echoue
-          }
-        }
       }
 
       setSelectedForCart(null);

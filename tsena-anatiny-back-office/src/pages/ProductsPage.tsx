@@ -434,6 +434,10 @@ function ProductCartForm({
                 {activeLines.length > 1 ? "s" : ""}
               </span>
             </div>
+            <p className="text-[11px] text-muted">
+              Prix negocie pour ce client uniquement : le prix de vente du
+              produit et de ses variantes (catalogue) reste inchange.
+            </p>
             <div className="space-y-2">
               {lines.map((line, index) => {
                 const stock = variantEffectiveStock(
@@ -655,6 +659,10 @@ function ProductCartForm({
                 disabled={isLoading}
               />
             </div>
+            <p className="text-[11px] text-muted">
+              Prix negocie pour ce client uniquement : le prix de vente du
+              produit (catalogue) reste inchange.
+            </p>
           </div>
         )}
 

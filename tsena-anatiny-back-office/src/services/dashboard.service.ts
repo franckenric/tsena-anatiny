@@ -111,6 +111,12 @@ async function getAllProducts(pageSize = 100): Promise<Product[]> {
   return allItems;
 }
 
+/** Une vente ne compte que si la commande est confirmee ou livree. */
+function isCountedAsSold(order: Order): boolean {
+  const status = order.status;
+  return status === "confirmed" || status === "delivered";
+}
+
 function resolveAuthorName(order: Order): string {
   if (order.user?.full_name?.trim()) return order.user.full_name;
   if (order.user?.email?.trim()) return order.user.email;
@@ -151,6 +157,8 @@ export const dashboardService = {
       const grouped = new Map<number, OrderAuthorInsight>();
 
       for (const order of orders) {
+        // Les commandes brouillon/annulees ne sont pas des ventes.
+        if (!isCountedAsSold(order)) continue;
         const authorId = order.user_id ?? 0;
         const units =
           typeof order.quantity === "number" && order.quantity > 0
@@ -176,7 +184,7 @@ export const dashboardService = {
       );
 
       return {
-        totalOrders: orders.length,
+        totalOrders: byAuthor.reduce((sum, item) => sum + item.ordersCount, 0),
         totalUnitsSold: byAuthor.reduce((sum, item) => sum + item.unitsSold, 0),
         byAuthor
       };
@@ -233,8 +241,7 @@ export const dashboardService = {
 
       const soldByCategoryMap = new Map<number, ProductSoldCategoryInsight>();
       for (const order of orders) {
-        const status = order.status;
-        if (status !== "confirmed" && status !== "delivered") continue;
+        if (!isCountedAsSold(order)) continue;
         const productId = Number(order.product_id || 0);
         const units =
           typeof order.quantity === "number" && order.quantity > 0
@@ -273,8 +280,7 @@ export const dashboardService = {
       );
 
       const soldUnits = orders.reduce((sum, order) => {
-        const status = order.status;
-        if (status !== "confirmed" && status !== "delivered") return sum;
+        if (!isCountedAsSold(order)) return sum;
         return (
           sum +
           (typeof order.quantity === "number" && order.quantity > 0

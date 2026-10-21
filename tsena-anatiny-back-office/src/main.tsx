@@ -7,6 +7,9 @@ import App from "./App";
 import { AuthProvider } from "./contexts/AuthContext";
 import { NotificationsProvider } from "./contexts/NotificationsContext";
 import { DialogProvider } from "./contexts/DialogContext";
+import { installAutoUpdateWatch } from "./lib/autoUpdate";
+
+installAutoUpdateWatch();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

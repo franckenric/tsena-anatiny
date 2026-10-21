@@ -210,27 +210,59 @@ def _compute_available_quantities_by_lot(
     product_id: int,
     variant_id: int | None = None,
 ) -> list[tuple[int, int]]:
-    """Return FIFO lot availability as (lot_id, remaining_qty)."""
+    """Return FIFO lot availability as (lot_id, remaining_qty).
+
+    Une arrivee de lot est enregistree soit au niveau variante, soit au
+    niveau produit (variante NULL). Une vente variante doit pouvoir
+    consommer les deux provenances : sans ce repli, une ligne variante
+    sans arrivee rattachee tombait au lot NULL et la vente ne comptait
+    pas dans le "Total vendu" du lot.
+    """
     in_query = db.query(models.StockMovements).filter(
         models.StockMovements.product_id == product_id,
         models.StockMovements.type == TypeEnum.in_stock,
         models.StockMovements.lot_id.isnot(None),
     )
-    if variant_id is not None:
-        in_query = in_query.filter(models.StockMovements.variant_id == variant_id)
-    in_movements = (
-        in_query.order_by(models.StockMovements.created_at.asc(), models.StockMovements.id.asc())
-        .all()
-    )
-
     out_query = db.query(models.StockMovements).filter(
         models.StockMovements.product_id == product_id,
         models.StockMovements.type == TypeEnum.out_stock,
         models.StockMovements.lot_id.isnot(None),
     )
     if variant_id is not None:
+        in_query = in_query.filter(models.StockMovements.variant_id == variant_id)
         out_query = out_query.filter(models.StockMovements.variant_id == variant_id)
-    out_movements = out_query.all()
+
+    in_movements = (
+        in_query.order_by(models.StockMovements.created_at.asc(), models.StockMovements.id.asc())
+        .all()
+    )
+
+    if variant_id is not None and not in_movements:
+        # Repli : le stock a ete recu au niveau produit (arrivee sans
+        # variante). Toutes les sorties rattachees au lot decrementent
+        # ce pool afin de ne pas double-compter les unites.
+        in_movements = (
+            db.query(models.StockMovements)
+            .filter(
+                models.StockMovements.product_id == product_id,
+                models.StockMovements.type == TypeEnum.in_stock,
+                models.StockMovements.lot_id.isnot(None),
+                models.StockMovements.variant_id.is_(None),
+            )
+            .order_by(models.StockMovements.created_at.asc(), models.StockMovements.id.asc())
+            .all()
+        )
+        out_movements = (
+            db.query(models.StockMovements)
+            .filter(
+                models.StockMovements.product_id == product_id,
+                models.StockMovements.type == TypeEnum.out_stock,
+                models.StockMovements.lot_id.isnot(None),
+            )
+            .all()
+        )
+    else:
+        out_movements = out_query.all()
 
     consumed_by_lot: dict[int, int] = {}
     for movement in out_movements:

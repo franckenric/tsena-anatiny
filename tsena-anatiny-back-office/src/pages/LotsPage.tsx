@@ -1,7 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useHistory } from "react-router-dom";
-import type { Lot, StockMovement } from "../types/operations";
-import { lotsService, stockMovementsService } from "../services/operations.service";
+import type { Lot, StockMovement, Order } from "../types/operations";
+import {
+  lotsService,
+  stockMovementsService,
+  ordersService
+} from "../services/operations.service";
 import {
   Layout,
   Card,
@@ -23,6 +27,7 @@ export function LotsPage() {
   const [allStockMovements, setAllStockMovements] = useState<StockMovement[]>(
     []
   );
+  const [allOrders, setAllOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -34,12 +39,14 @@ export function LotsPage() {
     try {
       setIsLoading(true);
       setError(null);
-      const [lotsResp, movementsResp] = await Promise.all([
+      const [lotsResp, movementsResp, ordersResp] = await Promise.all([
         lotsService.getLots(1, 200),
-        stockMovementsService.getMovements(1, 5000)
+        stockMovementsService.getMovements(1, 5000),
+        ordersService.getOrders(1, 5000)
       ]);
       setLots(lotsResp.items);
       setAllStockMovements(movementsResp.items);
+      setAllOrders(ordersResp.items);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur chargement");
     } finally {
@@ -66,9 +73,30 @@ export function LotsPage() {
         0
       );
 
+  // Uniquement les sorties liees a des commandes confirmees ou livrees.
+  // Les commandes annulees (ou brouillons) ne comptent pas dans "Total vendu".
+  const orderStatusById = useMemo(
+    () =>
+      allOrders.reduce(
+        (acc, order) => {
+          acc[order.id] = order.status;
+          return acc;
+        },
+        {} as Record<number, string | undefined>
+      ),
+    [allOrders]
+  );
+
   const getLotSoldAmount = (lotId: number): number =>
     allStockMovements
-      .filter((m) => m.type === "out_stock" && m.lot_id === lotId)
+      .filter((m) => {
+        if (m.type !== "out_stock") return false;
+        if (m.lot_id !== lotId) return false;
+        const orderId = m.commande_id;
+        if (!orderId) return false;
+        const status = orderStatusById[orderId];
+        return status === "confirmed" || status === "delivered";
+      })
       .reduce(
         (sum, m) =>
           sum +

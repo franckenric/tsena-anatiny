@@ -1,12 +1,18 @@
 # ── Tsena Anatiny — orchestration Docker unique ────────────────────────────────
-# Lance les 3 projets en meme temps :
+# Lance les 3 projets en meme temps (MySQL tourne sur l'hôte, localhost:3306) :
 #   - api          : FastAPI (tsena-anaty-apis)          → http://localhost:8081
 #   - back-office  : Vite (tsena-anatiny-back-office)    → http://localhost:5175
 #   - front-office : Vite (tsena-anatiny-front-office)   → http://localhost:5173
 #
+# La base MySQL est celle du serveur de production (la meme que phpMyAdmin),
+# atteinte via un tunnel SSH : localhost:13306 -> 15.204.89.37:3306.
+# Le tunnel est demarre automatiquement par dev.ps1 ; .env pointe sur
+# host.docker.internal:13306. Le schema et les donnees sont geres par Alembic
+# au demarrage de l'API.
+#
 # Mode dev (par defaut) : la source est en bind mount et les processus se
 # relancent a chaud — PAS de rebuild d'image a chaque modif.
-#   - .py  → uvicorn --reload (via ENVIRONMENT=development) redemarre l'API
+#   - .py → uvicorn --reload (via ENVIRONMENT=development) redemarre l'API
 #   - .ts/tsx → HMR Vite (watcher en polling, VITE_USE_POLLING=true)
 # Passez ENVIRONMENT=production / VITE_USE_POLLING=false pour desactiver.
 #
